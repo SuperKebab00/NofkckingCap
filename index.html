@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>No Cap Barber Shop - Online Shop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header" data-elevated="false">
+      <a class="brand" href="#home" aria-label="No Cap Barber Shop home">
+        <img src="Img/NO CAP LOGO_1.png" alt="No Cap Barber Shop">
+      </a>
+
+      <nav class="main-nav" aria-label="Navigazione principale">
+        <a href="#home">Home</a>
+        <a href="#shop">Shop</a>
+        <a href="#fresh-cut">Taglio fresco</a>
+        <a href="#showcase">Showcase</a>
+        <a href="#support">Contatti</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="ghost-button manager-toggle" type="button" aria-controls="inventoryDrawer" aria-expanded="false">
+          Gestore
+        </button>
+        <button class="cart-trigger" type="button" aria-controls="cartDrawer" aria-expanded="false">
+          <span class="cart-trigger__icon" aria-hidden="true"></span>
+          <span class="cart-trigger__count" data-cart-count>0</span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-view is-active" id="home" data-page="home" aria-labelledby="hero-title">
+        <div class="hero" aria-label="No Cap Barber Shop">
+        <div class="hero__side-text">NO CAP BARBER SHOP</div>
+        <div class="hero__content">
+          <p class="eyebrow">Shop essentials</p>
+          <h1 id="hero-title">Fresh gear.<br><span>Zero cap.</span></h1>
+          <p class="hero__copy">Prodotti professionali, strumenti da banco e disponibilità aggiornata per uno shop barber pronto a vendere.</p>
+          <div class="hero__actions">
+            <a class="primary-button" href="#shop">Vedi prodotti</a>
+            <a class="outline-button" href="#fresh-cut">Taglio del giorno</a>
+          </div>
+        </div>
+        <div class="hero__panel" aria-hidden="true">
+          <span>Fresh cuts. Zero cap.</span>
+          <strong>NC</strong>
+        </div>
+        </div>
+
+        <div class="section-banners" aria-label="Pagine del sito">
+        <a class="section-banner section-banner--shop" href="#shop" data-category-link="all">
+          <span>01 / Shop</span>
+          <strong>All products</strong>
+          <small>Catalogo completo con disponibilità aggiornata</small>
+        </a>
+        <a class="section-banner section-banner--styling" href="#shop" data-category-link="styling">
+          <span>02 / Styling</span>
+          <strong>Wax & pomade</strong>
+          <small>Texture, tenuta e finish da barber shop</small>
+        </a>
+        <a class="section-banner section-banner--tools" href="#shop" data-category-link="tools">
+          <span>03 / Tools</span>
+          <strong>Blade kits</strong>
+          <small>Strumenti tecnici e ricambi premium</small>
+        </a>
+        <a class="section-banner section-banner--cut" href="#fresh-cut">
+          <span>04 / Fresh cut</span>
+          <strong>Taglio del giorno</strong>
+          <small>Il look fresco da mettere in evidenza oggi</small>
+        </a>
+        <a class="section-banner section-banner--showcase" href="#showcase">
+          <span>05 / Showcase</span>
+          <strong>Questo mese</strong>
+          <small>Solo i tagli caricati nel mese corrente</small>
+        </a>
+        </div>
+      </section>
+
+      <section class="page-view" id="shop" data-page="shop" aria-labelledby="products-title">
+        <div class="page-banner page-banner--shop">
+          <p class="eyebrow">Shop</p>
+          <h1>Prodotti No Cap</h1>
+          <p>Catalogo professionale, disponibilità aggiornata e acquisto rapido.</p>
+        </div>
+
+        <div class="category-bar" aria-label="Categorie prodotti">
+          <button class="category-pill is-active" type="button" data-category="all">All products</button>
+          <button class="category-pill" type="button" data-category="hair">Hair care</button>
+          <button class="category-pill" type="button" data-category="styling">Styling</button>
+          <button class="category-pill" type="button" data-category="tools">Tools</button>
+          <button class="category-pill" type="button" data-category="accessories">Accessories</button>
+        </div>
+
+        <div class="shop-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Prodotti</p>
+              <h2 id="products-title">Catalogo professionale</h2>
+            </div>
+            <p>Scopri prodotti, disponibilità e ultimi pezzi con un’esperienza e-commerce pensata per barber shop.</p>
+          </div>
+
+          <div class="product-grid" data-product-grid></div>
+        </div>
+      </section>
+
+      <section class="page-view" id="fresh-cut" data-page="fresh-cut" aria-labelledby="fresh-cut-title">
+        <div class="fresh-cut-section">
+          <div class="fresh-cut__media">
+            <img data-cut-image alt="Taglio fresco del giorno">
+            <div class="fresh-cut__stamp">Fresh cut</div>
+          </div>
+          <div class="fresh-cut__content">
+            <p class="eyebrow">Daily highlight</p>
+            <h1 id="fresh-cut-title" data-cut-title>Taglio fresco del giorno</h1>
+            <p data-cut-description>Il look da mettere in vetrina oggi: immagine grande, stile editoriale e aggiornamento immediato dall’area gestore.</p>
+            <a class="outline-button" href="#showcase">Vedi showcase mensile</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-view" id="showcase" data-page="showcase" aria-labelledby="showcase-title">
+        <div class="page-banner page-banner--showcase">
+          <p class="eyebrow">Showcase</p>
+          <h1 id="showcase-title">Tagli di <span data-current-month>questo mese</span></h1>
+          <p>Una galleria pubblica che mostra solo i tagli caricati nel mese corrente.</p>
+        </div>
+        <div class="showcase-grid" data-showcase-grid></div>
+      </section>
+
+      <section class="page-view" id="support" data-page="support" aria-labelledby="support-title">
+        <div class="page-banner page-banner--support">
+          <p class="eyebrow">Contatti</p>
+          <h1 id="support-title">No Cap Barbershop</h1>
+          <p>Passa in shop, chiamaci o scrivici per prenotazioni, prodotti e informazioni.</p>
+        </div>
+        <div class="contact-section">
+          <div class="contact-details">
+            <p class="eyebrow">No Cap Barbershop</p>
+            <h2>Vignola, MO</h2>
+            <a class="contact-line" href="tel:+393208839692">+39 320 883 9692</a>
+            <a class="contact-line" href="https://www.google.com/maps/search/?api=1&query=Via%20Antonio%20Gramsci%2C%201%2C%2041058%20Vignola%20MO%2C%20Italy" target="_blank" rel="noreferrer">
+              Via Antonio Gramsci, 1<br>
+              41058 Vignola MO, Italy
+            </a>
+          </div>
+
+          <form class="contact-form" data-contact-form>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Contattaci</p>
+                <h2>Scrivici</h2>
+              </div>
+              <p>Lascia i tuoi dati e il messaggio: ti ricontatteremo il prima possibile.</p>
+            </div>
+
+            <label>
+              Email
+              <input type="email" name="email" placeholder="nome@email.com" autocomplete="email" required>
+            </label>
+            <label>
+              Numero di telefono
+              <input type="tel" name="phone" placeholder="+39 320 000 0000" autocomplete="tel">
+            </label>
+            <label>
+              Oggetto
+              <input type="text" name="subject" placeholder="Prenotazione, prodotti, informazioni" required>
+            </label>
+            <label>
+              Messaggio
+              <textarea name="message" rows="5" placeholder="Scrivi qui il tuo messaggio..." required></textarea>
+            </label>
+            <button class="primary-button" type="submit">Invia richiesta</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <aside class="admin-drawer" id="inventoryDrawer" aria-hidden="true" aria-label="Gestione prodotti">
+      <div class="admin-drawer__backdrop" data-close-admin></div>
+      <section class="admin-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
+        <div class="inventory-shell">
+          <div class="section-heading section-heading--light">
+            <div>
+              <p class="eyebrow">Area gestore</p>
+              <h2 id="inventory-title">Gestione prodotti</h2>
+            </div>
+            <button class="icon-button" type="button" data-close-admin aria-label="Chiudi gestione">x</button>
+          </div>
+
+          <div class="inventory-actions">
+            <button class="outline-button outline-button--light" type="button" data-restock-all>Rifornisci tutto</button>
+            <button class="ghost-button ghost-button--light" type="button" data-reset-demo>Ripristina</button>
+          </div>
+
+          <form class="fresh-cut-form admin-cut-form" data-cut-form>
+            <div class="section-heading section-heading--light section-heading--compact">
+              <div>
+                <p class="eyebrow">Fresh cut manager</p>
+                <h2>Carica taglio</h2>
+              </div>
+              <p>Il cliente vede solo il risultato pubblicato, mentre questo pannello resta riservato al gestore.</p>
+            </div>
+            <label>
+              Foto taglio
+              <input type="file" accept="image/*" data-cut-file>
+            </label>
+            <label>
+              Nome taglio
+              <input type="text" data-cut-name placeholder="Skin fade crop">
+            </label>
+            <label>
+              Data taglio
+              <input type="date" data-cut-date>
+            </label>
+            <label>
+              Descrizione
+              <textarea data-cut-text rows="3" placeholder="Fade pulito, texture naturale e finish opaco."></textarea>
+            </label>
+            <div class="fresh-cut-form__actions">
+              <button class="primary-button" type="submit">Pubblica taglio</button>
+              <button class="ghost-button ghost-button--light" type="button" data-cut-reset>Reset taglio</button>
+            </div>
+          </form>
+
+          <div class="inventory-summary" aria-live="polite">
+            <article>
+              <span data-summary-total>0</span>
+              <p>Pezzi disponibili</p>
+            </article>
+            <article>
+              <span data-summary-low>0</span>
+              <p>Prodotti in soglia critica</p>
+            </article>
+            <article>
+              <span data-summary-soldout>0</span>
+              <p>Esauriti</p>
+            </article>
+            <article>
+              <span data-summary-cuts>0</span>
+              <p>Tagli caricati questo mese</p>
+            </article>
+            <article>
+              <span data-summary-value>€0</span>
+              <p>Valore inventario</p>
+            </article>
+            <article>
+              <span data-summary-orders>0</span>
+              <p>Ordini di oggi</p>
+            </article>
+          </div>
+
+          <div class="inventory-table-wrap">
+            <table class="inventory-table">
+              <thead>
+                <tr>
+                  <th>Prodotto</th>
+                  <th>Categoria</th>
+                  <th>Giacenza</th>
+                  <th>Stato</th>
+                  <th>Azione</th>
+                </tr>
+              </thead>
+              <tbody data-inventory-body></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <aside class="cart-drawer" id="cartDrawer" aria-hidden="true" aria-label="Carrello">
+      <div class="cart-drawer__backdrop" data-close-cart></div>
+      <section class="cart-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+        <header>
+          <div>
+            <p class="eyebrow">Checkout rapido</p>
+            <h2 id="cart-title">Carrello</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-cart aria-label="Chiudi carrello">x</button>
+        </header>
+        <div class="cart-items" data-cart-items></div>
+        <footer>
+          <div class="cart-total">
+            <span>Totale</span>
+            <strong data-cart-total>€0,00</strong>
+          </div>
+          <button class="primary-button primary-button--wide" type="button" data-checkout>Simula checkout</button>
+        </footer>
+      </section>
+    </aside>
+
+    <div class="toast" data-toast role="status" aria-live="polite"></div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
