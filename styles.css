@@ -1226,6 +1226,22 @@ button {
   display: none !important;
 }
 
+.admin-login.is-hidden,
+.admin-content.is-hidden {
+  display: none !important;
+}
+
+.admin-shell-header {
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.admin-shell-subtitle {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.74);
+}
+
 
 .inventory-actions {
   display: flex;
@@ -1620,6 +1636,7 @@ button {
 }
 
 .admin-page .inventory-shell {
+  max-width: 1200px;
   min-height: calc(100svh - 120px);
 }
 
@@ -1633,13 +1650,13 @@ button {
 
 .admin-layout {
   position: relative;
-  min-height: 420px;
+  min-height: 560px;
 }
 
 .admin-block {
   position: absolute;
   inset: 0;
-  padding: 18px;
+  padding: clamp(14px, 2.2vw, 22px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.03);
   opacity: 0;
@@ -1672,9 +1689,8 @@ button {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  width: min(520px, 100%);
-  margin-inline: auto;
-  margin: 0 0 14px;
+  width: min(460px, 100%);
+  margin: 0 auto 14px;
 }
 
 .admin-tab {
@@ -1701,33 +1717,47 @@ button {
   border-color: var(--red);
 }
 
-.admin-block--manage .admin-cut-form {
-  max-width: none;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
-.admin-block--manage .admin-cut-form .section-heading,
-.admin-block--manage .admin-cut-form .fresh-cut-form__actions {
-  grid-column: 1 / -1;
-}
-
-.admin-block--manage .inventory-actions {
-  flex-wrap: nowrap;
-}
-
 .admin-block--manage {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 16px;
   align-content: start;
 }
 
-.admin-block--manage > .section-heading,
-.admin-block--manage > .inventory-actions,
-.admin-block--manage > .inventory-summary,
-.admin-block--manage > .inventory-table-wrap {
+.admin-manage-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.05fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-manage-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-manage-inventory {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-inline-note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.5;
+}
+
+.admin-cut-form {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.admin-cut-form .section-heading,
+.admin-cut-form .fresh-cut-form__actions {
   grid-column: 1 / -1;
 }
 
@@ -1999,15 +2029,7 @@ button {
     min-height: 500px;
   }
 
-  .admin-block--manage .admin-cut-form {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-block--manage .inventory-actions {
-    flex-wrap: wrap;
-  }
-
-  .admin-block--manage {
+  .admin-manage-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -2226,6 +2248,18 @@ button {
     border-top-width: 3px;
     border-left: 0;
     border-right: 0;
+  }
+
+  .admin-shell-header {
+    gap: 12px;
+  }
+
+  .admin-shell-header .ghost-button {
+    width: 100%;
+  }
+
+  .admin-tabs {
+    width: 100%;
   }
 
   .category-bar {

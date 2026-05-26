@@ -55,7 +55,7 @@ const state = {
   shopSectionItems: [],
   siteSections: {
     shopTitle: "Prodotti No Cap",
-    shopCopy: "Catalogo professionale, disponibilita aggiornata e acquisto rapido.",
+    shopCopy: "Catalogo professionale, disponibilità aggiornata e acquisto rapido.",
     shopCategories: [
       { value: "all", label: "All products" },
       { value: "hair", label: "Hair care" },
@@ -70,11 +70,18 @@ const state = {
 const dom = getDom();
 const drawerFocus = { previous: null };
 
-function syncAdminVisibility() {
+function syncAdminVisibility({ clearError = false } = {}) {
   if (!dom.adminLoginForm || !dom.adminContent) return;
-  dom.adminLoginError.textContent = "";
-  dom.adminLoginForm.hidden = state.adminAuthenticated;
-  dom.adminContent.hidden = !state.adminAuthenticated;
+  if (clearError && dom.adminLoginError) dom.adminLoginError.textContent = "";
+  const isAuthed = Boolean(state.adminAuthenticated);
+  dom.adminLoginForm.hidden = isAuthed;
+  dom.adminContent.hidden = !isAuthed;
+  dom.adminLoginForm.setAttribute("aria-hidden", isAuthed ? "true" : "false");
+  dom.adminContent.setAttribute("aria-hidden", isAuthed ? "false" : "true");
+  dom.adminLoginForm.classList.toggle("is-hidden", isAuthed);
+  dom.adminContent.classList.toggle("is-hidden", !isAuthed);
+  document.body.classList.toggle("admin-authenticated", isAuthed);
+  if (isAuthed) dom.adminLoginForm.reset();
 }
 
 function setAdminView(view) {
@@ -365,6 +372,7 @@ function showToast(message) {
 }
 
 function routeToPage() {
+  syncAdminVisibility();
   const aliases = { products: "shop", top: "home" };
   const requestedRoute = window.location.hash.replace("#", "") || "home";
   const route = aliases[requestedRoute] || requestedRoute;
@@ -513,7 +521,7 @@ async function saveProductFromForm() {
       category,
       label: category.charAt(0).toUpperCase() + category.slice(1),
       description: "Nuovo prodotto inserito da pannello admin.",
-      badge: "NovitÃ ",
+      badge: "Novità",
       price: Math.max(0, Number(dom.productPriceInput.value || 0)),
       stock: restock,
       restock,
@@ -575,7 +583,7 @@ function validateCheckout(formData) {
   if (String(formData.get("phone") || "").trim().length < 6) errors.phone = "Telefono non valido.";
   if (formData.get("fulfillment") === "shipping") {
     if (!String(formData.get("address") || "").trim()) errors.address = "Inserisci indirizzo.";
-    if (!String(formData.get("city") || "").trim()) errors.city = "Inserisci cittÃ .";
+    if (!String(formData.get("city") || "").trim()) errors.city = "Inserisci città.";
     if (!String(formData.get("zip") || "").trim()) errors.zip = "Inserisci CAP.";
   }
   dom.checkoutForm.querySelectorAll(".field-error").forEach((node) => { node.textContent = ""; });
@@ -757,6 +765,7 @@ function setFulfillmentUi() {
 }
 
 async function unlockAdmin(password, email = "") {
+  if (dom.adminLoginError) dom.adminLoginError.textContent = "";
   if (CONFIG.ADMIN_MODE === "supabase-auth") {
     const normalizedEmail = String(email || "").trim().toLowerCase();
     if (!normalizedEmail) {
@@ -784,7 +793,7 @@ async function unlockAdmin(password, email = "") {
     state.adminAuthenticated = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
     state.adminView = "data";
-    syncAdminVisibility();
+    syncAdminVisibility({ clearError: true });
     setAdminView("data");
     showToast("Accesso admin eseguito.");
     return;
@@ -798,7 +807,7 @@ async function unlockAdmin(password, email = "") {
     state.adminAuthenticated = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
     state.adminView = "data";
-    syncAdminVisibility();
+    syncAdminVisibility({ clearError: true });
     setAdminView("data");
     showToast("Area gestore sbloccata.");
   }
@@ -811,8 +820,9 @@ async function logoutAdmin() {
   }
   state.adminAuthenticated = false;
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  syncAdminVisibility();
+  syncAdminVisibility({ clearError: true });
   setAdminView("data");
+  if (isAdminRoute()) dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus();
 }
 
 function exportJson(filename, payload) {
@@ -869,7 +879,7 @@ function bindEvents() {
     }
     if (event.target.closest("[data-checkout]")) {
       closeDrawer(dom.cartDrawer, ".cart-trigger");
-      if (!state.cart.length) return showToast("Il carrello Ã¨ vuoto.");
+      if (!state.cart.length) return showToast("Il carrello è vuoto.");
       window.location.hash = "#checkout";
     }
     if (event.target.closest("[data-product-delete]")) await deleteSelectedProduct();
@@ -946,7 +956,7 @@ function bindEvents() {
     });
     state.leads = await getLeads();
     form.reset();
-    showToast("Messaggio salvato in modalitÃ  demo. In produzione verrÃ  inviato allo staff.");
+    showToast("Messaggio salvato in modalità demo. In produzione verrà inviato allo staff.");
   });
 
   window.addEventListener("hashchange", routeToPage);
@@ -970,7 +980,8 @@ async function init() {
       state.adminAuthenticated = Boolean(data?.session);
       sb.auth.onAuthStateChange((_event, session) => {
         state.adminAuthenticated = Boolean(session);
-        syncAdminVisibility();
+        syncAdminVisibility({ clearError: true });
+        routeToPage();
       });
     } else {
       state.adminAuthenticated = false;
@@ -978,6 +989,7 @@ async function init() {
   }
   await loadState();
   bindEvents();
+  syncAdminVisibility({ clearError: true });
   syncUi();
   setFulfillmentUi();
   routeToPage();
