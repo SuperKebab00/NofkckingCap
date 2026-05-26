@@ -1625,6 +1625,31 @@ button {
   margin-bottom: 16px;
 }
 
+.admin-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-block {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-block .section-heading {
+  margin-bottom: 14px;
+}
+
+.admin-block .inventory-summary {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.admin-block .inventory-summary span {
+  font-size: clamp(2.1rem, 4vw, 2.8rem);
+}
+
 .cart-drawer {
   position: fixed;
   inset: 0;
@@ -1855,6 +1880,10 @@ button {
 
   .checkout-summary {
     position: static;
+  }
+
+  .admin-layout {
+    grid-template-columns: 1fr;
   }
 }
 
