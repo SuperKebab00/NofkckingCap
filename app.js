@@ -3,6 +3,7 @@ import {
   FEATURED_CUT_STORAGE_KEY,
   INVENTORY_STORAGE_KEY,
   MONTHLY_CUTS_STORAGE_KEY,
+  PRODUCTS_STORAGE_KEY,
   products
 } from "./js/data.js";
 import { getDom, renderCart, renderCheckoutSummary, renderFreshCut, renderInventory, renderProducts, renderShowcase } from "./js/render.js";
@@ -12,13 +13,17 @@ import { readImageFile, todayISO } from "./js/utils.js";
 const fallbackInventory = Object.fromEntries(products.map((product) => [product.id, product.stock]));
 const savedFeaturedCut = loadJson(FEATURED_CUT_STORAGE_KEY, defaultFreshCut);
 const MAX_MONTHLY_CUTS = 24;
+const ADMIN_PASSWORD = "nocap2026";
+const ADMIN_SESSION_STORAGE_KEY = "no-cap-admin-session-v1";
 
 const state = {
   activeCategory: "all",
+  adminAuthenticated: loadJson(ADMIN_SESSION_STORAGE_KEY, false) === true,
   cart: [],
   featuredCut: normalizeFeaturedCut(savedFeaturedCut),
   inventory: { ...fallbackInventory, ...loadJson(INVENTORY_STORAGE_KEY, {}) },
   monthlyCuts: normalizeCuts(loadJson(MONTHLY_CUTS_STORAGE_KEY, [savedFeaturedCut || defaultFreshCut])),
+  products: normalizeProducts(loadJson(PRODUCTS_STORAGE_KEY, products)),
   toastTimer: null
 };
 
@@ -53,12 +58,64 @@ function normalizeFeaturedCut(cut) {
 }
 
 function syncUi() {
-  renderProducts(dom, products, state.inventory, state.activeCategory);
-  renderInventory(dom, products, state.inventory, state.monthlyCuts);
+  renderProducts(dom, state.products, state.inventory, state.activeCategory);
+  renderInventory(dom, state.products, state.inventory, state.monthlyCuts);
   renderCart(dom, state.cart);
   renderCheckoutSummary(dom, state.cart);
   renderFreshCut(dom, state.featuredCut);
   renderShowcase(dom, state.monthlyCuts);
+  renderProductEditor();
+}
+
+function normalizeProducts(savedProducts) {
+  if (!Array.isArray(savedProducts) || !savedProducts.length) return products.map((product) => ({ ...product }));
+  const byId = new Map(savedProducts.map((item) => [item.id, item]));
+  return products.map((base) => ({ ...base, ...(byId.get(base.id) || {}) }));
+}
+
+function renderProductEditor() {
+  if (!dom.productSelect) return;
+  const currentValue = dom.productSelect.value || state.products[0]?.id || "";
+  dom.productSelect.innerHTML = state.products
+    .map((product) => `<option value="${product.id}">${product.name}</option>`)
+    .join("");
+  dom.productSelect.value = state.products.some((product) => product.id === currentValue) ? currentValue : state.products[0]?.id || "";
+  fillProductForm(dom.productSelect.value);
+}
+
+function fillProductForm(productId) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return;
+  dom.productNameInput.value = product.name;
+  dom.productCategoryInput.value = product.category;
+  dom.productPriceInput.value = product.price;
+  dom.productRestockInput.value = product.restock;
+}
+
+async function saveProductFromForm() {
+  const productId = dom.productSelect.value;
+  const index = state.products.findIndex((item) => item.id === productId);
+  if (index < 0) return;
+
+  const base = state.products[index];
+  const updatedProduct = {
+    ...base,
+    name: dom.productNameInput.value.trim() || base.name,
+    category: dom.productCategoryInput.value.trim() || base.category,
+    price: Math.max(0, Number(dom.productPriceInput.value || base.price)),
+    restock: Math.max(0, Number(dom.productRestockInput.value || base.restock)),
+    images: {
+      packshot: await readImageFile(dom.productPackshotInput.files[0], base.images?.packshot || ""),
+      lifestyle: await readImageFile(dom.productLifestyleInput.files[0], base.images?.lifestyle || base.images?.packshot || "")
+    }
+  };
+
+  state.products[index] = updatedProduct;
+  saveJson(PRODUCTS_STORAGE_KEY, state.products);
+  dom.productPackshotInput.value = "";
+  dom.productLifestyleInput.value = "";
+  syncUi();
+  showToast("Prodotto aggiornato.");
 }
 
 function setCategory(category) {
@@ -66,11 +123,11 @@ function setCategory(category) {
   document.querySelectorAll("[data-category]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.category === state.activeCategory);
   });
-  renderProducts(dom, products, state.inventory, state.activeCategory);
+  renderProducts(dom, state.products, state.inventory, state.activeCategory);
 }
 
 function addToCart(productId) {
-  const product = products.find((item) => item.id === productId);
+  const product = state.products.find((item) => item.id === productId);
 
   if (!product || state.inventory[productId] <= 0) {
     showToast("Prodotto esaurito.");
@@ -115,7 +172,7 @@ function adjustInventory(productId, amount) {
 }
 
 function restockAll() {
-  products.forEach((product) => {
+  state.products.forEach((product) => {
     state.inventory[product.id] = product.restock;
   });
   saveJson(INVENTORY_STORAGE_KEY, state.inventory);
@@ -161,7 +218,9 @@ function resetExperience() {
   state.inventory = { ...fallbackInventory };
   state.featuredCut = { ...defaultFreshCut };
   state.monthlyCuts = [defaultFreshCut];
+  state.products = products.map((product) => ({ ...product }));
   state.cart = [];
+  removeJson(PRODUCTS_STORAGE_KEY);
   syncUi();
   showToast("Pannello ripristinato.");
 }
@@ -194,6 +253,12 @@ function openDrawer(drawer, triggerSelector) {
   drawer.setAttribute("aria-hidden", "false");
   document.querySelectorAll(triggerSelector).forEach((button) => button.setAttribute("aria-expanded", "true"));
   document.body.classList.add("drawer-open");
+  if (drawer === dom.adminDrawer) {
+    dom.adminLoginError.textContent = "";
+    dom.adminLoginForm.hidden = state.adminAuthenticated;
+    dom.adminContent.hidden = !state.adminAuthenticated;
+    if (state.adminAuthenticated) renderProductEditor();
+  }
   drawer.querySelector("button, [href], input, textarea")?.focus({ preventScroll: true });
 }
 
@@ -300,6 +365,20 @@ function setFulfillmentUi() {
   });
 }
 
+function unlockAdmin(password) {
+  if (password !== ADMIN_PASSWORD) {
+    dom.adminLoginError.textContent = "Password non valida.";
+    return false;
+  }
+  state.adminAuthenticated = true;
+  saveJson(ADMIN_SESSION_STORAGE_KEY, true);
+  dom.adminLoginForm.hidden = true;
+  dom.adminContent.hidden = false;
+  renderProductEditor();
+  showToast("Accesso gestore abilitato.");
+  return true;
+}
+
 document.addEventListener("click", (event) => {
   const addButton = event.target.closest("[data-add-to-cart]");
   const categoryButton = event.target.closest("[data-category]");
@@ -316,7 +395,7 @@ document.addEventListener("click", (event) => {
   if (removeButton) removeFromCart(removeButton.dataset.removeCart);
   if (toggleProductImageButton) toggleProductImage(toggleProductImageButton);
   if (restockButton) {
-    const product = products.find((item) => item.id === restockButton.dataset.restock);
+    const product = state.products.find((item) => item.id === restockButton.dataset.restock);
     adjustInventory(product.id, product.restock);
   }
   if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
@@ -382,6 +461,20 @@ dom.checkoutForm.addEventListener("submit", async (event) => {
   showToast("Pagamento demo completato.");
 });
 
+dom.adminLoginForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  unlockAdmin(dom.adminPasswordInput.value.trim());
+});
+
+document.querySelector("[data-product-form]").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await saveProductFromForm();
+});
+
+dom.productSelect?.addEventListener("change", (event) => {
+  fillProductForm(event.target.value);
+});
+
 window.addEventListener("hashchange", routeToPage);
 window.addEventListener("scroll", () => {
   document.querySelector(".site-header").dataset.elevated = window.scrollY > 12 ? "true" : "false";
@@ -391,6 +484,9 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeDrawer(dom.cartDrawer, ".cart-trigger");
     closeDrawer(dom.adminDrawer, ".manager-toggle");
+  }
+  if (event.altKey && event.key.toLowerCase() === "g") {
+    openDrawer(dom.adminDrawer, ".manager-toggle");
   }
 });
 

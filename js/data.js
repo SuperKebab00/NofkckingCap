@@ -3,6 +3,7 @@ import { todayISO } from "./utils.js";
 export const INVENTORY_STORAGE_KEY = "no-cap-inventory-v1";
 export const FEATURED_CUT_STORAGE_KEY = "no-cap-fresh-cut-v1";
 export const MONTHLY_CUTS_STORAGE_KEY = "no-cap-monthly-cuts-v1";
+export const PRODUCTS_STORAGE_KEY = "no-cap-products-v1";
 
 export const products = [
   {

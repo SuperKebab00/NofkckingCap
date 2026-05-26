@@ -25,8 +25,8 @@
       </nav>
 
       <div class="header-actions">
-        <button class="ghost-button manager-toggle" type="button" aria-controls="inventoryDrawer" aria-expanded="false">
-          Gestore
+        <button class="manager-toggle manager-toggle--hidden" type="button" aria-controls="inventoryDrawer" aria-expanded="false" aria-label="Area gestore">
+          <span aria-hidden="true">•••</span>
         </button>
         <button class="cart-trigger" type="button" aria-controls="cartDrawer" aria-expanded="false">
           <span class="cart-trigger__icon" aria-hidden="true"></span>
@@ -286,6 +286,18 @@
       <div class="admin-drawer__backdrop" data-close-admin></div>
       <section class="admin-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
         <div class="inventory-shell">
+          <form class="admin-login" data-admin-login>
+            <p class="eyebrow">Accesso riservato</p>
+            <h2>Login gestore</h2>
+            <label>
+              Password
+              <input type="password" data-admin-password placeholder="Inserisci password admin" required>
+            </label>
+            <span class="field-error" data-admin-login-error></span>
+            <button class="primary-button" type="submit">Accedi</button>
+          </form>
+
+          <div class="admin-content" data-admin-content hidden>
           <div class="section-heading section-heading--light">
             <div>
               <p class="eyebrow">Area gestore</p>
@@ -329,6 +341,47 @@
             </div>
           </form>
 
+          <form class="fresh-cut-form admin-cut-form" data-product-form>
+            <div class="section-heading section-heading--light section-heading--compact">
+              <div>
+                <p class="eyebrow">Product manager</p>
+                <h2>Modifica prodotto</h2>
+              </div>
+              <p>Aggiorna nome, prezzo, categoria e immagini prodotto visibili nello shop.</p>
+            </div>
+            <label>
+              Prodotto
+              <select data-product-select required></select>
+            </label>
+            <label>
+              Nome
+              <input type="text" data-product-name required>
+            </label>
+            <label>
+              Categoria
+              <input type="text" data-product-category required>
+            </label>
+            <label>
+              Prezzo
+              <input type="number" step="0.01" min="0" data-product-price required>
+            </label>
+            <label>
+              Restock
+              <input type="number" min="0" data-product-restock required>
+            </label>
+            <label>
+              Foto packshot (opzionale)
+              <input type="file" accept="image/*" data-product-packshot>
+            </label>
+            <label>
+              Foto risultato/lifestyle (opzionale)
+              <input type="file" accept="image/*" data-product-lifestyle>
+            </label>
+            <div class="fresh-cut-form__actions">
+              <button class="primary-button" type="submit">Salva prodotto</button>
+            </div>
+          </form>
+
           <div class="inventory-summary" aria-live="polite">
             <article>
               <span data-summary-total>0</span>
@@ -369,6 +422,7 @@
               </thead>
               <tbody data-inventory-body></tbody>
             </table>
+          </div>
           </div>
         </div>
       </section>

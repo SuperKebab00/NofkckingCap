@@ -145,6 +145,22 @@ button {
   gap: 12px;
 }
 
+.manager-toggle--hidden {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  color: rgba(0, 0, 0, 0.34);
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+
+.manager-toggle--hidden:hover,
+.manager-toggle--hidden:focus-visible {
+  color: var(--red);
+}
+
 .cart-trigger,
 .icon-button {
   display: inline-grid;
@@ -1087,6 +1103,39 @@ button {
   color: var(--white);
   border-top: 4px solid var(--red);
   box-shadow: var(--shadow);
+}
+
+.admin-login {
+  display: grid;
+  gap: 10px;
+  max-width: 460px;
+  margin-bottom: 26px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-login h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  text-transform: uppercase;
+}
+
+.admin-login label {
+  display: grid;
+  gap: 7px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.admin-login input {
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--white);
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.24);
 }
 
 .admin-drawer {
