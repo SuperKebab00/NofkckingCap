@@ -1,5 +1,6 @@
 import { CONFIG } from "./js/config.js";
 import { defaultFreshCut } from "./js/data.js";
+import { getSupabaseClient } from "./js/supabase-client.js";
 import {
   clearCart,
   createLead,
@@ -408,20 +409,47 @@ function setFulfillmentUi() {
   dom.shippingFields.hidden = !shipping;
 }
 
-function unlockAdmin(password) {
-  if (CONFIG.ADMIN_MODE !== "demo") return;
-  if (password !== CONFIG.DEMO_ADMIN_PASSWORD) {
-    dom.adminLoginError.textContent = "Password non valida.";
+async function unlockAdmin(password, email = "") {
+  if (CONFIG.ADMIN_MODE === "supabase-auth") {
+    const sb = await getSupabaseClient();
+    if (!sb) {
+      dom.adminLoginError.textContent = "Supabase non configurato.";
+      return;
+    }
+    const { error } = await sb.auth.signInWithPassword({
+      email: String(email || "").trim(),
+      password
+    });
+    if (error) {
+      dom.adminLoginError.textContent = "Credenziali non valide.";
+      return;
+    }
+    state.adminAuthenticated = true;
+    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    dom.adminLoginForm.hidden = true;
+    dom.adminContent.hidden = false;
+    showToast("Accesso admin eseguito.");
     return;
   }
-  state.adminAuthenticated = true;
-  sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
-  dom.adminLoginForm.hidden = true;
-  dom.adminContent.hidden = false;
-  showToast("Area gestore sbloccata.");
+
+  if (CONFIG.ADMIN_MODE === "demo") {
+    if (password !== CONFIG.DEMO_ADMIN_PASSWORD) {
+      dom.adminLoginError.textContent = "Password non valida.";
+      return;
+    }
+    state.adminAuthenticated = true;
+    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    dom.adminLoginForm.hidden = true;
+    dom.adminContent.hidden = false;
+    showToast("Area gestore sbloccata.");
+  }
 }
 
-function logoutAdmin() {
+async function logoutAdmin() {
+  if (CONFIG.ADMIN_MODE === "supabase-auth") {
+    const sb = await getSupabaseClient();
+    if (sb) await sb.auth.signOut();
+  }
   state.adminAuthenticated = false;
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
   dom.adminLoginForm.hidden = false;
@@ -487,7 +515,7 @@ function bindEvents() {
       window.location.hash = "#checkout";
     }
     if (event.target.closest("[data-product-delete]")) await deleteSelectedProduct();
-    if (event.target.closest("[data-admin-logout]")) logoutAdmin();
+    if (event.target.closest("[data-admin-logout]")) await logoutAdmin();
     if (event.target.closest("[data-export-products]")) exportJson("products-demo.json", state.products);
     if (event.target.closest("[data-export-orders]")) exportJson("orders-demo.json", state.orders);
     if (event.target.closest("[data-export-leads]")) exportJson("leads-demo.json", state.leads);
@@ -513,7 +541,7 @@ function bindEvents() {
   dom.checkoutForm.addEventListener("submit", submitCheckout);
   dom.adminLoginForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    unlockAdmin(dom.adminPasswordInput.value.trim());
+    unlockAdmin(dom.adminPasswordInput.value.trim(), dom.adminEmailInput?.value.trim());
   });
   document.querySelector("[data-product-form]").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -562,6 +590,22 @@ function bindEvents() {
 }
 
 async function init() {
+  if (CONFIG.ADMIN_MODE === "supabase-auth") {
+    const sb = await getSupabaseClient();
+    if (sb) {
+      const { data } = await sb.auth.getSession();
+      state.adminAuthenticated = Boolean(data?.session);
+      sb.auth.onAuthStateChange((_event, session) => {
+        state.adminAuthenticated = Boolean(session);
+        if (!state.adminAuthenticated) {
+          dom.adminLoginForm.hidden = false;
+          dom.adminContent.hidden = true;
+        }
+      });
+    } else {
+      state.adminAuthenticated = false;
+    }
+  }
   await loadState();
   bindEvents();
   syncUi();
