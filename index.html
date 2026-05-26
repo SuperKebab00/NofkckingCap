@@ -94,7 +94,6 @@
           <p class="eyebrow">Shop</p>
           <h1 data-shop-title>Prodotti No Cap</h1>
           <p data-shop-copy>Catalogo professionale, disponibilità aggiornata e acquisto rapido.</p>
-          <p class="shop-dynamic-copy" data-shop-dynamic-copy></p>
         </div>
 
         <div class="category-bar" aria-label="Categorie prodotti" data-category-bar></div>
@@ -430,46 +429,27 @@
               <form class="fresh-cut-form admin-cut-form" data-sections-form>
                 <div class="section-heading section-heading--light section-heading--compact">
                   <div>
-                    <p class="eyebrow">Shop editor</p>
-                    <h2>Modifica sezione prodotti</h2>
+                    <p class="eyebrow">Site editor</p>
+                    <h2>Editor sezioni shop</h2>
                   </div>
-                  <p>Aggiorna titolo e descrizione del banner shop prodotti.</p>
+                  <p>Gestisci in modo rapido titolo, descrizione e categorie visibili nello shop.</p>
                 </div>
-                <label>Titolo shop<input type="text" data-section-shop-title required></label>
-                <label>Descrizione shop<textarea rows="3" data-section-shop-copy required></textarea></label>
-                <label>Sezione categoria
+                <label>Titolo sezione shop<input type="text" data-section-shop-title required></label>
+                <label>Descrizione sezione shop<textarea rows="3" data-section-shop-copy required></textarea></label>
+                <label>Categoria da modificare
                   <select data-category-select></select>
                 </label>
-                <label>Chiave categoria
+                <label>Slug categoria
                   <input type="text" data-category-value placeholder="es. styling" required>
                 </label>
-                <label>Nome categoria
+                <label>Nome visibile categoria
                   <input type="text" data-category-label placeholder="es. Styling" required>
                 </label>
+                <p class="admin-inline-note">Puoi aggiornare una categoria esistente oppure creare una nuova sezione categoria.</p>
                 <div class="fresh-cut-form__actions">
                   <button class="outline-button outline-button--light" type="button" data-category-new>Aggiungi sezione</button>
                   <button class="ghost-button ghost-button--light" type="button" data-category-delete>Rimuovi sezione</button>
                   <button class="primary-button" type="submit">Salva sezione prodotti</button>
-                </div>
-              </form>
-
-              <form class="fresh-cut-form admin-cut-form" data-section-items-form>
-                <div class="section-heading section-heading--light section-heading--compact">
-                  <div>
-                    <p class="eyebrow">Section items</p>
-                    <h2>Blocchi dinamici shop</h2>
-                  </div>
-                  <p>Modella contenuti modulari della sezione shop (JSON).</p>
-                </div>
-                <label>Section key
-                  <input type="text" data-section-items-key value="shop-banner" required>
-                </label>
-                <label>Items JSON
-                  <textarea rows="8" data-section-items-json placeholder='[{"item_key":"sub-copy","content":{"text":"Nuovo testo"},"sort_order":10,"is_active":true}]'></textarea>
-                </label>
-                <div class="fresh-cut-form__actions">
-                  <button class="ghost-button ghost-button--light" type="button" data-section-items-load>Carica blocchi</button>
-                  <button class="primary-button" type="submit">Salva blocchi</button>
                 </div>
               </form>
             </div>

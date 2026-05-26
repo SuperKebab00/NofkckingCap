@@ -35,9 +35,6 @@ const {
   uploadImage
 } = repository;
 
-const getShopSectionItems = repository.getShopSectionItems || (async () => []);
-const saveShopSectionItems = repository.saveShopSectionItems || (async () => {});
-
 const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
 const MAX_MONTHLY_CUTS = 24;
 
@@ -52,7 +49,6 @@ const state = {
   monthlyCuts: [defaultFreshCut],
   orders: [],
   products: [],
-  shopSectionItems: [],
   siteSections: {
     shopTitle: "Prodotti No Cap",
     shopCopy: "Catalogo professionale, disponibilità aggiornata e acquisto rapido.",
@@ -183,7 +179,7 @@ async function persistCart() {
 }
 
 async function loadState() {
-  const [products, inventory, featuredCut, monthlyCuts, cart, orders, leads, siteSections, shopSectionItems] = await Promise.all([
+  const [products, inventory, featuredCut, monthlyCuts, cart, orders, leads, siteSections] = await Promise.all([
     getProducts(),
     getInventory(),
     getFeaturedCut(),
@@ -191,8 +187,7 @@ async function loadState() {
     getCart(),
     getOrders(),
     getLeads(),
-    getSiteSections(),
-    getShopSectionItems("shop-banner")
+    getSiteSections()
   ]);
   state.products = products;
   state.inventory = inventory;
@@ -203,7 +198,6 @@ async function loadState() {
   state.leads = leads;
   state.siteSections = { ...state.siteSections, ...(siteSections || {}) };
   state.siteSections.shopCategories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
-  state.shopSectionItems = Array.isArray(shopSectionItems) ? shopSectionItems : [];
   await persistCart();
 }
 
@@ -221,9 +215,7 @@ function syncUi() {
   renderProductEditor();
   renderSiteSectionsEditor();
   renderCategoryEditor();
-  renderSectionItemsEditor();
   applySiteSections();
-  applyShopSectionItems();
   syncAdminVisibility();
   setAdminView(state.adminView);
 }
@@ -289,14 +281,6 @@ function fillCategoryEditor(value) {
   dom.categoryDeleteButton.disabled = category.value === "all";
 }
 
-function renderSectionItemsEditor() {
-  if (!dom.sectionItemsJson) return;
-  const key = String(dom.sectionItemsKey?.value || "shop-banner").trim() || "shop-banner";
-  const payload = Array.isArray(state.shopSectionItems) ? state.shopSectionItems : [];
-  dom.sectionItemsKey.value = key;
-  dom.sectionItemsJson.value = JSON.stringify(payload, null, 2);
-}
-
 function renderSiteSectionsEditor() {
   if (!dom.sectionShopTitleInput) return;
   dom.sectionShopTitleInput.value = state.siteSections.shopTitle || "";
@@ -306,14 +290,6 @@ function renderSiteSectionsEditor() {
 function applySiteSections() {
   if (dom.siteShopTitle && state.siteSections.shopTitle) dom.siteShopTitle.textContent = state.siteSections.shopTitle;
   if (dom.siteShopCopy && state.siteSections.shopCopy) dom.siteShopCopy.textContent = state.siteSections.shopCopy;
-}
-
-function applyShopSectionItems() {
-  if (!dom.siteShopDynamicCopy) return;
-  const firstText = (state.shopSectionItems || [])
-    .find((item) => item?.content?.text)
-    ?.content?.text;
-  dom.siteShopDynamicCopy.textContent = firstText || "";
 }
 
 function renderAdminStats() {
@@ -687,44 +663,6 @@ async function deleteCategorySection() {
   showToast("Sezione categoria rimossa.");
 }
 
-async function loadSectionItemsFromSource() {
-  if (!requireAdmin()) return;
-  const key = String(dom.sectionItemsKey?.value || "shop-banner").trim() || "shop-banner";
-  const rows = await getShopSectionItems(key);
-  state.shopSectionItems = Array.isArray(rows) ? rows : [];
-  renderSectionItemsEditor();
-  applyShopSectionItems();
-  showToast("Blocchi caricati.");
-}
-
-async function saveSectionItemsFromForm(event) {
-  event.preventDefault();
-  if (!requireAdmin()) return;
-  const key = String(dom.sectionItemsKey?.value || "shop-banner").trim() || "shop-banner";
-  let parsed = [];
-  try {
-    parsed = JSON.parse(dom.sectionItemsJson.value || "[]");
-  } catch {
-    showToast("JSON non valido.");
-    return;
-  }
-  if (!Array.isArray(parsed)) {
-    showToast("Items JSON deve essere un array.");
-    return;
-  }
-  const normalized = parsed.map((item, index) => ({
-    item_key: String(item.item_key || item.key || `item-${index + 1}`).trim(),
-    content: item.content && typeof item.content === "object" ? item.content : {},
-    sort_order: Number(item.sort_order ?? index + 1),
-    is_active: item.is_active !== false
-  }));
-  await saveShopSectionItems(key, normalized);
-  state.shopSectionItems = normalized;
-  applyShopSectionItems();
-  renderSectionItemsEditor();
-  showToast("Blocchi salvati.");
-}
-
 async function submitCheckout(event) {
   event.preventDefault();
   if (!state.cart.length) {
@@ -904,7 +842,6 @@ function bindEvents() {
   dom.productSearchInput?.addEventListener("input", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
   dom.productSortSelect?.addEventListener("change", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
   dom.categorySelect?.addEventListener("change", (event) => fillCategoryEditor(event.target.value));
-  dom.sectionItemsLoad?.addEventListener("click", loadSectionItemsFromSource);
   dom.productSelect?.addEventListener("change", (event) => fillProductForm(event.target.value));
   dom.productNewButton?.addEventListener("click", () => {
     dom.productSelect.value = "__new__";
@@ -930,7 +867,6 @@ function bindEvents() {
     event.preventDefault();
     await saveSiteSectionsFromForm();
   });
-  dom.sectionItemsForm?.addEventListener("submit", saveSectionItemsFromForm);
   document.querySelector("[data-cut-form]").addEventListener("submit", async (event) => {
     event.preventDefault();
     await saveFreshCut();

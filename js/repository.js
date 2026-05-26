@@ -243,7 +243,7 @@ export async function uploadImage(file, options = {}) {
 export async function getSiteSections() {
   const fallback = loadJson(SITE_SECTIONS_STORAGE_KEY, {
     shopTitle: "Prodotti No Cap",
-    shopCopy: "Catalogo professionale, disponibilita aggiornata e acquisto rapido.",
+    shopCopy: "Catalogo professionale, disponibilità aggiornata e acquisto rapido.",
     shopCategories: [
       { value: "all", label: "All products" },
       { value: "hair", label: "Hair care" },
@@ -323,33 +323,5 @@ export async function saveSiteSections(sections) {
   }
 
   saveJson(SITE_SECTIONS_STORAGE_KEY, sections);
-}
-
-export async function getShopSectionItems(sectionKey) {
-  const sb = await getSupabaseOrNull();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("shop_section_items")
-    .select("item_key, content, sort_order")
-    .eq("section_key", sectionKey)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-  return Array.isArray(data) ? data : [];
-}
-
-export async function saveShopSectionItems(sectionKey, items) {
-  const sb = await getSupabaseOrNull();
-  if (!sb) return;
-  const list = Array.isArray(items) ? items : [];
-  await sb.from("shop_section_items").upsert(
-    list.map((item, index) => ({
-      section_key: sectionKey,
-      item_key: item.item_key || item.key || `item-${index + 1}`,
-      content: item.content || {},
-      sort_order: Number(item.sort_order ?? index + 1),
-      is_active: item.is_active !== false
-    })),
-    { onConflict: "section_key,item_key" }
-  );
 }
 

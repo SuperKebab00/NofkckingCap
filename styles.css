@@ -454,12 +454,6 @@ button {
   line-height: 1.7;
 }
 
-.shop-dynamic-copy {
-  margin-top: 10px !important;
-  color: rgba(255, 255, 255, 0.88) !important;
-  font-weight: 600;
-}
-
 .page-banner--showcase {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.58)),
@@ -1649,21 +1643,19 @@ button {
 }
 
 .admin-layout {
-  position: relative;
-  min-height: 560px;
+  display: grid;
+  gap: 14px;
 }
 
 .admin-block {
-  position: absolute;
-  inset: 0;
+  position: relative;
   padding: clamp(14px, 2.2vw, 22px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.03);
-  opacity: 0;
-  transform: translateX(18px);
-  pointer-events: none;
-  transition: opacity 260ms ease, transform 260ms ease;
-  overflow: auto;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 220ms ease, transform 220ms ease;
+  overflow: visible;
 }
 
 .admin-block .section-heading {
@@ -1679,9 +1671,19 @@ button {
 }
 
 .admin-block.is-active {
-  opacity: 1;
-  transform: translateX(0);
-  pointer-events: auto;
+  animation: adminPanelIn 240ms ease;
+}
+
+@keyframes adminPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .admin-tabs {
@@ -1734,6 +1736,7 @@ button {
 .admin-manage-stack {
   display: grid;
   gap: 16px;
+  align-content: start;
 }
 
 .admin-manage-inventory {
@@ -1759,6 +1762,14 @@ button {
 .admin-cut-form .section-heading,
 .admin-cut-form .fresh-cut-form__actions {
   grid-column: 1 / -1;
+}
+
+.admin-cut-form[data-sections-form] {
+  gap: 10px;
+}
+
+.admin-cut-form[data-sections-form] .fresh-cut-form__actions {
+  margin-top: 6px;
 }
 
 .admin-cut-form select,
@@ -2023,10 +2034,6 @@ button {
 
   .checkout-summary {
     position: static;
-  }
-
-  .admin-layout {
-    min-height: 500px;
   }
 
   .admin-manage-grid {
