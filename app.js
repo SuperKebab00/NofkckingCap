@@ -542,7 +542,10 @@ function bindEvents() {
   dom.checkoutForm.addEventListener("submit", submitCheckout);
   dom.adminLoginForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    unlockAdmin(dom.adminPasswordInput.value.trim(), dom.adminEmailInput?.value.trim());
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("adminEmail") || "").trim();
+    const password = String(formData.get("adminPassword") || "").trim();
+    unlockAdmin(password, email);
   });
   document.querySelector("[data-product-form]").addEventListener("submit", async (event) => {
     event.preventDefault();
