@@ -49,7 +49,14 @@ const state = {
   products: [],
   siteSections: {
     shopTitle: "Prodotti No Cap",
-    shopCopy: "Catalogo professionale, disponibilità aggiornata e acquisto rapido."
+    shopCopy: "Catalogo professionale, disponibilita aggiornata e acquisto rapido.",
+    shopCategories: [
+      { value: "all", label: "All products" },
+      { value: "hair", label: "Hair care" },
+      { value: "styling", label: "Styling" },
+      { value: "tools", label: "Tools" },
+      { value: "accessories", label: "Accessories" }
+    ]
   },
   toastTimer: null
 };
@@ -108,6 +115,33 @@ function normalizeCuts(cuts) {
   return unique;
 }
 
+function getDefaultShopCategories(products) {
+  const base = [{ value: "all", label: "All products" }];
+  const seen = new Set(["all"]);
+  products.forEach((product) => {
+    const value = String(product.category || "").trim().toLowerCase();
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    base.push({ value, label: value.charAt(0).toUpperCase() + value.slice(1) });
+  });
+  return base;
+}
+
+function normalizeShopCategories(raw, products) {
+  const source = Array.isArray(raw) && raw.length ? raw : getDefaultShopCategories(products);
+  const unique = [];
+  const seen = new Set();
+  source.forEach((item) => {
+    const value = String(item?.value || "").trim().toLowerCase();
+    const label = String(item?.label || "").trim();
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    unique.push({ value, label: label || (value.charAt(0).toUpperCase() + value.slice(1)) });
+  });
+  if (!unique.some((item) => item.value === "all")) unique.unshift({ value: "all", label: "All products" });
+  return unique;
+}
+
 function normalizeCart(rawCart, products, inventory) {
   const normalized = [];
   for (const row of rawCart || []) {
@@ -154,11 +188,13 @@ async function loadState() {
   state.orders = orders;
   state.leads = leads;
   state.siteSections = { ...state.siteSections, ...(siteSections || {}) };
+  state.siteSections.shopCategories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
   await persistCart();
 }
 
 function syncUi() {
   const expanded = cartExpanded();
+  renderCategoryBar();
   renderProducts(dom, state.products, state.inventory, state.activeCategory);
   renderInventory(dom, state.products, state.inventory, state.monthlyCuts);
   renderCart(dom, expanded);
@@ -169,6 +205,7 @@ function syncUi() {
   renderOrdersDashboard();
   renderProductEditor();
   renderSiteSectionsEditor();
+  renderCategoryEditor();
   applySiteSections();
   syncAdminVisibility();
   setAdminView(state.adminView);
@@ -205,6 +242,34 @@ function renderOrdersDashboard() {
         <td>${String(order.createdAt || "").slice(0, 10) || "-"}</td>
       </tr>`)
     .join("");
+}
+
+function renderCategoryBar() {
+  if (!dom.categoryBar) return;
+  const categories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
+  state.siteSections.shopCategories = categories;
+  dom.categoryBar.innerHTML = categories
+    .map((category) => `<button class="category-pill ${state.activeCategory === category.value ? "is-active" : ""}" type="button" data-category="${category.value}">${category.label}</button>`)
+    .join("");
+}
+
+function renderCategoryEditor() {
+  if (!dom.categorySelect) return;
+  const categories = state.siteSections.shopCategories || [];
+  dom.categorySelect.innerHTML = categories
+    .map((category) => `<option value="${category.value}">${category.label}</option>`)
+    .join("");
+  const current = categories.some((item) => item.value === dom.categorySelect.value) ? dom.categorySelect.value : "all";
+  dom.categorySelect.value = current;
+  fillCategoryEditor(current);
+}
+
+function fillCategoryEditor(value) {
+  const category = (state.siteSections.shopCategories || []).find((item) => item.value === value);
+  if (!category) return;
+  dom.categoryValueInput.value = category.value;
+  dom.categoryLabelInput.value = category.label;
+  dom.categoryDeleteButton.disabled = category.value === "all";
 }
 
 function renderSiteSectionsEditor() {
@@ -330,9 +395,10 @@ function closeDrawer(drawer, triggerSelector) {
 }
 
 function setCategory(category) {
-  state.activeCategory = category;
-  document.querySelectorAll("[data-category]").forEach((button) => button.classList.toggle("is-active", button.dataset.category === category));
-  renderProducts(dom, state.products, state.inventory, category);
+  const allowed = new Set((state.siteSections.shopCategories || []).map((item) => item.value));
+  state.activeCategory = allowed.has(category) ? category : "all";
+  document.querySelectorAll("[data-category]").forEach((button) => button.classList.toggle("is-active", button.dataset.category === state.activeCategory));
+  renderProducts(dom, state.products, state.inventory, state.activeCategory);
 }
 
 async function addToCart(productId) {
@@ -421,7 +487,7 @@ async function saveProductFromForm() {
       category,
       label: category.charAt(0).toUpperCase() + category.slice(1),
       description: "Nuovo prodotto inserito da pannello admin.",
-      badge: "Novità",
+      badge: "NovitÃ ",
       price: Math.max(0, Number(dom.productPriceInput.value || 0)),
       stock: restock,
       restock,
@@ -483,7 +549,7 @@ function validateCheckout(formData) {
   if (String(formData.get("phone") || "").trim().length < 6) errors.phone = "Telefono non valido.";
   if (formData.get("fulfillment") === "shipping") {
     if (!String(formData.get("address") || "").trim()) errors.address = "Inserisci indirizzo.";
-    if (!String(formData.get("city") || "").trim()) errors.city = "Inserisci città.";
+    if (!String(formData.get("city") || "").trim()) errors.city = "Inserisci cittÃ .";
     if (!String(formData.get("zip") || "").trim()) errors.zip = "Inserisci CAP.";
   }
   dom.checkoutForm.querySelectorAll(".field-error").forEach((node) => { node.textContent = ""; });
@@ -529,13 +595,62 @@ function buildOrderPayload(formData) {
 
 async function saveSiteSectionsFromForm() {
   if (!requireAdmin()) return;
+  const rawValue = String(dom.categoryValueInput.value || "").trim().toLowerCase();
+  const rawLabel = String(dom.categoryLabelInput.value || "").trim();
+  if (!rawValue || !rawLabel) return showToast("Compila chiave e nome categoria.");
+  const nextCategories = [...(state.siteSections.shopCategories || [])];
+  const selected = dom.categorySelect.value;
+  const existingIndex = nextCategories.findIndex((item) => item.value === selected);
+  const duplicateIndex = nextCategories.findIndex((item) => item.value === rawValue);
+  if (duplicateIndex >= 0 && duplicateIndex !== existingIndex) return showToast("Categoria gia presente.");
+  if (existingIndex >= 0) {
+    nextCategories[existingIndex] = { value: rawValue, label: rawLabel };
+    state.products = state.products.map((product) => (
+      product.category === selected ? { ...product, category: rawValue, label: rawLabel } : product
+    ));
+  }
   state.siteSections = {
     shopTitle: dom.sectionShopTitleInput.value.trim() || state.siteSections.shopTitle,
-    shopCopy: dom.sectionShopCopyInput.value.trim() || state.siteSections.shopCopy
+    shopCopy: dom.sectionShopCopyInput.value.trim() || state.siteSections.shopCopy,
+    shopCategories: normalizeShopCategories(nextCategories, state.products)
   };
+  await saveProducts(state.products);
   await saveSiteSections(state.siteSections);
   applySiteSections();
+  renderCategoryBar();
+  renderCategoryEditor();
   showToast("Sezioni aggiornate.");
+}
+
+async function addCategorySection() {
+  if (!requireAdmin()) return;
+  const value = String(dom.categoryValueInput.value || "").trim().toLowerCase();
+  const label = String(dom.categoryLabelInput.value || "").trim();
+  if (!value || !label) return showToast("Inserisci chiave e nome categoria.");
+  if ((state.siteSections.shopCategories || []).some((item) => item.value === value)) return showToast("Categoria gia esistente.");
+  state.siteSections.shopCategories.push({ value, label });
+  state.siteSections.shopCategories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
+  await saveSiteSections(state.siteSections);
+  renderCategoryBar();
+  renderCategoryEditor();
+  dom.categorySelect.value = value;
+  fillCategoryEditor(value);
+  showToast("Sezione categoria aggiunta.");
+}
+
+async function deleteCategorySection() {
+  if (!requireAdmin()) return;
+  const value = String(dom.categorySelect.value || "").trim().toLowerCase();
+  if (!value || value === "all") return showToast("ALL non puo essere rimossa.");
+  state.siteSections.shopCategories = (state.siteSections.shopCategories || []).filter((item) => item.value !== value);
+  state.products = state.products.map((product) => (
+    product.category === value ? { ...product, category: "accessories", label: "Accessories" } : product
+  ));
+  if (state.activeCategory === value) state.activeCategory = "all";
+  await saveProducts(state.products);
+  await saveSiteSections(state.siteSections);
+  syncUi();
+  showToast("Sezione categoria rimossa.");
 }
 
 async function submitCheckout(event) {
@@ -690,11 +805,13 @@ function bindEvents() {
     }
     if (event.target.closest("[data-checkout]")) {
       closeDrawer(dom.cartDrawer, ".cart-trigger");
-      if (!state.cart.length) return showToast("Il carrello è vuoto.");
+      if (!state.cart.length) return showToast("Il carrello Ã¨ vuoto.");
       window.location.hash = "#checkout";
     }
     if (event.target.closest("[data-product-delete]")) await deleteSelectedProduct();
     if (event.target.closest("[data-admin-logout]")) await logoutAdmin();
+    if (event.target.closest("[data-category-new]")) await addCategorySection();
+    if (event.target.closest("[data-category-delete]")) await deleteCategorySection();
     const adminTab = event.target.closest("[data-admin-tab]");
     if (adminTab && requireAdmin()) {
       setAdminView(adminTab.dataset.adminTab);
@@ -728,6 +845,7 @@ function bindEvents() {
 
   dom.productSearchInput?.addEventListener("input", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
   dom.productSortSelect?.addEventListener("change", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
+  dom.categorySelect?.addEventListener("change", (event) => fillCategoryEditor(event.target.value));
   dom.productSelect?.addEventListener("change", (event) => fillProductForm(event.target.value));
   dom.productNewButton?.addEventListener("click", () => {
     dom.productSelect.value = "__new__";
@@ -778,7 +896,7 @@ function bindEvents() {
     });
     state.leads = await getLeads();
     form.reset();
-    showToast("Messaggio salvato in modalità demo. In produzione verrà inviato allo staff.");
+    showToast("Messaggio salvato in modalitÃ  demo. In produzione verrÃ  inviato allo staff.");
   });
 
   window.addEventListener("hashchange", routeToPage);

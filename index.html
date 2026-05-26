@@ -96,13 +96,7 @@
           <p data-shop-copy>Catalogo professionale, disponibilitÃƒÆ’Ã‚Â  aggiornata e acquisto rapido.</p>
         </div>
 
-        <div class="category-bar" aria-label="Categorie prodotti">
-          <button class="category-pill is-active" type="button" data-category="all">All products</button>
-          <button class="category-pill" type="button" data-category="hair">Hair care</button>
-          <button class="category-pill" type="button" data-category="styling">Styling</button>
-          <button class="category-pill" type="button" data-category="tools">Tools</button>
-          <button class="category-pill" type="button" data-category="accessories">Accessories</button>
-        </div>
+        <div class="category-bar" aria-label="Categorie prodotti" data-category-bar></div>
 
         <div class="shop-section">
           <div class="section-heading">
@@ -320,6 +314,7 @@
                 <p class="eyebrow">Area gestore</p>
                 <h2 id="inventory-title">Gestione prodotti</h2>
               </div>
+              <button class="ghost-button ghost-button--light" type="button" data-admin-logout>Logout</button>
             </div>
             <div class="admin-tabs" role="tablist" aria-label="Sezioni admin">
               <button class="admin-tab is-active" type="button" role="tab" aria-selected="true" data-admin-tab="data">DATI</button>
@@ -385,7 +380,6 @@
                 <div class="inventory-actions">
                   <button class="outline-button outline-button--light" type="button" data-restock-all>Rifornisci tutto</button>
                   <button class="ghost-button ghost-button--light" type="button" data-reset-demo>Ripristina</button>
-                  <button class="ghost-button ghost-button--light" type="button" data-admin-logout>Logout</button>
                 </div>
                 <div class="inventory-actions">
                   <button class="ghost-button ghost-button--light" type="button" data-export-products>Export prodotti</button>
@@ -444,7 +438,18 @@
                   </div>
                   <label>Titolo shop<input type="text" data-section-shop-title required></label>
                   <label>Descrizione shop<textarea rows="3" data-section-shop-copy required></textarea></label>
+                  <label>Sezione categoria
+                    <select data-category-select></select>
+                  </label>
+                  <label>Chiave categoria
+                    <input type="text" data-category-value placeholder="es. styling" required>
+                  </label>
+                  <label>Nome categoria
+                    <input type="text" data-category-label placeholder="es. Styling" required>
+                  </label>
                   <div class="fresh-cut-form__actions">
+                    <button class="outline-button outline-button--light" type="button" data-category-new>Aggiungi sezione</button>
+                    <button class="ghost-button ghost-button--light" type="button" data-category-delete>Rimuovi sezione</button>
                     <button class="primary-button" type="submit">Salva sezione prodotti</button>
                   </div>
                 </form>

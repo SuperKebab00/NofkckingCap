@@ -240,7 +240,14 @@ export async function uploadImage(file, options = {}) {
 export async function getSiteSections() {
   return loadJson(SITE_SECTIONS_STORAGE_KEY, {
     shopTitle: "Prodotti No Cap",
-    shopCopy: "Catalogo professionale, disponibilita aggiornata e acquisto rapido."
+    shopCopy: "Catalogo professionale, disponibilita aggiornata e acquisto rapido.",
+    shopCategories: [
+      { value: "all", label: "All products" },
+      { value: "hair", label: "Hair care" },
+      { value: "styling", label: "Styling" },
+      { value: "tools", label: "Tools" },
+      { value: "accessories", label: "Accessories" }
+    ]
   });
 }
 
