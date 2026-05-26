@@ -1626,16 +1626,21 @@ button {
 }
 
 .admin-layout {
-  display: grid;
-  grid-template-columns: minmax(340px, 0.9fr) minmax(420px, 1.1fr);
-  gap: 16px;
-  align-items: start;
+  position: relative;
+  min-height: 420px;
 }
 
 .admin-block {
+  position: absolute;
+  inset: 0;
   padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.03);
+  opacity: 0;
+  transform: translateX(18px);
+  pointer-events: none;
+  transition: opacity 260ms ease, transform 260ms ease;
+  overflow: auto;
 }
 
 .admin-block .section-heading {
@@ -1648,6 +1653,44 @@ button {
 
 .admin-block .inventory-summary span {
   font-size: clamp(2.1rem, 4vw, 2.8rem);
+}
+
+.admin-block.is-active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.admin-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.admin-tab {
+  min-height: 44px;
+  color: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 220ms ease, border-color 220ms ease, transform 220ms ease;
+}
+
+.admin-tab:hover {
+  transform: translateY(-1px);
+  border-color: rgba(212, 15, 25, 0.72);
+}
+
+.admin-tab.is-active {
+  color: var(--white);
+  background: linear-gradient(120deg, rgba(212, 15, 25, 0.38), rgba(212, 15, 25, 0.1));
+  border-color: var(--red);
 }
 
 .cart-drawer {
@@ -1883,7 +1926,7 @@ button {
   }
 
   .admin-layout {
-    grid-template-columns: 1fr;
+    min-height: 500px;
   }
 }
 

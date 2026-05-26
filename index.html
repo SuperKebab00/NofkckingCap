@@ -311,45 +311,35 @@
             </label>
             <span class="field-error" data-admin-login-error></span>
             <button class="primary-button" type="submit">Accedi</button>
+            <p class="checkout-note">Modalità demo: accesso locale. In produzione usa Supabase Auth.</p>
           </form>
 
-                    <div class="admin-content" data-admin-content hidden>
+          <div class="admin-content" data-admin-content hidden>
             <div class="section-heading section-heading--light">
               <div>
                 <p class="eyebrow">Area gestore</p>
                 <h2 id="inventory-title">Gestione prodotti</h2>
               </div>
             </div>
+            <div class="admin-tabs" role="tablist" aria-label="Sezioni admin">
+              <button class="admin-tab is-active" type="button" role="tab" aria-selected="true" data-admin-tab="data">DATI</button>
+              <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="manage">GESTIONE</button>
+            </div>
 
             <div class="admin-layout">
-              <section class="admin-block admin-block--data" aria-label="Sezione dati">
+              <section class="admin-block admin-block--data is-active" data-admin-panel="data" aria-label="Sezione dati">
                 <div class="section-heading section-heading--light section-heading--compact">
                   <div>
                     <p class="eyebrow">Sezione dati</p>
                     <h2>Dati e andamento</h2>
                   </div>
-                  <p>Panoramica ordini, lead, stato catalogo e export.</p>
-                </div>
-
-                <p class="checkout-note">Modalita demo: questo accesso e locale e non sicuro. In produzione usare Supabase Auth.</p>
-
-                <div class="inventory-actions">
-                  <button class="outline-button outline-button--light" type="button" data-restock-all>Rifornisci tutto</button>
-                  <button class="ghost-button ghost-button--light" type="button" data-reset-demo>Ripristina</button>
-                  <button class="ghost-button ghost-button--light" type="button" data-admin-logout>Logout</button>
+                  <p>Panoramica ordini, lead e stato catalogo.</p>
                 </div>
 
                 <div class="inventory-summary">
                   <article><span data-demo-orders>0</span><p>Ordini demo</p></article>
                   <article><span data-demo-leads>0</span><p>Lead demo</p></article>
                   <article><span data-demo-active-products>0</span><p>Prodotti attivi</p></article>
-                </div>
-
-                <div class="inventory-actions">
-                  <button class="ghost-button ghost-button--light" type="button" data-export-products>Export prodotti</button>
-                  <button class="ghost-button ghost-button--light" type="button" data-export-orders>Export ordini</button>
-                  <button class="ghost-button ghost-button--light" type="button" data-export-leads>Export lead</button>
-                  <button class="ghost-button ghost-button--light" type="button" data-export-cuts>Export tagli</button>
                 </div>
 
                 <div class="section-heading section-heading--light section-heading--compact">
@@ -384,13 +374,24 @@
                 </div>
               </section>
 
-              <section class="admin-block admin-block--manage" aria-label="Sezione gestione">
+              <section class="admin-block admin-block--manage" data-admin-panel="manage" aria-label="Sezione gestione" hidden>
                 <div class="section-heading section-heading--light section-heading--compact">
                   <div>
                     <p class="eyebrow">Sezione gestione</p>
                     <h2>Operazioni e contenuti</h2>
                   </div>
                   <p>Aggiorna tagli, prodotti, testi shop e inventario.</p>
+                </div>
+                <div class="inventory-actions">
+                  <button class="outline-button outline-button--light" type="button" data-restock-all>Rifornisci tutto</button>
+                  <button class="ghost-button ghost-button--light" type="button" data-reset-demo>Ripristina</button>
+                  <button class="ghost-button ghost-button--light" type="button" data-admin-logout>Logout</button>
+                </div>
+                <div class="inventory-actions">
+                  <button class="ghost-button ghost-button--light" type="button" data-export-products>Export prodotti</button>
+                  <button class="ghost-button ghost-button--light" type="button" data-export-orders>Export ordini</button>
+                  <button class="ghost-button ghost-button--light" type="button" data-export-leads>Export lead</button>
+                  <button class="ghost-button ghost-button--light" type="button" data-export-cuts>Export tagli</button>
                 </div>
 
                 <form class="fresh-cut-form admin-cut-form" data-cut-form>

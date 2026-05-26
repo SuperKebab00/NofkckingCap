@@ -38,7 +38,8 @@ const MAX_MONTHLY_CUTS = 24;
 
 const state = {
   activeCategory: "all",
-  adminAuthenticated: sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
+  adminAuthenticated: CONFIG.ADMIN_MODE === "demo" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
+  adminView: "data",
   cart: [],
   featuredCut: defaultFreshCut,
   inventory: {},
@@ -61,6 +62,20 @@ function syncAdminVisibility() {
   dom.adminLoginError.textContent = "";
   dom.adminLoginForm.hidden = state.adminAuthenticated;
   dom.adminContent.hidden = !state.adminAuthenticated;
+}
+
+function setAdminView(view) {
+  state.adminView = view === "manage" ? "manage" : "data";
+  document.querySelectorAll("[data-admin-tab]").forEach((button) => {
+    const active = button.dataset.adminTab === state.adminView;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  document.querySelectorAll("[data-admin-panel]").forEach((panel) => {
+    const active = panel.dataset.adminPanel === state.adminView;
+    panel.hidden = !active;
+    panel.classList.toggle("is-active", active);
+  });
 }
 
 function isAdminRoute() {
@@ -156,6 +171,7 @@ function syncUi() {
   renderSiteSectionsEditor();
   applySiteSections();
   syncAdminVisibility();
+  setAdminView(state.adminView);
 }
 
 function renderOrdersDashboard() {
@@ -588,7 +604,9 @@ async function unlockAdmin(password, email = "") {
     }
     state.adminAuthenticated = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    state.adminView = "data";
     syncAdminVisibility();
+    setAdminView("data");
     showToast("Accesso admin eseguito.");
     return;
   }
@@ -600,7 +618,9 @@ async function unlockAdmin(password, email = "") {
     }
     state.adminAuthenticated = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    state.adminView = "data";
     syncAdminVisibility();
+    setAdminView("data");
     showToast("Area gestore sbloccata.");
   }
 }
@@ -613,6 +633,7 @@ async function logoutAdmin() {
   state.adminAuthenticated = false;
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
   syncAdminVisibility();
+  setAdminView("data");
 }
 
 function exportJson(filename, payload) {
@@ -674,6 +695,10 @@ function bindEvents() {
     }
     if (event.target.closest("[data-product-delete]")) await deleteSelectedProduct();
     if (event.target.closest("[data-admin-logout]")) await logoutAdmin();
+    const adminTab = event.target.closest("[data-admin-tab]");
+    if (adminTab && requireAdmin()) {
+      setAdminView(adminTab.dataset.adminTab);
+    }
     if (event.target.closest("[data-export-products]")) {
       if (!requireAdmin()) return;
       exportJson("products-demo.json", state.products);
