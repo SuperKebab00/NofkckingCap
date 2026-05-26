@@ -16,6 +16,11 @@ export function getDom() {
     cartDrawer: document.querySelector("#cartDrawer"),
     cartItems: document.querySelector("[data-cart-items]"),
     cartTotal: document.querySelector("[data-cart-total]"),
+    checkoutForm: document.querySelector("[data-checkout-form]"),
+    checkoutItems: document.querySelector("[data-checkout-items]"),
+    checkoutSuccess: document.querySelector("[data-checkout-success]"),
+    checkoutSummary: document.querySelector("[data-checkout-summary]"),
+    checkoutTotal: document.querySelector("[data-checkout-total]"),
     currentMonthLabel: document.querySelector("[data-current-month]"),
     cutDateInput: document.querySelector("[data-cut-date]"),
     cutDescription: document.querySelector("[data-cut-description]"),
@@ -25,6 +30,8 @@ export function getDom() {
     cutTextInput: document.querySelector("[data-cut-text]"),
     grid: document.querySelector("[data-product-grid]"),
     inventoryBody: document.querySelector("[data-inventory-body]"),
+    orderNumber: document.querySelector("[data-order-number]"),
+    shippingFields: document.querySelector("[data-shipping-fields]"),
     showcaseGrid: document.querySelector("[data-showcase-grid]"),
     toast: document.querySelector("[data-toast]")
   };
@@ -46,8 +53,8 @@ export function renderProducts(dom, products, inventory, activeCategory) {
       return `
         <article class="product-card ${soldOut ? "is-sold-out" : ""}" style="--stagger:${index * 70}ms">
           <div class="product-media">
-            <img src="${packshot}" alt="${escapeHtml(product.name)} packshot prodotto" loading="lazy" decoding="async">
-            <img src="${lifestyle}" alt="${escapeHtml(product.name)} risultato sui capelli" loading="lazy" decoding="async">
+            <img src="${packshot}" alt="${escapeHtml(product.name)} packshot prodotto" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${resolveProductImage(product, "packshot")}'">
+            <img src="${lifestyle}" alt="${escapeHtml(product.name)} risultato sui capelli" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${resolveProductImage(product, "packshot")}'">
           </div>
           <div class="product-card__body">
             <div class="product-card__category">${escapeHtml(product.label)}</div>
@@ -152,6 +159,31 @@ export function renderFreshCut(dom, freshCut) {
   dom.cutNameInput.value = freshCut.name;
   dom.cutTextInput.value = freshCut.description;
   dom.cutDateInput.value = freshCut.date || todayISO();
+}
+
+export function renderCheckoutSummary(dom, cart) {
+  const totalPrice = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  dom.checkoutTotal.textContent = formatCurrency(totalPrice);
+
+  if (!cart.length) {
+    dom.checkoutItems.innerHTML = `
+      <div class="cart-empty">
+        <strong>Carrello vuoto</strong>
+        <span>Aggiungi prodotti per procedere al checkout.</span>
+      </div>`;
+    return;
+  }
+
+  dom.checkoutItems.innerHTML = cart
+    .map(({ product, quantity }) => `
+      <article class="checkout-summary-item">
+        <div>
+          <strong>${escapeHtml(product.name)}</strong>
+          <p>${quantity} x ${formatCurrency(product.price)}</p>
+        </div>
+        <strong>${formatCurrency(product.price * quantity)}</strong>
+      </article>`)
+    .join("");
 }
 
 export function renderShowcase(dom, monthlyCuts) {

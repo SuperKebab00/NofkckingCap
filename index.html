@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="preload" as="image" href="Img/wallpaper/1.webp" fetchpriority="high">
+    <link rel="preload" as="image" href="Img/wallpaper/1-opt.webp" fetchpriority="high">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -181,6 +181,105 @@
           </form>
         </div>
       </section>
+
+      <section class="page-view" id="checkout" data-page="checkout" aria-labelledby="checkout-title">
+        <div class="page-banner page-banner--shop">
+          <p class="eyebrow">Checkout</p>
+          <h1 id="checkout-title">Conferma ordine</h1>
+          <p>Inserisci i dati e completa il pagamento dimostrativo in modo rapido.</p>
+        </div>
+
+        <div class="checkout-layout">
+          <form class="checkout-form" data-checkout-form novalidate>
+            <div class="checkout-block">
+              <h2>Dati cliente</h2>
+              <label>Nome completo
+                <input type="text" name="fullName" autocomplete="name" required>
+              </label>
+              <span class="field-error" data-error-for="fullName"></span>
+              <label>Email
+                <input type="email" name="email" autocomplete="email" required>
+              </label>
+              <span class="field-error" data-error-for="email"></span>
+              <label>Telefono
+                <input type="tel" name="phone" autocomplete="tel" required>
+              </label>
+              <span class="field-error" data-error-for="phone"></span>
+            </div>
+
+            <fieldset class="checkout-block">
+              <legend>Consegna</legend>
+              <label class="checkout-radio">
+                <input type="radio" name="fulfillment" value="pickup" checked>
+                <span>Ritiro in shop</span>
+              </label>
+              <label class="checkout-radio">
+                <input type="radio" name="fulfillment" value="shipping">
+                <span>Spedizione</span>
+              </label>
+
+              <div class="shipping-fields" data-shipping-fields hidden>
+                <label>Indirizzo
+                  <input type="text" name="address">
+                </label>
+                <span class="field-error" data-error-for="address"></span>
+                <label>Città
+                  <input type="text" name="city">
+                </label>
+                <span class="field-error" data-error-for="city"></span>
+                <label>CAP
+                  <input type="text" name="zip">
+                </label>
+                <span class="field-error" data-error-for="zip"></span>
+              </div>
+            </fieldset>
+
+            <div class="checkout-block">
+              <h2>Pagamento demo</h2>
+              <p class="checkout-note">Pagamento dimostrativo — nessun addebito reale</p>
+              <label>Nome sulla carta
+                <input type="text" name="cardName" required>
+              </label>
+              <span class="field-error" data-error-for="cardName"></span>
+              <label>Numero carta
+                <input type="text" name="cardNumber" inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" required>
+              </label>
+              <span class="field-error" data-error-for="cardNumber"></span>
+              <div class="checkout-row">
+                <label>Scadenza
+                  <input type="text" name="cardExpiry" inputmode="numeric" maxlength="5" placeholder="MM/AA" required>
+                </label>
+                <label>CVC
+                  <input type="text" name="cardCvc" inputmode="numeric" maxlength="4" placeholder="123" required>
+                </label>
+              </div>
+              <span class="field-error" data-error-for="cardExpiry"></span>
+              <span class="field-error" data-error-for="cardCvc"></span>
+            </div>
+
+            <button class="primary-button primary-button--wide" type="submit" data-pay-now>Paga ora (demo)</button>
+          </form>
+
+          <aside class="checkout-summary" data-checkout-summary>
+            <h2>Riepilogo ordine</h2>
+            <div data-checkout-items></div>
+            <div class="checkout-total">
+              <span>Totale</span>
+              <strong data-checkout-total>€0,00</strong>
+            </div>
+          </aside>
+        </div>
+
+        <div class="checkout-success" data-checkout-success hidden>
+          <p class="eyebrow">Ordine confermato</p>
+          <h2>Pagamento demo completato</h2>
+          <p>Numero ordine: <strong data-order-number>NC-0000-0000</strong></p>
+          <div class="hero__actions">
+            <a class="primary-button" href="#shop">Torna allo shop</a>
+            <a class="ghost-button" href="#home">Torna alla home</a>
+          </div>
+        </div>
+      </section>
     </main>
 
     <aside class="admin-drawer" id="inventoryDrawer" aria-hidden="true" aria-label="Gestione prodotti">
@@ -291,7 +390,7 @@
             <span>Totale</span>
             <strong data-cart-total>€0,00</strong>
           </div>
-          <button class="primary-button primary-button--wide" type="button" data-checkout>Simula checkout</button>
+          <button class="primary-button primary-button--wide" type="button" data-checkout>Vai al checkout</button>
         </footer>
       </section>
     </aside>

@@ -5,7 +5,7 @@ import {
   MONTHLY_CUTS_STORAGE_KEY,
   products
 } from "./js/data.js";
-import { getDom, renderCart, renderFreshCut, renderInventory, renderProducts, renderShowcase } from "./js/render.js";
+import { getDom, renderCart, renderCheckoutSummary, renderFreshCut, renderInventory, renderProducts, renderShowcase } from "./js/render.js";
 import { loadJson, removeJson, saveJson } from "./js/storage.js";
 import { readImageFile, todayISO } from "./js/utils.js";
 
@@ -56,6 +56,7 @@ function syncUi() {
   renderProducts(dom, products, state.inventory, state.activeCategory);
   renderInventory(dom, products, state.inventory, state.monthlyCuts);
   renderCart(dom, state.cart);
+  renderCheckoutSummary(dom, state.cart);
   renderFreshCut(dom, state.featuredCut);
   renderShowcase(dom, state.monthlyCuts);
 }
@@ -179,6 +180,12 @@ function routeToPage() {
     link.classList.toggle("is-active", link.getAttribute("href") === `#${validRoute}`);
   });
 
+  if (validRoute !== "checkout") {
+    dom.checkoutSuccess.hidden = true;
+    dom.checkoutSummary.hidden = false;
+    dom.checkoutForm.hidden = false;
+  }
+
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
@@ -223,6 +230,76 @@ function showToast(message) {
   state.toastTimer = setTimeout(() => dom.toast.classList.remove("is-visible"), 2400);
 }
 
+function getErrorNode(name) {
+  return dom.checkoutForm.querySelector(`[data-error-for="${name}"]`);
+}
+
+function setFieldError(name, message) {
+  const node = getErrorNode(name);
+  if (node) node.textContent = message;
+}
+
+function clearCheckoutErrors() {
+  dom.checkoutForm.querySelectorAll(".field-error").forEach((item) => {
+    item.textContent = "";
+  });
+}
+
+function validateCheckoutForm(formData) {
+  clearCheckoutErrors();
+  let valid = true;
+
+  const rules = [
+    ["fullName", formData.get("fullName").trim().length >= 2, "Inserisci nome e cognome."],
+    ["email", /\S+@\S+\.\S+/.test(formData.get("email")), "Inserisci un'email valida."],
+    ["phone", formData.get("phone").trim().length >= 6, "Inserisci un telefono valido."],
+    ["cardName", formData.get("cardName").trim().length >= 2, "Inserisci il nome sulla carta."]
+  ];
+
+  const cardDigits = String(formData.get("cardNumber")).replace(/\D/g, "");
+  const cvcDigits = String(formData.get("cardCvc")).replace(/\D/g, "");
+  const expiry = String(formData.get("cardExpiry")).trim();
+
+  rules.push(["cardNumber", cardDigits.length >= 12, "Inserisci un numero carta valido."]);
+  rules.push(["cardExpiry", /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry), "Formato scadenza: MM/AA."]);
+  rules.push(["cardCvc", cvcDigits.length >= 3, "Inserisci un CVC valido."]);
+
+  for (const [name, ok, message] of rules) {
+    if (!ok) {
+      setFieldError(name, message);
+      valid = false;
+    }
+  }
+
+  const fulfillment = formData.get("fulfillment");
+  if (fulfillment === "shipping") {
+    for (const [name, msg] of [["address", "Inserisci l'indirizzo."], ["city", "Inserisci la città."], ["zip", "Inserisci il CAP."]]) {
+      if (!String(formData.get(name)).trim()) {
+        setFieldError(name, msg);
+        valid = false;
+      }
+    }
+  }
+
+  return valid;
+}
+
+function buildOrderCode() {
+  const year = new Date().getFullYear();
+  const serial = Math.floor(1000 + Math.random() * 9000);
+  return `NC-${year}-${serial}`;
+}
+
+function setFulfillmentUi() {
+  const method = dom.checkoutForm.querySelector('input[name="fulfillment"]:checked')?.value;
+  const isShipping = method === "shipping";
+  dom.shippingFields.hidden = !isShipping;
+  ["address", "city", "zip"].forEach((name) => {
+    const input = dom.checkoutForm.elements[name];
+    if (input) input.required = isShipping;
+  });
+}
+
 document.addEventListener("click", (event) => {
   const addButton = event.target.closest("[data-add-to-cart]");
   const categoryButton = event.target.closest("[data-category]");
@@ -250,10 +327,12 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("[data-reset-demo]")) resetExperience();
   if (event.target.closest("[data-cut-reset]")) resetFreshCut();
   if (event.target.closest("[data-checkout]")) {
-    state.cart = [];
-    syncUi();
     closeDrawer(dom.cartDrawer, ".cart-trigger");
-    showToast("Ordine confermato. Ti aspettiamo in shop.");
+    if (!state.cart.length) {
+      showToast("Il carrello è vuoto.");
+      return;
+    }
+    window.location.hash = "#checkout";
   }
 });
 
@@ -266,6 +345,41 @@ document.querySelector("[data-contact-form]").addEventListener("submit", (event)
   event.preventDefault();
   event.currentTarget.reset();
   showToast("Richiesta inviata. Ti ricontatteremo presto.");
+});
+
+dom.checkoutForm.addEventListener("change", (event) => {
+  if (event.target.name === "fulfillment") setFulfillmentUi();
+});
+
+dom.checkoutForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!state.cart.length) {
+    showToast("Il carrello è vuoto.");
+    window.location.hash = "#shop";
+    return;
+  }
+
+  const formData = new FormData(dom.checkoutForm);
+  if (!validateCheckoutForm(formData)) return;
+
+  const payButton = dom.checkoutForm.querySelector("[data-pay-now]");
+  const originalText = payButton.textContent;
+  payButton.disabled = true;
+  payButton.textContent = "Pagamento in corso...";
+
+  await new Promise((resolve) => setTimeout(resolve, 1300));
+
+  state.cart = [];
+  syncUi();
+  dom.orderNumber.textContent = buildOrderCode();
+  dom.checkoutForm.reset();
+  setFulfillmentUi();
+  dom.checkoutForm.hidden = true;
+  dom.checkoutSummary.hidden = true;
+  dom.checkoutSuccess.hidden = false;
+  payButton.disabled = false;
+  payButton.textContent = originalText;
+  showToast("Pagamento demo completato.");
 });
 
 window.addEventListener("hashchange", routeToPage);
@@ -281,4 +395,5 @@ document.addEventListener("keydown", (event) => {
 });
 
 syncUi();
+setFulfillmentUi();
 routeToPage();
