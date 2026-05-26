@@ -146,6 +146,8 @@ button {
 }
 
 .manager-toggle--hidden {
+  display: inline-grid;
+  place-items: center;
   width: 32px;
   min-width: 32px;
   height: 32px;
@@ -154,6 +156,7 @@ button {
   border: 0;
   font-size: 12px;
   letter-spacing: 0.1em;
+  text-decoration: none;
 }
 
 .manager-toggle--hidden:hover,
@@ -1210,54 +1213,6 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.24);
 }
 
-.admin-drawer {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  pointer-events: none;
-}
-
-.admin-drawer[aria-hidden="false"] {
-  pointer-events: auto;
-}
-
-.admin-drawer__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.62);
-  backdrop-filter: blur(8px);
-  opacity: 0;
-  transition: opacity 260ms ease;
-}
-
-.admin-drawer[aria-hidden="false"] .admin-drawer__backdrop {
-  opacity: 1;
-}
-
-.admin-drawer__panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: min(980px, 100vw);
-  height: 100dvh;
-  padding-bottom: env(safe-area-inset-bottom);
-  overflow-y: auto;
-  background: var(--ink);
-  border-left: 4px solid var(--red);
-  box-shadow: var(--shadow);
-  transform: translateX(105%) scale(0.985);
-  transform-origin: right center;
-  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.admin-drawer[aria-hidden="false"] .admin-drawer__panel {
-  transform: translateX(0) scale(1);
-}
-
-.admin-drawer .inventory-shell {
-  min-height: 100dvh;
-  box-shadow: none;
-}
 
 .inventory-actions {
   display: flex;
@@ -1645,6 +1600,10 @@ button {
   gap: 12px;
   margin: 0 7vw 72px;
   padding: 28px;
+}
+
+.admin-page {
+  padding: 32px max(16px, 7vw) 72px;
 }
 
 .cart-drawer {
@@ -2062,7 +2021,6 @@ button {
     width: 100%;
   }
 
-  .admin-drawer__panel,
   .cart-drawer__panel {
     width: 100vw;
     height: 100dvh;

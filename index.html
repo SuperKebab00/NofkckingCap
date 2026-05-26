@@ -33,9 +33,7 @@
       </nav>
 
       <div class="header-actions">
-        <button class="manager-toggle manager-toggle--hidden" type="button" aria-controls="inventoryDrawer" aria-expanded="false" aria-label="Area gestore">
-          <span aria-hidden="true">•••</span>
-        </button>
+        <a class="manager-toggle manager-toggle--hidden" href="#admin" aria-label="Area gestore"><span aria-hidden="true">...</span></a>
         <button class="cart-trigger" type="button" aria-controls="cartDrawer" aria-expanded="false">
           <span class="cart-trigger__icon" aria-hidden="true"></span>
           <span class="cart-trigger__count" data-cart-count>0</span>
@@ -50,7 +48,7 @@
         <div class="hero__content">
           <p class="eyebrow">Shop essentials</p>
           <h1 id="hero-title">Fresh gear.<br><span>Zero cap.</span></h1>
-          <p class="hero__copy" data-hero-copy>Prodotti professionali, strumenti da banco e disponibilità aggiornata per uno shop barber pronto a vendere.</p>
+          <p class="hero__copy" data-hero-copy>Prodotti professionali, strumenti da banco e disponibilitÃ  aggiornata per uno shop barber pronto a vendere.</p>
           <div class="hero__actions">
             <a class="primary-button" href="#shop">Vedi prodotti</a>
             <a class="outline-button" href="#fresh-cut">Taglio del giorno</a>
@@ -66,7 +64,7 @@
         <a class="section-banner section-banner--shop" href="#shop" data-category-link="all">
           <span>01 / Shop</span>
           <strong>All products</strong>
-          <small>Catalogo completo con disponibilità aggiornata</small>
+          <small>Catalogo completo con disponibilitÃ  aggiornata</small>
         </a>
         <a class="section-banner section-banner--styling" href="#shop" data-category-link="styling">
           <span>02 / Styling</span>
@@ -94,8 +92,8 @@
       <section class="page-view" id="shop" data-page="shop" aria-labelledby="products-title">
         <div class="page-banner page-banner--shop">
           <p class="eyebrow">Shop</p>
-          <h1>Prodotti No Cap</h1>
-          <p>Catalogo professionale, disponibilità aggiornata e acquisto rapido.</p>
+          <h1 data-shop-title>Prodotti No Cap</h1>
+          <p data-shop-copy>Catalogo professionale, disponibilità aggiornata e acquisto rapido.</p>
         </div>
 
         <div class="category-bar" aria-label="Categorie prodotti">
@@ -112,7 +110,7 @@
               <p class="eyebrow">Prodotti</p>
               <h2 id="products-title">Catalogo professionale</h2>
             </div>
-            <p>Scopri prodotti, disponibilità e ultimi pezzi con un’esperienza e-commerce pensata per barber shop.</p>
+            <p>Scopri prodotti, disponibilitÃ  e ultimi pezzi con unâ€™esperienza e-commerce pensata per barber shop.</p>
           </div>
 
           <div class="shop-tools">
@@ -145,7 +143,7 @@
           <div class="fresh-cut__content">
             <p class="eyebrow">Daily highlight</p>
             <h1 id="fresh-cut-title" data-cut-title>Taglio fresco del giorno</h1>
-            <p data-cut-description>Il look da mettere in vetrina oggi: immagine grande, stile editoriale e aggiornamento immediato dall’area gestore.</p>
+            <p data-cut-description>Il look da mettere in vetrina oggi: immagine grande, stile editoriale e aggiornamento immediato dallâ€™area gestore.</p>
             <a class="outline-button" href="#showcase">Vedi showcase mensile</a>
           </div>
         </div>
@@ -253,7 +251,7 @@
                   <input type="text" name="address">
                 </label>
                 <span class="field-error" data-error-for="address"></span>
-                <label>Città
+                <label>CittÃ 
                   <input type="text" name="city">
                 </label>
                 <span class="field-error" data-error-for="city"></span>
@@ -266,7 +264,7 @@
 
             <div class="checkout-block">
               <h2>Pagamento demo</h2>
-              <p class="checkout-note">Nessun pagamento reale viene eseguito in modalità demo. In produzione collega PayPal Checkout o Stripe.</p>
+              <p class="checkout-note">Nessun pagamento reale viene eseguito in modalitÃ  demo. In produzione collega PayPal Checkout o Stripe.</p>
               <label class="checkout-radio"><input type="radio" name="paymentMode" value="in-shop" checked><span>Pagamento in sede</span></label>
               <label class="checkout-radio"><input type="radio" name="paymentMode" value="paypal"><span>Pagamento con PayPal</span></label>
             </div>
@@ -279,7 +277,7 @@
             <div data-checkout-items></div>
             <div class="checkout-total">
               <span>Totale</span>
-              <strong data-checkout-total>€0,00</strong>
+              <strong data-checkout-total>â‚¬0,00</strong>
             </div>
           </aside>
         </div>
@@ -297,11 +295,8 @@
           </div>
         </div>
       </section>
-    </main>
-
-    <aside class="admin-drawer" id="inventoryDrawer" aria-hidden="true" aria-label="Gestione prodotti">
-      <div class="admin-drawer__backdrop" data-close-admin></div>
-      <section class="admin-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
+    
+<section class="page-view admin-page" id="admin" data-page="admin" aria-labelledby="inventory-title">
         <div class="inventory-shell">
           <form class="admin-login" data-admin-login>
             <p class="eyebrow">Accesso riservato</p>
@@ -324,7 +319,6 @@
               <p class="eyebrow">Area gestore</p>
               <h2 id="inventory-title">Gestione prodotti</h2>
             </div>
-            <button class="icon-button" type="button" data-close-admin aria-label="Chiudi gestione">x</button>
           </div>
           <p class="checkout-note">Modalità demo: questo accesso è locale e non sicuro. In produzione usare Supabase Auth.</p>
 
@@ -347,6 +341,34 @@
             <button class="ghost-button ghost-button--light" type="button" data-export-cuts>Export tagli</button>
           </div>
 
+          <div class="section-heading section-heading--light section-heading--compact">
+            <div>
+              <p class="eyebrow">Orders dashboard</p>
+              <h2>Panoramica ordini</h2>
+            </div>
+            <p>KPI essenziali e ultimi ordini ricevuti dal checkout demo.</p>
+          </div>
+          <div class="inventory-summary">
+            <article><span data-admin-orders-total>0</span><p>Ordini totali</p></article>
+            <article><span data-admin-orders-today>0</span><p>Ordini oggi</p></article>
+            <article><span data-admin-orders-revenue>EUR 0,00</span><p>Incasso totale</p></article>
+            <article><span data-admin-orders-avg>EUR 0,00</span><p>Scontrino medio</p></article>
+          </div>
+          <div class="inventory-table-wrap">
+            <table class="inventory-table">
+              <thead>
+                <tr>
+                  <th>Ordine</th>
+                  <th>Cliente</th>
+                  <th>Consegna</th>
+                  <th>Pagamento</th>
+                  <th>Totale</th>
+                  <th>Data</th>
+                </tr>
+              </thead>
+              <tbody data-admin-orders-list></tbody>
+            </table>
+          </div>
           <form class="fresh-cut-form admin-cut-form" data-cut-form>
             <div class="section-heading section-heading--light section-heading--compact">
               <div>
@@ -423,50 +445,29 @@
           <form class="fresh-cut-form admin-cut-form" data-sections-form>
             <div class="section-heading section-heading--light section-heading--compact">
               <div>
-                <p class="eyebrow">Site editor</p>
-                <h2>Modifica sezioni</h2>
+                <p class="eyebrow">Shop editor</p>
+                <h2>Modifica sezione prodotti</h2>
               </div>
-              <p>Aggiorna i testi principali del sito senza toccare il codice.</p>
+              <p>Aggiorna titolo e descrizione del banner shop prodotti.</p>
             </div>
-            <label>Titolo hero
-              <input type="text" data-section-hero-title required>
+            <label>Titolo shop
+              <input type="text" data-section-shop-title required>
             </label>
-            <label>Testo hero
-              <textarea rows="3" data-section-hero-copy required></textarea>
-            </label>
-            <label>Titolo contatti
-              <input type="text" data-section-support-title required>
+            <label>Descrizione shop
+              <textarea rows="3" data-section-shop-copy required></textarea>
             </label>
             <div class="fresh-cut-form__actions">
-              <button class="primary-button" type="submit">Salva sezioni</button>
+              <button class="primary-button" type="submit">Salva sezione prodotti</button>
             </div>
           </form>
 
           <div class="inventory-summary" aria-live="polite">
-            <article>
-              <span data-summary-total>0</span>
-              <p>Pezzi disponibili</p>
-            </article>
-            <article>
-              <span data-summary-low>0</span>
-              <p>Prodotti in soglia critica</p>
-            </article>
-            <article>
-              <span data-summary-soldout>0</span>
-              <p>Esauriti</p>
-            </article>
-            <article>
-              <span data-summary-cuts>0</span>
-              <p>Tagli caricati questo mese</p>
-            </article>
-            <article>
-              <span data-summary-value>€0</span>
-              <p>Valore inventario</p>
-            </article>
-            <article>
-              <span data-summary-orders>0</span>
-              <p>Ordini di oggi</p>
-            </article>
+            <article><span data-summary-total>0</span><p>Pezzi disponibili</p></article>
+            <article><span data-summary-low>0</span><p>Prodotti in soglia critica</p></article>
+            <article><span data-summary-soldout>0</span><p>Esauriti</p></article>
+            <article><span data-summary-cuts>0</span><p>Tagli caricati questo mese</p></article>
+            <article><span data-summary-value>€0</span><p>Valore inventario</p></article>
+            <article><span data-summary-orders>0</span><p>Ordini di oggi</p></article>
           </div>
 
           <div class="inventory-table-wrap">
@@ -486,7 +487,9 @@
           </div>
         </div>
       </section>
-    </aside>
+    </main>
+
+          
 
     <aside class="cart-drawer" id="cartDrawer" aria-hidden="true" aria-label="Carrello">
       <div class="cart-drawer__backdrop" data-close-cart></div>
@@ -502,7 +505,7 @@
         <footer>
           <div class="cart-total">
             <span>Totale</span>
-            <strong data-cart-total>€0,00</strong>
+            <strong data-cart-total>â‚¬0,00</strong>
           </div>
           <button class="primary-button primary-button--wide" type="button" data-checkout>Vai al checkout</button>
         </footer>
@@ -514,3 +517,7 @@
     <script type="module" src="app.js"></script>
   </body>
 </html>
+
+
+
+

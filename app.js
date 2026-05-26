@@ -47,15 +47,36 @@ const state = {
   orders: [],
   products: [],
   siteSections: {
-    heroTitle: "Fresh gear. Zero cap.",
-    heroCopy: "",
-    supportTitle: "No Cap Barbershop"
+    shopTitle: "Prodotti No Cap",
+    shopCopy: "Catalogo professionale, disponibilità aggiornata e acquisto rapido."
   },
   toastTimer: null
 };
 
 const dom = getDom();
 const drawerFocus = { previous: null };
+
+function syncAdminVisibility() {
+  if (!dom.adminLoginForm || !dom.adminContent) return;
+  dom.adminLoginError.textContent = "";
+  dom.adminLoginForm.hidden = state.adminAuthenticated;
+  dom.adminContent.hidden = !state.adminAuthenticated;
+}
+
+function isAdminRoute() {
+  return (window.location.hash || "#home").replace("#", "") === "admin";
+}
+
+function requireAdmin() {
+  if (state.adminAuthenticated) return true;
+  if (isAdminRoute()) {
+    dom.adminLoginError.textContent = "Accedi per gestire prodotti e ordini.";
+    dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus();
+  } else {
+    showToast("Accesso gestore richiesto.");
+  }
+  return false;
+}
 
 function normalizeCuts(cuts) {
   const list = Array.isArray(cuts) && cuts.length ? cuts : [defaultFreshCut];
@@ -130,25 +151,55 @@ function syncUi() {
   renderFreshCut(dom, state.featuredCut);
   renderShowcase(dom, state.monthlyCuts);
   renderAdminStats();
+  renderOrdersDashboard();
   renderProductEditor();
   renderSiteSectionsEditor();
   applySiteSections();
+  syncAdminVisibility();
+}
+
+function renderOrdersDashboard() {
+  if (!dom.adminOrdersList) return;
+  const todayKey = todayISO();
+  const orders = [...state.orders];
+  const totalOrders = orders.length;
+  const todayOrders = orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayKey).length;
+  const revenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const avg = totalOrders ? revenue / totalOrders : 0;
+
+  if (dom.adminOrdersTotal) dom.adminOrdersTotal.textContent = String(totalOrders);
+  if (dom.adminOrdersToday) dom.adminOrdersToday.textContent = String(todayOrders);
+  if (dom.adminOrdersRevenue) dom.adminOrdersRevenue.textContent = formatCurrency(revenue);
+  if (dom.adminOrdersAvg) dom.adminOrdersAvg.textContent = formatCurrency(avg);
+
+  if (!orders.length) {
+    dom.adminOrdersList.innerHTML = `<tr><td colspan="6">Nessun ordine registrato.</td></tr>`;
+    return;
+  }
+
+  dom.adminOrdersList.innerHTML = orders
+    .slice(0, 12)
+    .map((order) => `
+      <tr>
+        <td><strong>${order.orderNumber || order.id}</strong></td>
+        <td>${order.customer?.fullName || "-"}</td>
+        <td>${order.fulfillment === "shipping" ? "Spedizione" : "Ritiro"}</td>
+        <td>${order.paymentMode === "paypal" ? "PayPal" : "In sede"}</td>
+        <td>${formatCurrency(Number(order.total || 0))}</td>
+        <td>${String(order.createdAt || "").slice(0, 10) || "-"}</td>
+      </tr>`)
+    .join("");
 }
 
 function renderSiteSectionsEditor() {
-  if (!dom.sectionHeroTitleInput) return;
-  dom.sectionHeroTitleInput.value = state.siteSections.heroTitle || "";
-  dom.sectionHeroCopyInput.value = state.siteSections.heroCopy || "";
-  dom.sectionSupportTitleInput.value = state.siteSections.supportTitle || "";
+  if (!dom.sectionShopTitleInput) return;
+  dom.sectionShopTitleInput.value = state.siteSections.shopTitle || "";
+  dom.sectionShopCopyInput.value = state.siteSections.shopCopy || "";
 }
 
 function applySiteSections() {
-  const heroTitle = document.querySelector("#hero-title");
-  if (heroTitle && state.siteSections.heroTitle) {
-    heroTitle.innerHTML = state.siteSections.heroTitle.replace(". ", ".<br><span>") + "</span>";
-  }
-  if (dom.siteHeroCopy && state.siteSections.heroCopy) dom.siteHeroCopy.textContent = state.siteSections.heroCopy;
-  if (dom.siteSupportTitle && state.siteSections.supportTitle) dom.siteSupportTitle.textContent = state.siteSections.supportTitle;
+  if (dom.siteShopTitle && state.siteSections.shopTitle) dom.siteShopTitle.textContent = state.siteSections.shopTitle;
+  if (dom.siteShopCopy && state.siteSections.shopCopy) dom.siteShopCopy.textContent = state.siteSections.shopCopy;
 }
 
 function renderAdminStats() {
@@ -158,12 +209,13 @@ function renderAdminStats() {
   const soldOut = quantities.filter((value) => value <= 0).length;
   const inventoryValue = state.products.reduce((sum, product) => sum + (state.inventory[product.id] ?? 0) * Number(product.price || 0), 0);
   const monthlyCount = state.monthlyCuts.filter((cut) => String(cut.date).startsWith(todayISO().slice(0, 7))).length;
+  const todayOrders = state.orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayISO()).length;
   document.querySelector("[data-summary-total]").textContent = totalUnits;
   document.querySelector("[data-summary-low]").textContent = lowStock;
   document.querySelector("[data-summary-soldout]").textContent = soldOut;
   document.querySelector("[data-summary-cuts]").textContent = monthlyCount;
   document.querySelector("[data-summary-value]").textContent = formatCurrency(inventoryValue);
-  document.querySelector("[data-summary-orders]").textContent = state.orders.length;
+  document.querySelector("[data-summary-orders]").textContent = todayOrders;
   if (dom.demoOrders) dom.demoOrders.textContent = state.orders.length;
   if (dom.demoLeads) dom.demoLeads.textContent = state.leads.length;
   if (dom.demoActiveProducts) dom.demoActiveProducts.textContent = state.products.length;
@@ -217,6 +269,10 @@ function routeToPage() {
     dom.checkoutSummary.hidden = false;
     dom.checkoutSuccess.hidden = true;
   }
+  if (valid === "admin" && !state.adminAuthenticated) {
+    dom.adminLoginError.textContent = "Accedi con account gestore per entrare nel pannello.";
+    setTimeout(() => dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus(), 0);
+  }
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
@@ -245,11 +301,6 @@ function openDrawer(drawer, triggerSelector) {
   drawer.setAttribute("aria-hidden", "false");
   document.querySelectorAll(triggerSelector).forEach((item) => item.setAttribute("aria-expanded", "true"));
   document.body.classList.add("drawer-open");
-  if (drawer === dom.adminDrawer) {
-    dom.adminLoginError.textContent = "";
-    dom.adminLoginForm.hidden = state.adminAuthenticated;
-    dom.adminContent.hidden = !state.adminAuthenticated;
-  }
   trapFocus(drawer);
 }
 
@@ -257,7 +308,7 @@ function closeDrawer(drawer, triggerSelector) {
   drawer.setAttribute("aria-hidden", "true");
   document.querySelectorAll(triggerSelector).forEach((item) => item.setAttribute("aria-expanded", "false"));
   if (drawer._focusTrap) drawer.removeEventListener("keydown", drawer._focusTrap);
-  const anyOpen = [dom.cartDrawer, dom.adminDrawer].some((item) => item.getAttribute("aria-hidden") === "false");
+  const anyOpen = [dom.cartDrawer].some((item) => item.getAttribute("aria-hidden") === "false");
   if (!anyOpen) document.body.classList.remove("drawer-open");
   drawerFocus.previous?.focus?.({ preventScroll: true });
 }
@@ -299,6 +350,7 @@ async function adjustInventory(productId, amount) {
 }
 
 async function restockAll() {
+  if (!requireAdmin()) return;
   state.products.forEach((product) => { state.inventory[product.id] = Number(product.restock || 0); });
   await saveInventory(state.inventory);
   syncUi();
@@ -306,6 +358,7 @@ async function restockAll() {
 }
 
 async function saveFreshCut() {
+  if (!requireAdmin()) return;
   const image = await uploadImage(dom.cutFileInput.files[0], { bucket: "cuts" }).catch(() => state.featuredCut.image);
   const cut = {
     id: `cut-${Date.now()}`,
@@ -324,6 +377,7 @@ async function saveFreshCut() {
 }
 
 async function saveProductFromForm() {
+  if (!requireAdmin()) return;
   const id = dom.productSelect.value;
   if (id === "__new__") {
     const name = dom.productNameInput.value.trim();
@@ -392,6 +446,7 @@ async function saveProductFromForm() {
 }
 
 async function deleteSelectedProduct() {
+  if (!requireAdmin()) return;
   if (state.products.length <= 1) return showToast("Serve almeno un prodotto nel catalogo.");
   const id = dom.productSelect.value;
   const product = state.products.find((item) => item.id === id);
@@ -457,10 +512,10 @@ function buildOrderPayload(formData) {
 }
 
 async function saveSiteSectionsFromForm() {
+  if (!requireAdmin()) return;
   state.siteSections = {
-    heroTitle: dom.sectionHeroTitleInput.value.trim() || state.siteSections.heroTitle,
-    heroCopy: dom.sectionHeroCopyInput.value.trim() || state.siteSections.heroCopy,
-    supportTitle: dom.sectionSupportTitleInput.value.trim() || state.siteSections.supportTitle
+    shopTitle: dom.sectionShopTitleInput.value.trim() || state.siteSections.shopTitle,
+    shopCopy: dom.sectionShopCopyInput.value.trim() || state.siteSections.shopCopy
   };
   await saveSiteSections(state.siteSections);
   applySiteSections();
@@ -533,8 +588,7 @@ async function unlockAdmin(password, email = "") {
     }
     state.adminAuthenticated = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
-    dom.adminLoginForm.hidden = true;
-    dom.adminContent.hidden = false;
+    syncAdminVisibility();
     showToast("Accesso admin eseguito.");
     return;
   }
@@ -546,8 +600,7 @@ async function unlockAdmin(password, email = "") {
     }
     state.adminAuthenticated = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
-    dom.adminLoginForm.hidden = true;
-    dom.adminContent.hidden = false;
+    syncAdminVisibility();
     showToast("Area gestore sbloccata.");
   }
 }
@@ -559,8 +612,7 @@ async function logoutAdmin() {
   }
   state.adminAuthenticated = false;
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  dom.adminLoginForm.hidden = false;
-  dom.adminContent.hidden = true;
+  syncAdminVisibility();
 }
 
 function exportJson(filename, payload) {
@@ -599,11 +651,10 @@ function bindEvents() {
     }
 
     if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
-    if (event.target.closest(".manager-toggle")) openDrawer(dom.adminDrawer, ".manager-toggle");
     if (event.target.closest("[data-close-cart]")) closeDrawer(dom.cartDrawer, ".cart-trigger");
-    if (event.target.closest("[data-close-admin]")) closeDrawer(dom.adminDrawer, ".manager-toggle");
     if (event.target.closest("[data-restock-all]")) await restockAll();
     if (event.target.closest("[data-reset-demo]")) {
+      if (!requireAdmin()) return;
       if (!confirm("Confermi il reset totale della demo?")) return;
       localStorage.clear();
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
@@ -623,10 +674,22 @@ function bindEvents() {
     }
     if (event.target.closest("[data-product-delete]")) await deleteSelectedProduct();
     if (event.target.closest("[data-admin-logout]")) await logoutAdmin();
-    if (event.target.closest("[data-export-products]")) exportJson("products-demo.json", state.products);
-    if (event.target.closest("[data-export-orders]")) exportJson("orders-demo.json", state.orders);
-    if (event.target.closest("[data-export-leads]")) exportJson("leads-demo.json", state.leads);
-    if (event.target.closest("[data-export-cuts]")) exportJson("cuts-demo.json", state.monthlyCuts);
+    if (event.target.closest("[data-export-products]")) {
+      if (!requireAdmin()) return;
+      exportJson("products-demo.json", state.products);
+    }
+    if (event.target.closest("[data-export-orders]")) {
+      if (!requireAdmin()) return;
+      exportJson("orders-demo.json", state.orders);
+    }
+    if (event.target.closest("[data-export-leads]")) {
+      if (!requireAdmin()) return;
+      exportJson("leads-demo.json", state.leads);
+    }
+    if (event.target.closest("[data-export-cuts]")) {
+      if (!requireAdmin()) return;
+      exportJson("cuts-demo.json", state.monthlyCuts);
+    }
     if (event.target.closest("[data-copy-order]")) {
       const summary = dom.checkoutSuccessSummary.textContent || "";
       await navigator.clipboard.writeText(`Ordine ${dom.orderNumber.textContent}\n${summary}`);
@@ -700,9 +763,8 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeDrawer(dom.cartDrawer, ".cart-trigger");
-      closeDrawer(dom.adminDrawer, ".manager-toggle");
     }
-    if (event.altKey && event.key.toLowerCase() === "g") openDrawer(dom.adminDrawer, ".manager-toggle");
+    if (event.altKey && event.key.toLowerCase() === "g") window.location.hash = "#admin";
     if (event.altKey && event.key.toLowerCase() === "l") logoutAdmin();
   });
 }
@@ -716,8 +778,7 @@ async function init() {
       sb.auth.onAuthStateChange((_event, session) => {
         state.adminAuthenticated = Boolean(session);
         if (!state.adminAuthenticated) {
-          dom.adminLoginForm.hidden = false;
-          dom.adminContent.hidden = true;
+          syncAdminVisibility();
         }
       });
     } else {

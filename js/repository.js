@@ -239,12 +239,12 @@ export async function uploadImage(file, options = {}) {
 
 export async function getSiteSections() {
   return loadJson(SITE_SECTIONS_STORAGE_KEY, {
-    heroTitle: "Fresh gear. Zero cap.",
-    heroCopy: "Prodotti professionali, strumenti da banco e disponibilità aggiornata per uno shop barber pronto a vendere.",
-    supportTitle: "No Cap Barbershop"
+    shopTitle: "Prodotti No Cap",
+    shopCopy: "Catalogo professionale, disponibilita aggiornata e acquisto rapido."
   });
 }
 
 export async function saveSiteSections(sections) {
   saveJson(SITE_SECTIONS_STORAGE_KEY, sections);
 }
+
