@@ -12,10 +12,12 @@ import {
   getMonthlyCuts,
   getOrders,
   getProducts,
+  getSiteSections,
   saveCart,
   saveFeaturedCut,
   saveInventory,
   saveMonthlyCuts,
+  saveSiteSections,
   saveProducts,
   uploadImage
 } from "./js/repository.js";
@@ -44,6 +46,11 @@ const state = {
   monthlyCuts: [defaultFreshCut],
   orders: [],
   products: [],
+  siteSections: {
+    heroTitle: "Fresh gear. Zero cap.",
+    heroCopy: "",
+    supportTitle: "No Cap Barbershop"
+  },
   toastTimer: null
 };
 
@@ -93,14 +100,15 @@ async function persistCart() {
 }
 
 async function loadState() {
-  const [products, inventory, featuredCut, monthlyCuts, cart, orders, leads] = await Promise.all([
+  const [products, inventory, featuredCut, monthlyCuts, cart, orders, leads, siteSections] = await Promise.all([
     getProducts(),
     getInventory(),
     getFeaturedCut(),
     getMonthlyCuts(),
     getCart(),
     getOrders(),
-    getLeads()
+    getLeads(),
+    getSiteSections()
   ]);
   state.products = products;
   state.inventory = inventory;
@@ -109,6 +117,7 @@ async function loadState() {
   state.cart = normalizeCart(cart, state.products, state.inventory);
   state.orders = orders;
   state.leads = leads;
+  state.siteSections = { ...state.siteSections, ...(siteSections || {}) };
   await persistCart();
 }
 
@@ -122,6 +131,24 @@ function syncUi() {
   renderShowcase(dom, state.monthlyCuts);
   renderAdminStats();
   renderProductEditor();
+  renderSiteSectionsEditor();
+  applySiteSections();
+}
+
+function renderSiteSectionsEditor() {
+  if (!dom.sectionHeroTitleInput) return;
+  dom.sectionHeroTitleInput.value = state.siteSections.heroTitle || "";
+  dom.sectionHeroCopyInput.value = state.siteSections.heroCopy || "";
+  dom.sectionSupportTitleInput.value = state.siteSections.supportTitle || "";
+}
+
+function applySiteSections() {
+  const heroTitle = document.querySelector("#hero-title");
+  if (heroTitle && state.siteSections.heroTitle) {
+    heroTitle.innerHTML = state.siteSections.heroTitle.replace(". ", ".<br><span>") + "</span>";
+  }
+  if (dom.siteHeroCopy && state.siteSections.heroCopy) dom.siteHeroCopy.textContent = state.siteSections.heroCopy;
+  if (dom.siteSupportTitle && state.siteSections.supportTitle) dom.siteSupportTitle.textContent = state.siteSections.supportTitle;
 }
 
 function renderAdminStats() {
@@ -145,12 +172,23 @@ function renderAdminStats() {
 function renderProductEditor() {
   if (!dom.productSelect) return;
   const current = dom.productSelect.value || state.products[0]?.id || "";
-  dom.productSelect.innerHTML = state.products.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
-  dom.productSelect.value = state.products.some((p) => p.id === current) ? current : state.products[0]?.id || "";
+  dom.productSelect.innerHTML = [
+    `<option value="__new__">+ Nuovo prodotto</option>`,
+    ...state.products.map((p) => `<option value="${p.id}">${p.name}</option>`)
+  ].join("");
+  dom.productSelect.value = state.products.some((p) => p.id === current) ? current : (current === "__new__" ? "__new__" : state.products[0]?.id || "__new__");
   fillProductForm(dom.productSelect.value);
 }
 
 function fillProductForm(productId) {
+  if (productId === "__new__") {
+    dom.productNameInput.value = "";
+    dom.productCategoryInput.value = "";
+    dom.productPriceInput.value = "0";
+    dom.productRestockInput.value = "0";
+    dom.productDeleteButton.disabled = true;
+    return;
+  }
   const product = state.products.find((item) => item.id === productId);
   if (!product) return;
   dom.productNameInput.value = product.name || "";
@@ -287,6 +325,51 @@ async function saveFreshCut() {
 
 async function saveProductFromForm() {
   const id = dom.productSelect.value;
+  if (id === "__new__") {
+    const name = dom.productNameInput.value.trim();
+    const category = dom.productCategoryInput.value.trim().toLowerCase() || "accessories";
+    if (!name) {
+      showToast("Inserisci il nome prodotto.");
+      return;
+    }
+    const newIdBase = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    let newId = newIdBase || `product-${Date.now()}`;
+    let suffix = 1;
+    while (state.products.some((item) => item.id === newId)) {
+      newId = `${newIdBase}-${suffix++}`;
+    }
+    const packshot = dom.productPackshotInput.files[0]
+      ? await uploadImage(dom.productPackshotInput.files[0], { bucket: "products" })
+      : "";
+    const lifestyle = dom.productLifestyleInput.files[0]
+      ? await uploadImage(dom.productLifestyleInput.files[0], { bucket: "products" })
+      : packshot;
+    const restock = Math.max(0, Number(dom.productRestockInput.value || 0));
+    const product = {
+      id: newId,
+      name,
+      category,
+      label: category.charAt(0).toUpperCase() + category.slice(1),
+      description: "Nuovo prodotto inserito da pannello admin.",
+      badge: "Novità",
+      price: Math.max(0, Number(dom.productPriceInput.value || 0)),
+      stock: restock,
+      restock,
+      colors: ["#111111", "#d40f19", "#ffffff"],
+      shape: "jar",
+      images: { packshot, lifestyle }
+    };
+    state.products.unshift(product);
+    state.inventory[newId] = restock;
+    await saveProducts(state.products);
+    await saveInventory(state.inventory);
+    dom.productSelect.value = newId;
+    dom.productPackshotInput.value = "";
+    dom.productLifestyleInput.value = "";
+    syncUi();
+    showToast("Prodotto aggiunto al catalogo.");
+    return;
+  }
   const index = state.products.findIndex((item) => item.id === id);
   if (index < 0) return;
   const base = state.products[index];
@@ -369,8 +452,19 @@ function buildOrderPayload(formData) {
     shipping,
     total,
     status: "demo-created",
-    paymentMode: formData.get("paymentMode") || "demo"
+    paymentMode: formData.get("paymentMode") || "in-shop"
   };
+}
+
+async function saveSiteSectionsFromForm() {
+  state.siteSections = {
+    heroTitle: dom.sectionHeroTitleInput.value.trim() || state.siteSections.heroTitle,
+    heroCopy: dom.sectionHeroCopyInput.value.trim() || state.siteSections.heroCopy,
+    supportTitle: dom.sectionSupportTitleInput.value.trim() || state.siteSections.supportTitle
+  };
+  await saveSiteSections(state.siteSections);
+  applySiteSections();
+  showToast("Sezioni aggiornate.");
 }
 
 async function submitCheckout(event) {
@@ -387,6 +481,9 @@ async function submitCheckout(event) {
   payButton.disabled = true;
   payButton.textContent = "Creazione ordine...";
   const order = buildOrderPayload(formData);
+  if (order.paymentMode === "paypal") {
+    showToast("PayPal selezionato: in demo viene creato un ordine simulato.");
+  }
   await new Promise((resolve) => setTimeout(resolve, 900));
   await createOrder(order);
   await clearCart();
@@ -411,13 +508,22 @@ function setFulfillmentUi() {
 
 async function unlockAdmin(password, email = "") {
   if (CONFIG.ADMIN_MODE === "supabase-auth") {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (!normalizedEmail) {
+      dom.adminLoginError.textContent = "Inserisci email admin.";
+      return;
+    }
+    if (!String(password || "").trim()) {
+      dom.adminLoginError.textContent = "Inserisci password admin.";
+      return;
+    }
     const sb = await getSupabaseClient();
     if (!sb) {
       dom.adminLoginError.textContent = "Supabase non configurato.";
       return;
     }
     const { error } = await sb.auth.signInWithPassword({
-      email: String(email || "").trim(),
+      email: normalizedEmail,
       password
     });
     if (error) {
@@ -535,6 +641,10 @@ function bindEvents() {
   dom.productSearchInput?.addEventListener("input", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
   dom.productSortSelect?.addEventListener("change", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
   dom.productSelect?.addEventListener("change", (event) => fillProductForm(event.target.value));
+  dom.productNewButton?.addEventListener("click", () => {
+    dom.productSelect.value = "__new__";
+    fillProductForm("__new__");
+  });
 
   dom.checkoutForm.addEventListener("change", (event) => {
     if (event.target.name === "fulfillment") setFulfillmentUi();
@@ -550,6 +660,10 @@ function bindEvents() {
   document.querySelector("[data-product-form]").addEventListener("submit", async (event) => {
     event.preventDefault();
     await saveProductFromForm();
+  });
+  document.querySelector("[data-sections-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveSiteSectionsFromForm();
   });
   document.querySelector("[data-cut-form]").addEventListener("submit", async (event) => {
     event.preventDefault();

@@ -50,7 +50,7 @@
         <div class="hero__content">
           <p class="eyebrow">Shop essentials</p>
           <h1 id="hero-title">Fresh gear.<br><span>Zero cap.</span></h1>
-          <p class="hero__copy">Prodotti professionali, strumenti da banco e disponibilità aggiornata per uno shop barber pronto a vendere.</p>
+          <p class="hero__copy" data-hero-copy>Prodotti professionali, strumenti da banco e disponibilità aggiornata per uno shop barber pronto a vendere.</p>
           <div class="hero__actions">
             <a class="primary-button" href="#shop">Vedi prodotti</a>
             <a class="outline-button" href="#fresh-cut">Taglio del giorno</a>
@@ -163,7 +163,7 @@
       <section class="page-view" id="support" data-page="support" aria-labelledby="support-title">
         <div class="page-banner page-banner--support">
           <p class="eyebrow">Contatti</p>
-          <h1 id="support-title">No Cap Barbershop</h1>
+          <h1 id="support-title" data-support-title>No Cap Barbershop</h1>
           <p>Passa in shop, chiamaci o scrivici per prenotazioni, prodotti e informazioni.</p>
         </div>
         <div class="contact-section">
@@ -266,13 +266,12 @@
 
             <div class="checkout-block">
               <h2>Pagamento demo</h2>
-              <p class="checkout-note">Nessun pagamento reale viene eseguito in modalità demo. In produzione integra Stripe Checkout.</p>
-              <label class="checkout-radio"><input type="radio" name="paymentMode" value="in-shop" checked><span>Pagamento in negozio</span></label>
-              <label class="checkout-radio"><input type="radio" name="paymentMode" value="demo-checkout"><span>Demo checkout</span></label>
-              <label class="checkout-radio"><input type="radio" name="paymentMode" value="future-link"><span>Link pagamento futuro</span></label>
+              <p class="checkout-note">Nessun pagamento reale viene eseguito in modalità demo. In produzione collega PayPal Checkout o Stripe.</p>
+              <label class="checkout-radio"><input type="radio" name="paymentMode" value="in-shop" checked><span>Pagamento in sede</span></label>
+              <label class="checkout-radio"><input type="radio" name="paymentMode" value="paypal"><span>Pagamento con PayPal</span></label>
             </div>
 
-            <button class="primary-button primary-button--wide" type="submit" data-pay-now>Paga ora (demo)</button>
+            <button class="primary-button primary-button--wide" type="submit" data-pay-now>Conferma ordine (demo)</button>
           </form>
 
           <aside class="checkout-summary" data-checkout-summary>
@@ -415,8 +414,31 @@
               <input type="file" accept="image/*" data-product-lifestyle>
             </label>
             <div class="fresh-cut-form__actions">
+              <button class="outline-button outline-button--light" type="button" data-product-new>Nuovo prodotto</button>
               <button class="primary-button" type="submit">Salva prodotto</button>
               <button class="ghost-button ghost-button--light" type="button" data-product-delete>Rimuovi prodotto</button>
+            </div>
+          </form>
+
+          <form class="fresh-cut-form admin-cut-form" data-sections-form>
+            <div class="section-heading section-heading--light section-heading--compact">
+              <div>
+                <p class="eyebrow">Site editor</p>
+                <h2>Modifica sezioni</h2>
+              </div>
+              <p>Aggiorna i testi principali del sito senza toccare il codice.</p>
+            </div>
+            <label>Titolo hero
+              <input type="text" data-section-hero-title required>
+            </label>
+            <label>Testo hero
+              <textarea rows="3" data-section-hero-copy required></textarea>
+            </label>
+            <label>Titolo contatti
+              <input type="text" data-section-support-title required>
+            </label>
+            <div class="fresh-cut-form__actions">
+              <button class="primary-button" type="submit">Salva sezioni</button>
             </div>
           </form>
 

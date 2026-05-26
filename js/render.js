@@ -41,6 +41,7 @@ export function getDom() {
     inventoryBody: document.querySelector("[data-inventory-body]"),
     productCategoryInput: document.querySelector("[data-product-category]"),
     productLifestyleInput: document.querySelector("[data-product-lifestyle]"),
+    productNewButton: document.querySelector("[data-product-new]"),
     productNameInput: document.querySelector("[data-product-name]"),
     productPackshotInput: document.querySelector("[data-product-packshot]"),
     productPriceInput: document.querySelector("[data-product-price]"),
@@ -49,6 +50,11 @@ export function getDom() {
     productSearchInput: document.querySelector("[data-product-search]"),
     productSortSelect: document.querySelector("[data-product-sort]"),
     productDeleteButton: document.querySelector("[data-product-delete]"),
+    sectionHeroCopyInput: document.querySelector("[data-section-hero-copy]"),
+    sectionHeroTitleInput: document.querySelector("[data-section-hero-title]"),
+    sectionSupportTitleInput: document.querySelector("[data-section-support-title]"),
+    siteHeroCopy: document.querySelector("[data-hero-copy]"),
+    siteSupportTitle: document.querySelector("[data-support-title]"),
     orderNumber: document.querySelector("[data-order-number]"),
     shippingFields: document.querySelector("[data-shipping-fields]"),
     showcaseGrid: document.querySelector("[data-showcase-grid]"),
@@ -97,7 +103,7 @@ export function renderProducts(dom, products, inventory, activeCategory) {
           </div>
           <div class="product-card__body">
             <div class="product-card__category">${escapeHtml(product.label)}</div>
-            ${badge ? `<div class="stock-badge" data-level="${soldOut ? "empty" : "ok"}">${escapeHtml(badge)}</div>` : ""}
+            ${badge ? `<div class="product-badge" data-level="${soldOut ? "empty" : "ok"}">${escapeHtml(badge)}</div>` : ""}
             <h3>${escapeHtml(product.name)}</h3>
             <p class="product-card__copy">${escapeHtml(product.description || "Prodotto professionale No Cap.")}</p>
             <div class="product-card__price">${formatCurrency(product.price)}</div>

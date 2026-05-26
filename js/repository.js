@@ -13,6 +13,7 @@ import { todayISO } from "./utils.js";
 const CART_STORAGE_KEY = "no-cap-cart-v2";
 const ORDERS_STORAGE_KEY = "no-cap-orders-v1";
 const LEADS_STORAGE_KEY = "no-cap-leads-v1";
+const SITE_SECTIONS_STORAGE_KEY = "no-cap-site-sections-v1";
 
 function loadJson(key, fallback) {
   try {
@@ -61,6 +62,28 @@ export async function getProducts() {
 }
 
 export async function saveProducts(nextProducts) {
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    await sb.from("products").upsert(
+      nextProducts.map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        label: item.label,
+        description: item.description || "",
+        price: item.price,
+        stock: item.stock ?? 0,
+        restock: item.restock ?? 0,
+        packshot_url: item.images?.packshot || "",
+        lifestyle_url: item.images?.lifestyle || "",
+        colors: item.colors || [],
+        shape: item.shape || "jar",
+        badge: item.badge || "",
+        is_active: true
+      })),
+      { onConflict: "id" }
+    );
+  }
   saveJson(PRODUCTS_STORAGE_KEY, nextProducts);
 }
 
@@ -70,6 +93,11 @@ export async function getInventory() {
 }
 
 export async function saveInventory(inventory) {
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    const rows = Object.entries(inventory).map(([id, stock]) => ({ id, stock: Number(stock || 0) }));
+    await sb.from("products").upsert(rows, { onConflict: "id" });
+  }
   saveJson(INVENTORY_STORAGE_KEY, inventory);
 }
 
@@ -106,6 +134,35 @@ export async function getOrders() {
 }
 
 export async function createOrder(order) {
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    await sb.from("orders").insert({
+      id: order.id,
+      order_number: order.orderNumber,
+      customer_name: order.customer.fullName,
+      customer_email: order.customer.email,
+      customer_phone: order.customer.phone,
+      fulfillment: order.fulfillment,
+      address: order.shippingAddress?.address || null,
+      city: order.shippingAddress?.city || null,
+      zip: order.shippingAddress?.zip || null,
+      subtotal: order.subtotal,
+      shipping: order.shipping,
+      total: order.total,
+      status: order.status,
+      payment_mode: order.paymentMode
+    });
+    if (order.items?.length) {
+      await sb.from("order_items").insert(order.items.map((item) => ({
+        order_id: order.id,
+        product_id: item.productId,
+        product_name: item.productName,
+        unit_price: item.unitPrice,
+        quantity: item.quantity,
+        line_total: item.lineTotal
+      })));
+    }
+  }
   const list = await getOrders();
   const created = { ...order, createdAt: order.createdAt || new Date().toISOString() };
   list.unshift(created);
@@ -118,6 +175,18 @@ export async function getLeads() {
 }
 
 export async function createLead(lead) {
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    await sb.from("leads").insert({
+      id: lead.id || `lead-${Date.now()}`,
+      email: lead.email,
+      phone: lead.phone || null,
+      subject: lead.subject || null,
+      message: lead.message,
+      privacy_accepted: Boolean(lead.privacy_accepted),
+      source: lead.source || "site"
+    });
+  }
   const list = await getLeads();
   const created = { ...lead, id: lead.id || `lead-${Date.now()}`, createdAt: lead.createdAt || new Date().toISOString() };
   list.unshift(created);
@@ -168,3 +237,14 @@ export async function uploadImage(file, options = {}) {
   return base64;
 }
 
+export async function getSiteSections() {
+  return loadJson(SITE_SECTIONS_STORAGE_KEY, {
+    heroTitle: "Fresh gear. Zero cap.",
+    heroCopy: "Prodotti professionali, strumenti da banco e disponibilità aggiornata per uno shop barber pronto a vendere.",
+    supportTitle: "No Cap Barbershop"
+  });
+}
+
+export async function saveSiteSections(sections) {
+  saveJson(SITE_SECTIONS_STORAGE_KEY, sections);
+}

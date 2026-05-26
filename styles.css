@@ -1066,6 +1066,25 @@ button {
   font-size: 0.74rem;
 }
 
+.product-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-bottom: 8px;
+  padding: 0 8px;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--white);
+  background: rgba(212, 15, 25, 0.24);
+  border-left: 2px solid var(--red);
+}
+
+.product-badge[data-level="empty"] {
+  background: var(--red);
+}
+
 .product-card h3 {
   margin: 0;
   font-family: var(--font-display);
