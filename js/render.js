@@ -42,8 +42,8 @@ export function renderProducts(dom, products, inventory, activeCategory) {
       return `
         <article class="product-card ${soldOut ? "is-sold-out" : ""}" style="--stagger:${index * 70}ms">
           <div class="product-media">
-            <img src="${productImage(product, "front")}" alt="${escapeHtml(product.name)} vista frontale" loading="lazy">
-            <img src="${productImage(product, "detail")}" alt="${escapeHtml(product.name)} seconda vista" loading="lazy">
+            <img src="${productImage(product, "front")}" alt="${escapeHtml(product.name)} vista frontale" loading="lazy" decoding="async">
+            <img src="${productImage(product, "detail")}" alt="${escapeHtml(product.name)} seconda vista" loading="lazy" decoding="async">
           </div>
           <div class="product-card__body">
             <div class="product-card__category">${escapeHtml(product.label)}</div>
@@ -119,7 +119,7 @@ export function renderCart(dom, cart) {
   dom.cartItems.innerHTML = cart
     .map(({ product, quantity }) => `
       <article class="cart-item">
-        <img src="${productImage(product, "front")}" alt="${escapeHtml(product.name)}">
+        <img src="${productImage(product, "front")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">
         <div>
           <h3>${escapeHtml(product.name)}</h3>
           <p>${quantity} x ${formatCurrency(product.price)}</p>
@@ -158,7 +158,7 @@ export function renderShowcase(dom, monthlyCuts) {
   dom.showcaseGrid.innerHTML = currentCuts
     .map((cut, index) => `
       <article class="showcase-card" style="--stagger:${index * 80}ms">
-        <img src="${cut.image}" alt="${escapeHtml(cut.name)}" loading="lazy">
+        <img src="${cut.image}" alt="${escapeHtml(cut.name)}" loading="lazy" decoding="async">
         <div class="showcase-card__body">
           <div class="showcase-card__date">${formatDisplayDate(cut.date || todayISO())}</div>
           <h3>${escapeHtml(cut.name)}</h3>

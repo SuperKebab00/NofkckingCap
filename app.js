@@ -11,6 +11,7 @@ import { readImageFile, todayISO } from "./js/utils.js";
 
 const fallbackInventory = Object.fromEntries(products.map((product) => [product.id, product.stock]));
 const savedFeaturedCut = loadJson(FEATURED_CUT_STORAGE_KEY, defaultFreshCut);
+const MAX_MONTHLY_CUTS = 24;
 
 const state = {
   activeCategory: "all",
@@ -26,12 +27,23 @@ let lastFocusedElement = null;
 
 function normalizeCuts(cuts) {
   const list = Array.isArray(cuts) && cuts.length ? cuts : [defaultFreshCut];
-  return list.map((cut, index) => ({
+  const normalized = list.map((cut, index) => ({
     ...defaultFreshCut,
     ...cut,
     id: cut.id || `cut-${index}`,
     date: cut.date || todayISO()
   })).map(normalizeFeaturedCut);
+
+  const uniqueCuts = [];
+  const seen = new Set();
+  for (const cut of normalized) {
+    const key = `${cut.date}|${cut.name.toLowerCase().trim()}|${cut.image.slice(0, 80)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueCuts.push(cut);
+    if (uniqueCuts.length >= MAX_MONTHLY_CUTS) break;
+  }
+  return uniqueCuts;
 }
 
 function normalizeFeaturedCut(cut) {
@@ -121,7 +133,7 @@ async function publishFreshCut() {
     };
 
     state.featuredCut = newCut;
-    state.monthlyCuts = [newCut, ...state.monthlyCuts];
+    state.monthlyCuts = normalizeCuts([newCut, ...state.monthlyCuts]);
     saveJson(FEATURED_CUT_STORAGE_KEY, state.featuredCut);
     saveJson(MONTHLY_CUTS_STORAGE_KEY, state.monthlyCuts);
     syncUi();
@@ -167,19 +179,22 @@ function routeToPage() {
     link.classList.toggle("is-active", link.getAttribute("href") === `#${validRoute}`);
   });
 
-  window.scrollTo({ top: 0, behavior: "instant" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 function openDrawer(drawer, triggerSelector) {
   lastFocusedElement = document.activeElement;
   drawer.setAttribute("aria-hidden", "false");
   document.querySelectorAll(triggerSelector).forEach((button) => button.setAttribute("aria-expanded", "true"));
+  document.body.classList.add("drawer-open");
   drawer.querySelector("button, [href], input, textarea")?.focus({ preventScroll: true });
 }
 
 function closeDrawer(drawer, triggerSelector) {
   drawer.setAttribute("aria-hidden", "true");
   document.querySelectorAll(triggerSelector).forEach((button) => button.setAttribute("aria-expanded", "false"));
+  const anyDrawerOpen = [dom.cartDrawer, dom.adminDrawer].some((item) => item.getAttribute("aria-hidden") === "false");
+  if (!anyDrawerOpen) document.body.classList.remove("drawer-open");
   lastFocusedElement?.focus?.({ preventScroll: true });
 }
 

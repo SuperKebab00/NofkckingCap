@@ -128,6 +128,6 @@ export const defaultFreshCut = {
   id: "default-cut",
   name: "Skin fade crop",
   description: "Sfumatura pulita, texture naturale e finish opaco. Il taglio del giorno pronto per homepage, social e vetrina shop.",
-  image: "Img/5.png",
+  image: "Img/5.webp",
   date: todayISO()
 };

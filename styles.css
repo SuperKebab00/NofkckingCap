@@ -28,9 +28,16 @@ body {
   color: var(--ink);
   background:
     linear-gradient(rgba(247, 245, 241, 0.91), rgba(247, 245, 241, 0.91)),
-    url("Img/BACKGROUND SLIDE.png") center top / cover fixed;
+    url("Img/BACKGROUND SLIDE.webp") center top / cover fixed;
   font-family: var(--font-body);
   letter-spacing: 0;
+}
+
+
+
+body.drawer-open {
+  overflow: hidden;
+  touch-action: none;
 }
 
 button,
@@ -54,7 +61,7 @@ button {
   display: grid;
   grid-template-columns: 220px 1fr auto;
   align-items: center;
-  min-height: 76px;
+  min-height: 70px;
   padding: 0 max(7vw, env(safe-area-inset-left)) 0 max(7vw, env(safe-area-inset-right));
   background: rgba(255, 255, 255, 0.94);
   border-bottom: 1px solid var(--line);
@@ -63,7 +70,7 @@ button {
 }
 
 .site-header[data-elevated="true"] {
-  min-height: 66px;
+  min-height: 62px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
 }
 
@@ -203,12 +210,12 @@ button {
   position: relative;
   display: grid;
   grid-template-columns: 1fr minmax(180px, 18vw);
-  min-height: clamp(520px, 68vh, 720px);
+  min-height: min(70dvh, 680px);
   overflow: hidden;
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.84) 39%, rgba(0, 0, 0, 0.15) 72%),
-    url("Img/1.png") center 17% / cover;
+    url("Img/1.webp") center 17% / cover;
 }
 
 .hero::before {
@@ -223,7 +230,7 @@ button {
   z-index: 1;
   align-self: center;
   max-width: 800px;
-  padding: 76px 7vw 92px;
+  padding: clamp(38px, 6dvh, 72px) 7vw clamp(44px, 6dvh, 76px);
 }
 
 .hero__side-text {
@@ -266,7 +273,7 @@ button {
 .hero__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 12px;
   margin-top: 32px;
 }
 
@@ -373,7 +380,8 @@ button {
 
 .page-view {
   display: none;
-  min-height: calc(100vh - 76px);
+  min-height: calc(100svh - 70px);
+  overflow-x: clip;
 }
 
 .page-view.is-active {
@@ -389,7 +397,7 @@ button {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.56)),
-    url("Img/2.png") center / cover;
+    url("Img/2.webp") center / cover;
 }
 
 .page-banner::after {
@@ -430,13 +438,13 @@ button {
 .page-banner--showcase {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.58)),
-    url("Img/6.png") center / cover;
+    url("Img/6.webp") center / cover;
 }
 
 .page-banner--support {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.58)),
-    url("Img/BACKGROUND SLIDE.png") center / cover;
+    url("Img/BACKGROUND SLIDE.webp") center / cover;
 }
 
 .category-bar {
@@ -461,7 +469,7 @@ button {
   position: relative;
   display: grid;
   align-content: end;
-  min-height: 220px;
+  min-height: clamp(112px, 16dvh, 180px);
   padding: 24px;
   overflow: hidden;
   color: var(--white);
@@ -500,23 +508,23 @@ button {
 }
 
 .section-banner--shop::before {
-  background-image: url("Img/2.png");
+  background-image: url("Img/2.webp");
 }
 
 .section-banner--styling::before {
-  background-image: url("Img/3.png");
+  background-image: url("Img/3.webp");
 }
 
 .section-banner--tools::before {
-  background-image: url("Img/4.png");
+  background-image: url("Img/4.webp");
 }
 
 .section-banner--cut::before {
-  background-image: url("Img/5.png");
+  background-image: url("Img/5.webp");
 }
 
 .section-banner--showcase::before {
-  background-image: url("Img/6.png");
+  background-image: url("Img/6.webp");
 }
 
 .section-banner:hover,
@@ -601,7 +609,7 @@ button {
 }
 
 .shop-section {
-  padding: 48px 7vw 72px;
+  padding: 40px 7vw 64px;
 }
 
 .fresh-cut-section {
@@ -613,7 +621,7 @@ button {
   color: var(--white);
   background:
     linear-gradient(115deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.9) 48%, rgba(152, 9, 18, 0.92) 48% 100%),
-    url("Img/5.png") center / cover;
+    url("Img/5.webp") center / cover;
 }
 
 .fresh-cut__media {
@@ -759,8 +767,8 @@ button {
 .showcase-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  padding: 48px 7vw 72px;
+  gap: 12px;
+  padding: 40px 7vw 64px;
 }
 
 .showcase-card {
@@ -887,7 +895,7 @@ button {
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .product-card {
@@ -1077,7 +1085,7 @@ button {
   top: 0;
   right: 0;
   width: min(980px, 100vw);
-  height: 100%;
+  height: 100dvh;
   padding-bottom: env(safe-area-inset-bottom);
   overflow-y: auto;
   background: var(--ink);
@@ -1093,7 +1101,7 @@ button {
 }
 
 .admin-drawer .inventory-shell {
-  min-height: 100%;
+  min-height: 100dvh;
   box-shadow: none;
 }
 
@@ -1200,7 +1208,7 @@ button {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1px;
-  padding: 48px 7vw 72px;
+  padding: 40px 7vw 64px;
 }
 
 .service-strip article {
@@ -1301,7 +1309,7 @@ button {
 
 .contact-form {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   padding: clamp(22px, 4vw, 38px);
 }
 
@@ -1383,7 +1391,7 @@ button {
   display: grid;
   grid-template-rows: auto 1fr auto;
   width: min(430px, 100vw);
-  height: 100%;
+  height: 100dvh;
   padding: 24px;
   padding-bottom: max(24px, env(safe-area-inset-bottom));
   color: var(--white);
@@ -1581,19 +1589,37 @@ button {
   .site-header {
     grid-template-columns: 1fr auto;
     gap: 10px;
-    padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+    min-height: 58px;
+    padding: 8px max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left));
   }
 
   .main-nav {
     grid-column: 1 / -1;
     justify-content: start;
-    gap: 18px;
+    gap: 10px;
     overflow-x: auto;
-    padding-bottom: 6px;
+    padding-bottom: 4px;
     scrollbar-width: none;
   }
 
   .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main-nav a {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .main-nav a.is-active {
+    color: var(--white);
+    background: var(--red);
+  }
+
+  .main-nav a::after {
     display: none;
   }
 
@@ -1602,16 +1628,17 @@ button {
   .primary-button,
   .outline-button,
   .ghost-button {
-    min-height: 44px;
+    min-height: 40px;
   }
 
   .hero {
     grid-template-columns: 1fr;
-    min-height: 620px;
+    min-height: min(62dvh, 540px);
+    background-position: 62% 22%;
   }
 
   .hero__content {
-    padding: 56px 22px 150px;
+    padding: 30px 16px 116px;
   }
 
   .hero__side-text {
@@ -1623,7 +1650,7 @@ button {
     right: 0;
     bottom: 0;
     width: min(230px, 64vw);
-    height: 128px;
+    height: 96px;
   }
 
   .hero__panel span {
@@ -1644,7 +1671,8 @@ button {
   }
 
   .shop-section {
-    padding-top: 32px;
+    padding-top: 26px;
+    padding-bottom: 48px;
   }
 
   .product-grid,
@@ -1659,15 +1687,19 @@ button {
   }
 
   .section-banner {
-    min-height: 168px;
+    min-height: 136px;
   }
 
   .fresh-cut-section {
-    padding: 52px 16px;
+    padding: 40px 16px;
   }
 
   .fresh-cut__media {
-    min-height: 360px;
+    min-height: min(48dvh, 320px);
+  }
+
+  .fresh-cut__media img {
+    object-position: 60% center;
   }
 
   .fresh-cut__content {
@@ -1691,7 +1723,10 @@ button {
 
   .showcase-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
     padding-inline: 16px;
+    padding-top: 30px;
+    padding-bottom: 52px;
   }
 
   .contact-section {
@@ -1709,6 +1744,7 @@ button {
   .admin-drawer__panel,
   .cart-drawer__panel {
     width: 100vw;
+    height: 100dvh;
     border-left: 0;
   }
 
@@ -1718,6 +1754,7 @@ button {
 
   .category-bar {
     justify-content: start;
+    gap: 22px;
     padding-inline: 16px;
     scrollbar-width: none;
   }
@@ -1739,6 +1776,11 @@ button {
     flex-direction: column;
   }
 
+  .product-card {
+    min-height: 290px;
+    padding: 14px;
+  }
+
   .product-card .primary-button {
     width: 100%;
   }
@@ -1751,3 +1793,4 @@ button {
     min-width: 620px;
   }
 }
+
