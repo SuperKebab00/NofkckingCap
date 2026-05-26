@@ -454,6 +454,12 @@ button {
   line-height: 1.7;
 }
 
+.shop-dynamic-copy {
+  margin-top: 10px !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-weight: 600;
+}
+
 .page-banner--showcase {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.58)),
@@ -1711,6 +1717,52 @@ button {
   flex-wrap: nowrap;
 }
 
+.admin-block--manage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+.admin-block--manage > .section-heading,
+.admin-block--manage > .inventory-actions,
+.admin-block--manage > .inventory-summary,
+.admin-block--manage > .inventory-table-wrap {
+  grid-column: 1 / -1;
+}
+
+.admin-cut-form select,
+.admin-cut-form input[type="date"],
+.admin-cut-form input[type="number"],
+.admin-cut-form input[type="text"],
+.admin-cut-form textarea {
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--white);
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.admin-cut-form select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--red) 50%),
+    linear-gradient(135deg, var(--red) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+.admin-cut-form select:focus,
+.admin-cut-form input:focus,
+.admin-cut-form textarea:focus {
+  border-color: var(--red);
+  background-color: rgba(0, 0, 0, 0.58);
+}
+
 .cart-drawer {
   position: fixed;
   inset: 0;
@@ -1953,6 +2005,10 @@ button {
 
   .admin-block--manage .inventory-actions {
     flex-wrap: wrap;
+  }
+
+  .admin-block--manage {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -14,6 +14,9 @@ const CART_STORAGE_KEY = "no-cap-cart-v2";
 const ORDERS_STORAGE_KEY = "no-cap-orders-v1";
 const LEADS_STORAGE_KEY = "no-cap-leads-v1";
 const SITE_SECTIONS_STORAGE_KEY = "no-cap-site-sections-v1";
+const SHOP_SECTIONS_TABLE = "shop_sections";
+const SHOP_CATEGORIES_TABLE = "shop_categories";
+const SHOP_BANNER_KEY = "shop-banner";
 
 function loadJson(key, fallback) {
   try {
@@ -238,7 +241,7 @@ export async function uploadImage(file, options = {}) {
 }
 
 export async function getSiteSections() {
-  return loadJson(SITE_SECTIONS_STORAGE_KEY, {
+  const fallback = loadJson(SITE_SECTIONS_STORAGE_KEY, {
     shopTitle: "Prodotti No Cap",
     shopCopy: "Catalogo professionale, disponibilita aggiornata e acquisto rapido.",
     shopCategories: [
@@ -249,9 +252,104 @@ export async function getSiteSections() {
       { value: "accessories", label: "Accessories" }
     ]
   });
+
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    try {
+      const [{ data: sectionData }, { data: categoryData }] = await Promise.all([
+        sb.from(SHOP_SECTIONS_TABLE).select("title, subtitle").eq("key", SHOP_BANNER_KEY).maybeSingle(),
+        sb.from(SHOP_CATEGORIES_TABLE).select("value, label, sort_order, is_active").eq("is_active", true).order("sort_order", { ascending: true })
+      ]);
+
+      const remote = {
+        shopTitle: sectionData?.title || fallback.shopTitle,
+        shopCopy: sectionData?.subtitle || fallback.shopCopy,
+        shopCategories: Array.isArray(categoryData) && categoryData.length
+          ? categoryData.map((row) => ({ value: row.value, label: row.label }))
+          : fallback.shopCategories
+      };
+
+      saveJson(SITE_SECTIONS_STORAGE_KEY, remote);
+      return remote;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
 }
 
 export async function saveSiteSections(sections) {
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    try {
+      await sb.from(SHOP_SECTIONS_TABLE).upsert({
+        key: SHOP_BANNER_KEY,
+        title: sections.shopTitle || "Prodotti No Cap",
+        subtitle: sections.shopCopy || "",
+        is_active: true,
+        sort_order: 10,
+        settings: {}
+      }, { onConflict: "key" });
+
+      if (Array.isArray(sections.shopCategories)) {
+        const nextCategories = sections.shopCategories.map((category, index) => ({
+          value: category.value,
+          label: category.label,
+          is_active: true,
+          sort_order: index + 1
+        }));
+
+        await sb.from(SHOP_CATEGORIES_TABLE).upsert(
+          nextCategories,
+          { onConflict: "value" }
+        );
+
+        const nextValues = new Set(nextCategories.map((item) => item.value));
+        const { data: existing } = await sb.from(SHOP_CATEGORIES_TABLE).select("value");
+        const toDisable = (existing || [])
+          .map((row) => row.value)
+          .filter((value) => !nextValues.has(value));
+
+        if (toDisable.length) {
+          await sb.from(SHOP_CATEGORIES_TABLE).update({ is_active: false }).in("value", toDisable);
+        }
+
+        await sb.from(SHOP_CATEGORIES_TABLE).update({ is_active: true }).in("value", [...nextValues]);
+      }
+    } catch {
+      // Fallback locale handled below.
+    }
+  }
+
   saveJson(SITE_SECTIONS_STORAGE_KEY, sections);
+}
+
+export async function getShopSectionItems(sectionKey) {
+  const sb = await getSupabaseOrNull();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("shop_section_items")
+    .select("item_key, content, sort_order")
+    .eq("section_key", sectionKey)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  return Array.isArray(data) ? data : [];
+}
+
+export async function saveShopSectionItems(sectionKey, items) {
+  const sb = await getSupabaseOrNull();
+  if (!sb) return;
+  const list = Array.isArray(items) ? items : [];
+  await sb.from("shop_section_items").upsert(
+    list.map((item, index) => ({
+      section_key: sectionKey,
+      item_key: item.item_key || item.key || `item-${index + 1}`,
+      content: item.content || {},
+      sort_order: Number(item.sort_order ?? index + 1),
+      is_active: item.is_active !== false
+    })),
+    { onConflict: "section_key,item_key" }
+  );
 }
 
