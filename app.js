@@ -1,28 +1,7 @@
 import { CONFIG } from "./js/config.js";
 import { defaultFreshCut } from "./js/data.js";
 import { getSupabaseClient } from "./js/supabase-client.js";
-import {
-  clearCart,
-  createLead,
-  createOrder,
-  getCart,
-  getFeaturedCut,
-  getInventory,
-  getLeads,
-  getMonthlyCuts,
-  getOrders,
-  getProducts,
-  getSiteSections,
-  getShopSectionItems,
-  saveCart,
-  saveFeaturedCut,
-  saveInventory,
-  saveMonthlyCuts,
-  saveSiteSections,
-  saveShopSectionItems,
-  saveProducts,
-  uploadImage
-} from "./js/repository.js";
+import * as repository from "./js/repository.js";
 import {
   getDom,
   renderCart,
@@ -34,6 +13,30 @@ import {
   renderShowcase
 } from "./js/render.js";
 import { formatCurrency, todayISO } from "./js/utils.js";
+
+const {
+  clearCart,
+  createLead,
+  createOrder,
+  getCart,
+  getFeaturedCut,
+  getInventory,
+  getLeads,
+  getMonthlyCuts,
+  getOrders,
+  getProducts,
+  getSiteSections,
+  saveCart,
+  saveFeaturedCut,
+  saveInventory,
+  saveMonthlyCuts,
+  saveSiteSections,
+  saveProducts,
+  uploadImage
+} = repository;
+
+const getShopSectionItems = repository.getShopSectionItems || (async () => []);
+const saveShopSectionItems = repository.saveShopSectionItems || (async () => {});
 
 const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
 const MAX_MONTHLY_CUTS = 24;
