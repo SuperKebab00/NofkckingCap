@@ -41,6 +41,7 @@ export function getDom() {
     productPriceInput: document.querySelector("[data-product-price]"),
     productRestockInput: document.querySelector("[data-product-restock]"),
     productSelect: document.querySelector("[data-product-select]"),
+    productDeleteButton: document.querySelector("[data-product-delete]"),
     orderNumber: document.querySelector("[data-order-number]"),
     shippingFields: document.querySelector("[data-shipping-fields]"),
     showcaseGrid: document.querySelector("[data-showcase-grid]"),

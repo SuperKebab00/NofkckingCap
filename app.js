@@ -90,6 +90,7 @@ function fillProductForm(productId) {
   dom.productCategoryInput.value = product.category;
   dom.productPriceInput.value = product.price;
   dom.productRestockInput.value = product.restock;
+  dom.productDeleteButton.disabled = state.products.length <= 1;
 }
 
 async function saveProductFromForm() {
@@ -116,6 +117,25 @@ async function saveProductFromForm() {
   dom.productLifestyleInput.value = "";
   syncUi();
   showToast("Prodotto aggiornato.");
+}
+
+function deleteSelectedProduct() {
+  if (state.products.length <= 1) {
+    showToast("Serve almeno un prodotto nel catalogo.");
+    return;
+  }
+
+  const productId = dom.productSelect.value;
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return;
+
+  state.products = state.products.filter((item) => item.id !== productId);
+  state.cart = state.cart.filter((item) => item.product.id !== productId);
+  delete state.inventory[productId];
+  saveJson(PRODUCTS_STORAGE_KEY, state.products);
+  saveJson(INVENTORY_STORAGE_KEY, state.inventory);
+  syncUi();
+  showToast(`${product.name} rimosso dal catalogo.`);
 }
 
 function setCategory(category) {
@@ -473,6 +493,10 @@ document.querySelector("[data-product-form]").addEventListener("submit", async (
 
 dom.productSelect?.addEventListener("change", (event) => {
   fillProductForm(event.target.value);
+});
+
+dom.productDeleteButton?.addEventListener("click", () => {
+  deleteSelectedProduct();
 });
 
 window.addEventListener("hashchange", routeToPage);
