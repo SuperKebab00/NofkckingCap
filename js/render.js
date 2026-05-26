@@ -15,6 +15,7 @@ export function getDom() {
     adminContent: document.querySelector("[data-admin-content]"),
     adminLoginError: document.querySelector("[data-admin-login-error]"),
     adminLoginForm: document.querySelector("[data-admin-login]"),
+    adminEmailInput: document.querySelector("[data-admin-email]"),
     adminPasswordInput: document.querySelector("[data-admin-password]"),
     demoActiveProducts: document.querySelector("[data-demo-active-products]"),
     demoLeads: document.querySelector("[data-demo-leads]"),
