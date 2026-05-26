@@ -3,11 +3,19 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>No Cap Barber Shop - Online Shop</title>
+    <title>No Cap Barber Shop | Shop prodotti barber professionali</title>
+    <meta name="description" content="Demo e-commerce No Cap Barber Shop: prodotti professionali, checkout demo, gestione stock e area admin locale.">
+    <meta name="theme-color" content="#090909">
+    <meta property="og:title" content="No Cap Barber Shop">
+    <meta property="og:description" content="Shop barber professionale con demo checkout e gestione catalogo.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://example.pages.dev/">
+    <meta property="og:image" content="Img/wallpaper/1-opt.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="preload" as="image" href="Img/wallpaper/1-opt.webp" fetchpriority="high">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -107,6 +115,23 @@
             <p>Scopri prodotti, disponibilità e ultimi pezzi con un’esperienza e-commerce pensata per barber shop.</p>
           </div>
 
+          <div class="shop-tools">
+            <label>
+              Cerca
+              <input type="search" data-product-search placeholder="Cerca prodotto...">
+            </label>
+            <label>
+              Ordina
+              <select data-product-sort>
+                <option value="featured">Consigliati</option>
+                <option value="price-asc">Prezzo crescente</option>
+                <option value="price-desc">Prezzo decrescente</option>
+                <option value="available">Solo disponibili</option>
+                <option value="low-stock">Ultimi pezzi</option>
+              </select>
+            </label>
+          </div>
+
           <div class="product-grid" data-product-grid></div>
         </div>
       </section>
@@ -177,6 +202,11 @@
               Messaggio
               <textarea name="message" rows="5" placeholder="Scrivi qui il tuo messaggio..." required></textarea>
             </label>
+            <label class="checkout-radio">
+              <input type="checkbox" name="privacy" required>
+              <span>Accetto il trattamento dati per essere ricontattato.</span>
+            </label>
+            <a class="ghost-button" href="https://wa.me/393208839692" target="_blank" rel="noreferrer">Scrivici su WhatsApp</a>
             <button class="primary-button" type="submit">Invia richiesta</button>
           </form>
         </div>
@@ -236,25 +266,10 @@
 
             <div class="checkout-block">
               <h2>Pagamento demo</h2>
-              <p class="checkout-note">Pagamento dimostrativo — nessun addebito reale</p>
-              <label>Nome sulla carta
-                <input type="text" name="cardName" required>
-              </label>
-              <span class="field-error" data-error-for="cardName"></span>
-              <label>Numero carta
-                <input type="text" name="cardNumber" inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" required>
-              </label>
-              <span class="field-error" data-error-for="cardNumber"></span>
-              <div class="checkout-row">
-                <label>Scadenza
-                  <input type="text" name="cardExpiry" inputmode="numeric" maxlength="5" placeholder="MM/AA" required>
-                </label>
-                <label>CVC
-                  <input type="text" name="cardCvc" inputmode="numeric" maxlength="4" placeholder="123" required>
-                </label>
-              </div>
-              <span class="field-error" data-error-for="cardExpiry"></span>
-              <span class="field-error" data-error-for="cardCvc"></span>
+              <p class="checkout-note">Nessun pagamento reale viene eseguito in modalità demo. In produzione integra Stripe Checkout.</p>
+              <label class="checkout-radio"><input type="radio" name="paymentMode" value="in-shop" checked><span>Pagamento in negozio</span></label>
+              <label class="checkout-radio"><input type="radio" name="paymentMode" value="demo-checkout"><span>Demo checkout</span></label>
+              <label class="checkout-radio"><input type="radio" name="paymentMode" value="future-link"><span>Link pagamento futuro</span></label>
             </div>
 
             <button class="primary-button primary-button--wide" type="submit" data-pay-now>Paga ora (demo)</button>
@@ -274,9 +289,12 @@
           <p class="eyebrow">Ordine confermato</p>
           <h2>Pagamento demo completato</h2>
           <p>Numero ordine: <strong data-order-number>NC-0000-0000</strong></p>
+          <div data-checkout-success-summary></div>
           <div class="hero__actions">
             <a class="primary-button" href="#shop">Torna allo shop</a>
             <a class="ghost-button" href="#home">Torna alla home</a>
+            <button class="outline-button" type="button" data-copy-order>Copia riepilogo</button>
+            <button class="ghost-button" type="button" data-download-order>Scarica JSON ordine</button>
           </div>
         </div>
       </section>
@@ -305,10 +323,25 @@
             </div>
             <button class="icon-button" type="button" data-close-admin aria-label="Chiudi gestione">x</button>
           </div>
+          <p class="checkout-note">Modalità demo: questo accesso è locale e non sicuro. In produzione usare Supabase Auth.</p>
 
           <div class="inventory-actions">
             <button class="outline-button outline-button--light" type="button" data-restock-all>Rifornisci tutto</button>
             <button class="ghost-button ghost-button--light" type="button" data-reset-demo>Ripristina</button>
+            <button class="ghost-button ghost-button--light" type="button" data-admin-logout>Logout</button>
+          </div>
+
+          <div class="inventory-summary">
+            <article><span data-demo-orders>0</span><p>Ordini demo</p></article>
+            <article><span data-demo-leads>0</span><p>Lead demo</p></article>
+            <article><span data-demo-active-products>0</span><p>Prodotti attivi</p></article>
+          </div>
+
+          <div class="inventory-actions">
+            <button class="ghost-button ghost-button--light" type="button" data-export-products>Export prodotti</button>
+            <button class="ghost-button ghost-button--light" type="button" data-export-orders>Export ordini</button>
+            <button class="ghost-button ghost-button--light" type="button" data-export-leads>Export lead</button>
+            <button class="ghost-button ghost-button--light" type="button" data-export-cuts>Export tagli</button>
           </div>
 
           <form class="fresh-cut-form admin-cut-form" data-cut-form>

@@ -16,6 +16,9 @@ export function getDom() {
     adminLoginError: document.querySelector("[data-admin-login-error]"),
     adminLoginForm: document.querySelector("[data-admin-login]"),
     adminPasswordInput: document.querySelector("[data-admin-password]"),
+    demoActiveProducts: document.querySelector("[data-demo-active-products]"),
+    demoLeads: document.querySelector("[data-demo-leads]"),
+    demoOrders: document.querySelector("[data-demo-orders]"),
     cartCount: document.querySelector("[data-cart-count]"),
     cartDrawer: document.querySelector("#cartDrawer"),
     cartItems: document.querySelector("[data-cart-items]"),
@@ -23,6 +26,7 @@ export function getDom() {
     checkoutForm: document.querySelector("[data-checkout-form]"),
     checkoutItems: document.querySelector("[data-checkout-items]"),
     checkoutSuccess: document.querySelector("[data-checkout-success]"),
+    checkoutSuccessSummary: document.querySelector("[data-checkout-success-summary]"),
     checkoutSummary: document.querySelector("[data-checkout-summary]"),
     checkoutTotal: document.querySelector("[data-checkout-total]"),
     currentMonthLabel: document.querySelector("[data-current-month]"),
@@ -41,6 +45,8 @@ export function getDom() {
     productPriceInput: document.querySelector("[data-product-price]"),
     productRestockInput: document.querySelector("[data-product-restock]"),
     productSelect: document.querySelector("[data-product-select]"),
+    productSearchInput: document.querySelector("[data-product-search]"),
+    productSortSelect: document.querySelector("[data-product-sort]"),
     productDeleteButton: document.querySelector("[data-product-delete]"),
     orderNumber: document.querySelector("[data-order-number]"),
     shippingFields: document.querySelector("[data-shipping-fields]"),
@@ -50,13 +56,33 @@ export function getDom() {
 }
 
 export function renderProducts(dom, products, inventory, activeCategory) {
-  const filtered = products.filter((product) => activeCategory === "all" || product.category === activeCategory);
+  const search = (dom.productSearchInput?.value || "").trim().toLowerCase();
+  const sort = dom.productSortSelect?.value || "featured";
+  let filtered = products.filter((product) => activeCategory === "all" || product.category === activeCategory);
+  filtered = filtered.filter((product) => {
+    if (!search) return true;
+    return `${product.name} ${product.label} ${product.description || ""}`.toLowerCase().includes(search);
+  });
+
+  if (sort === "price-asc") filtered = filtered.sort((a, b) => a.price - b.price);
+  if (sort === "price-desc") filtered = filtered.sort((a, b) => b.price - a.price);
+  if (sort === "available") filtered = filtered.filter((product) => (inventory[product.id] ?? 0) > 0);
+  if (sort === "low-stock") filtered = filtered.filter((product) => {
+    const q = inventory[product.id] ?? 0;
+    return q > 0 && q <= 2;
+  });
+
+  if (!filtered.length) {
+    dom.grid.innerHTML = `<div class="showcase-empty"><strong>Nessun prodotto trovato</strong><span>Modifica ricerca, filtri o ordinamento.</span></div>`;
+    return;
+  }
 
   dom.grid.innerHTML = filtered
     .map((product, index) => {
       const quantity = inventory[product.id] ?? 0;
       const stock = getStockLabel(quantity);
       const soldOut = quantity <= 0;
+      const badge = soldOut ? "Esaurito" : (product.badge || "");
 
       const hasLifestyle = Boolean(product.images?.lifestyle);
       const packshot = resolveProductImage(product, "packshot");
@@ -70,7 +96,9 @@ export function renderProducts(dom, products, inventory, activeCategory) {
           </div>
           <div class="product-card__body">
             <div class="product-card__category">${escapeHtml(product.label)}</div>
+            ${badge ? `<div class="stock-badge" data-level="${soldOut ? "empty" : "ok"}">${escapeHtml(badge)}</div>` : ""}
             <h3>${escapeHtml(product.name)}</h3>
+            <p class="product-card__copy">${escapeHtml(product.description || "Prodotto professionale No Cap.")}</p>
             <div class="product-card__price">${formatCurrency(product.price)}</div>
             <div class="product-card__footer">
               <span class="stock-badge" data-level="${stock.level}">${stock.text}</span>
@@ -131,7 +159,6 @@ export function renderInventory(dom, products, inventory, monthlyCuts) {
   document.querySelector("[data-summary-soldout]").textContent = soldOut;
   document.querySelector("[data-summary-cuts]").textContent = monthlyCount;
   document.querySelector("[data-summary-value]").textContent = formatCurrency(inventoryValue);
-  document.querySelector("[data-summary-orders]").textContent = "12";
 }
 
 export function renderCart(dom, cart) {
@@ -196,6 +223,14 @@ export function renderCheckoutSummary(dom, cart) {
         <strong>${formatCurrency(product.price * quantity)}</strong>
       </article>`)
     .join("");
+}
+
+export function renderCheckoutSuccessSummary(dom, order) {
+  if (!order) return;
+  dom.checkoutSuccessSummary.innerHTML = `
+    <p><strong>Totale:</strong> ${formatCurrency(order.total)}</p>
+    <p><strong>Consegna:</strong> ${order.fulfillment === "shipping" ? "Spedizione" : "Ritiro in shop"}</p>
+    <p>${order.fulfillment === "shipping" ? "Riceverai aggiornamenti spedizione dal team." : "Ritiro disponibile in negozio durante gli orari di apertura."}</p>`;
 }
 
 export function renderShowcase(dom, monthlyCuts) {

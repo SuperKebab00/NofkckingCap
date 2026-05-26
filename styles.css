@@ -628,6 +628,29 @@ button {
   padding: 40px 7vw 64px;
 }
 
+.shop-tools {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.shop-tools label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.shop-tools input,
+.shop-tools select {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+}
+
 .fresh-cut-section {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
@@ -1056,6 +1079,13 @@ button {
   margin: 6px 0 14px;
   color: rgba(255, 255, 255, 0.84);
   font-weight: 700;
+}
+
+.product-card__copy {
+  margin: 8px 0 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .product-card__footer {
@@ -1914,6 +1944,10 @@ button {
   .shop-section,
   .service-strip {
     padding-inline: 16px;
+  }
+
+  .shop-tools {
+    grid-template-columns: 1fr;
   }
 
   .shop-section {

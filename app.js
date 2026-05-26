@@ -1,519 +1,572 @@
+import { CONFIG } from "./js/config.js";
+import { defaultFreshCut } from "./js/data.js";
 import {
-  defaultFreshCut,
-  FEATURED_CUT_STORAGE_KEY,
-  INVENTORY_STORAGE_KEY,
-  MONTHLY_CUTS_STORAGE_KEY,
-  PRODUCTS_STORAGE_KEY,
-  products
-} from "./js/data.js";
-import { getDom, renderCart, renderCheckoutSummary, renderFreshCut, renderInventory, renderProducts, renderShowcase } from "./js/render.js";
-import { loadJson, removeJson, saveJson } from "./js/storage.js";
-import { readImageFile, todayISO } from "./js/utils.js";
+  clearCart,
+  createLead,
+  createOrder,
+  getCart,
+  getFeaturedCut,
+  getInventory,
+  getLeads,
+  getMonthlyCuts,
+  getOrders,
+  getProducts,
+  saveCart,
+  saveFeaturedCut,
+  saveInventory,
+  saveMonthlyCuts,
+  saveProducts,
+  uploadImage
+} from "./js/repository.js";
+import {
+  getDom,
+  renderCart,
+  renderCheckoutSuccessSummary,
+  renderCheckoutSummary,
+  renderFreshCut,
+  renderInventory,
+  renderProducts,
+  renderShowcase
+} from "./js/render.js";
+import { formatCurrency, todayISO } from "./js/utils.js";
 
-const fallbackInventory = Object.fromEntries(products.map((product) => [product.id, product.stock]));
-const savedFeaturedCut = loadJson(FEATURED_CUT_STORAGE_KEY, defaultFreshCut);
+const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
 const MAX_MONTHLY_CUTS = 24;
-const ADMIN_PASSWORD = "nocap2026";
-const ADMIN_SESSION_STORAGE_KEY = "no-cap-admin-session-v1";
 
 const state = {
   activeCategory: "all",
-  adminAuthenticated: loadJson(ADMIN_SESSION_STORAGE_KEY, false) === true,
+  adminAuthenticated: sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
   cart: [],
-  featuredCut: normalizeFeaturedCut(savedFeaturedCut),
-  inventory: { ...fallbackInventory, ...loadJson(INVENTORY_STORAGE_KEY, {}) },
-  monthlyCuts: normalizeCuts(loadJson(MONTHLY_CUTS_STORAGE_KEY, [savedFeaturedCut || defaultFreshCut])),
-  products: normalizeProducts(loadJson(PRODUCTS_STORAGE_KEY, products)),
+  featuredCut: defaultFreshCut,
+  inventory: {},
+  leads: [],
+  monthlyCuts: [defaultFreshCut],
+  orders: [],
+  products: [],
   toastTimer: null
 };
 
 const dom = getDom();
-let lastFocusedElement = null;
+const drawerFocus = { previous: null };
 
 function normalizeCuts(cuts) {
   const list = Array.isArray(cuts) && cuts.length ? cuts : [defaultFreshCut];
-  const normalized = list.map((cut, index) => ({
-    ...defaultFreshCut,
-    ...cut,
-    id: cut.id || `cut-${index}`,
-    date: cut.date || todayISO()
-  })).map(normalizeFeaturedCut);
-
-  const uniqueCuts = [];
+  const unique = [];
   const seen = new Set();
-  for (const cut of normalized) {
-    const key = `${cut.date}|${cut.name.toLowerCase().trim()}|${cut.image.slice(0, 80)}`;
+  for (const cut of list) {
+    const normalized = { ...defaultFreshCut, ...cut, date: cut?.date || todayISO() };
+    const key = `${normalized.date}|${normalized.name}|${String(normalized.image).slice(0, 80)}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    uniqueCuts.push(cut);
-    if (uniqueCuts.length >= MAX_MONTHLY_CUTS) break;
+    unique.push(normalized);
+    if (unique.length >= MAX_MONTHLY_CUTS) break;
   }
-  return uniqueCuts;
+  return unique;
 }
 
-function normalizeFeaturedCut(cut) {
-  const mergedCut = { ...defaultFreshCut, ...cut };
-  const isLegacyPlaceholder = String(mergedCut.image).startsWith("data:image/svg+xml");
-  return isLegacyPlaceholder ? { ...mergedCut, image: defaultFreshCut.image } : mergedCut;
+function normalizeCart(rawCart, products, inventory) {
+  const normalized = [];
+  for (const row of rawCart || []) {
+    const productId = row.productId || row.id;
+    const quantity = Number(row.quantity || 0);
+    const product = products.find((item) => item.id === productId);
+    if (!product || quantity <= 0) continue;
+    const maxQty = Math.max(0, Number(inventory[productId] ?? 0));
+    if (maxQty <= 0) continue;
+    normalized.push({ productId, quantity: Math.min(quantity, maxQty) });
+  }
+  return normalized;
+}
+
+function cartExpanded() {
+  return state.cart
+    .map((row) => {
+      const product = state.products.find((item) => item.id === row.productId);
+      return product ? { product, quantity: row.quantity } : null;
+    })
+    .filter(Boolean);
+}
+
+async function persistCart() {
+  await saveCart(state.cart);
+}
+
+async function loadState() {
+  const [products, inventory, featuredCut, monthlyCuts, cart, orders, leads] = await Promise.all([
+    getProducts(),
+    getInventory(),
+    getFeaturedCut(),
+    getMonthlyCuts(),
+    getCart(),
+    getOrders(),
+    getLeads()
+  ]);
+  state.products = products;
+  state.inventory = inventory;
+  state.featuredCut = { ...defaultFreshCut, ...featuredCut };
+  state.monthlyCuts = normalizeCuts(monthlyCuts);
+  state.cart = normalizeCart(cart, state.products, state.inventory);
+  state.orders = orders;
+  state.leads = leads;
+  await persistCart();
 }
 
 function syncUi() {
+  const expanded = cartExpanded();
   renderProducts(dom, state.products, state.inventory, state.activeCategory);
   renderInventory(dom, state.products, state.inventory, state.monthlyCuts);
-  renderCart(dom, state.cart);
-  renderCheckoutSummary(dom, state.cart);
+  renderCart(dom, expanded);
+  renderCheckoutSummary(dom, expanded);
   renderFreshCut(dom, state.featuredCut);
   renderShowcase(dom, state.monthlyCuts);
+  renderAdminStats();
   renderProductEditor();
 }
 
-function normalizeProducts(savedProducts) {
-  if (!Array.isArray(savedProducts) || !savedProducts.length) return products.map((product) => ({ ...product }));
-  const byId = new Map(savedProducts.map((item) => [item.id, item]));
-  return products.map((base) => ({ ...base, ...(byId.get(base.id) || {}) }));
+function renderAdminStats() {
+  const quantities = state.products.map((product) => state.inventory[product.id] ?? 0);
+  const totalUnits = quantities.reduce((sum, value) => sum + value, 0);
+  const lowStock = quantities.filter((value) => value > 0 && value <= 2).length;
+  const soldOut = quantities.filter((value) => value <= 0).length;
+  const inventoryValue = state.products.reduce((sum, product) => sum + (state.inventory[product.id] ?? 0) * Number(product.price || 0), 0);
+  const monthlyCount = state.monthlyCuts.filter((cut) => String(cut.date).startsWith(todayISO().slice(0, 7))).length;
+  document.querySelector("[data-summary-total]").textContent = totalUnits;
+  document.querySelector("[data-summary-low]").textContent = lowStock;
+  document.querySelector("[data-summary-soldout]").textContent = soldOut;
+  document.querySelector("[data-summary-cuts]").textContent = monthlyCount;
+  document.querySelector("[data-summary-value]").textContent = formatCurrency(inventoryValue);
+  document.querySelector("[data-summary-orders]").textContent = state.orders.length;
+  if (dom.demoOrders) dom.demoOrders.textContent = state.orders.length;
+  if (dom.demoLeads) dom.demoLeads.textContent = state.leads.length;
+  if (dom.demoActiveProducts) dom.demoActiveProducts.textContent = state.products.length;
 }
 
 function renderProductEditor() {
   if (!dom.productSelect) return;
-  const currentValue = dom.productSelect.value || state.products[0]?.id || "";
-  dom.productSelect.innerHTML = state.products
-    .map((product) => `<option value="${product.id}">${product.name}</option>`)
-    .join("");
-  dom.productSelect.value = state.products.some((product) => product.id === currentValue) ? currentValue : state.products[0]?.id || "";
+  const current = dom.productSelect.value || state.products[0]?.id || "";
+  dom.productSelect.innerHTML = state.products.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+  dom.productSelect.value = state.products.some((p) => p.id === current) ? current : state.products[0]?.id || "";
   fillProductForm(dom.productSelect.value);
 }
 
 function fillProductForm(productId) {
   const product = state.products.find((item) => item.id === productId);
   if (!product) return;
-  dom.productNameInput.value = product.name;
-  dom.productCategoryInput.value = product.category;
-  dom.productPriceInput.value = product.price;
-  dom.productRestockInput.value = product.restock;
+  dom.productNameInput.value = product.name || "";
+  dom.productCategoryInput.value = product.category || "";
+  dom.productPriceInput.value = product.price || 0;
+  dom.productRestockInput.value = product.restock || 0;
   dom.productDeleteButton.disabled = state.products.length <= 1;
-}
-
-async function saveProductFromForm() {
-  const productId = dom.productSelect.value;
-  const index = state.products.findIndex((item) => item.id === productId);
-  if (index < 0) return;
-
-  const base = state.products[index];
-  const updatedProduct = {
-    ...base,
-    name: dom.productNameInput.value.trim() || base.name,
-    category: dom.productCategoryInput.value.trim() || base.category,
-    price: Math.max(0, Number(dom.productPriceInput.value || base.price)),
-    restock: Math.max(0, Number(dom.productRestockInput.value || base.restock)),
-    images: {
-      packshot: await readImageFile(dom.productPackshotInput.files[0], base.images?.packshot || ""),
-      lifestyle: await readImageFile(dom.productLifestyleInput.files[0], base.images?.lifestyle || base.images?.packshot || "")
-    }
-  };
-
-  state.products[index] = updatedProduct;
-  saveJson(PRODUCTS_STORAGE_KEY, state.products);
-  dom.productPackshotInput.value = "";
-  dom.productLifestyleInput.value = "";
-  syncUi();
-  showToast("Prodotto aggiornato.");
-}
-
-function deleteSelectedProduct() {
-  if (state.products.length <= 1) {
-    showToast("Serve almeno un prodotto nel catalogo.");
-    return;
-  }
-
-  const productId = dom.productSelect.value;
-  const product = state.products.find((item) => item.id === productId);
-  if (!product) return;
-
-  state.products = state.products.filter((item) => item.id !== productId);
-  state.cart = state.cart.filter((item) => item.product.id !== productId);
-  delete state.inventory[productId];
-  saveJson(PRODUCTS_STORAGE_KEY, state.products);
-  saveJson(INVENTORY_STORAGE_KEY, state.inventory);
-  syncUi();
-  showToast(`${product.name} rimosso dal catalogo.`);
-}
-
-function setCategory(category) {
-  state.activeCategory = category;
-  document.querySelectorAll("[data-category]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.category === state.activeCategory);
-  });
-  renderProducts(dom, state.products, state.inventory, state.activeCategory);
-}
-
-function addToCart(productId) {
-  const product = state.products.find((item) => item.id === productId);
-
-  if (!product || state.inventory[productId] <= 0) {
-    showToast("Prodotto esaurito.");
-    return;
-  }
-
-  state.inventory[productId] -= 1;
-  const cartItem = state.cart.find((item) => item.product.id === productId);
-
-  if (cartItem) {
-    cartItem.quantity += 1;
-  } else {
-    state.cart.push({ product, quantity: 1 });
-  }
-
-  saveJson(INVENTORY_STORAGE_KEY, state.inventory);
-  syncUi();
-  openDrawer(dom.cartDrawer, ".cart-trigger");
-  pulseCart();
-  showToast(`${product.name} aggiunto al carrello.`);
-}
-
-function removeFromCart(productId) {
-  const index = state.cart.findIndex((item) => item.product.id === productId);
-  if (index < 0) return;
-
-  state.cart[index].quantity -= 1;
-  state.inventory[productId] += 1;
-
-  if (state.cart[index].quantity <= 0) {
-    state.cart.splice(index, 1);
-  }
-
-  saveJson(INVENTORY_STORAGE_KEY, state.inventory);
-  syncUi();
-}
-
-function adjustInventory(productId, amount) {
-  state.inventory[productId] = Math.max(0, (state.inventory[productId] ?? 0) + amount);
-  saveJson(INVENTORY_STORAGE_KEY, state.inventory);
-  syncUi();
-}
-
-function restockAll() {
-  state.products.forEach((product) => {
-    state.inventory[product.id] = product.restock;
-  });
-  saveJson(INVENTORY_STORAGE_KEY, state.inventory);
-  syncUi();
-  showToast("Magazzino rifornito.");
-}
-
-async function publishFreshCut() {
-  try {
-    const newCut = {
-      id: `cut-${Date.now()}`,
-      name: dom.cutNameInput.value.trim() || defaultFreshCut.name,
-      description: dom.cutTextInput.value.trim() || defaultFreshCut.description,
-      image: await readImageFile(dom.cutFileInput.files[0], state.featuredCut.image),
-      date: dom.cutDateInput.value || todayISO()
-    };
-
-    state.featuredCut = newCut;
-    state.monthlyCuts = normalizeCuts([newCut, ...state.monthlyCuts]);
-    saveJson(FEATURED_CUT_STORAGE_KEY, state.featuredCut);
-    saveJson(MONTHLY_CUTS_STORAGE_KEY, state.monthlyCuts);
-    syncUi();
-    dom.cutFileInput.value = "";
-    showToast("Taglio pubblicato nello showcase.");
-  } catch {
-    showToast("Non riesco a leggere questa immagine.");
-  }
-}
-
-function resetFreshCut() {
-  removeJson(FEATURED_CUT_STORAGE_KEY);
-  removeJson(MONTHLY_CUTS_STORAGE_KEY);
-  state.featuredCut = { ...defaultFreshCut };
-  state.monthlyCuts = [defaultFreshCut];
-  syncUi();
-  showToast("Taglio del giorno ripristinato.");
-}
-
-function resetExperience() {
-  removeJson(INVENTORY_STORAGE_KEY);
-  removeJson(FEATURED_CUT_STORAGE_KEY);
-  removeJson(MONTHLY_CUTS_STORAGE_KEY);
-  state.inventory = { ...fallbackInventory };
-  state.featuredCut = { ...defaultFreshCut };
-  state.monthlyCuts = [defaultFreshCut];
-  state.products = products.map((product) => ({ ...product }));
-  state.cart = [];
-  removeJson(PRODUCTS_STORAGE_KEY);
-  syncUi();
-  showToast("Pannello ripristinato.");
-}
-
-function routeToPage() {
-  const aliases = { products: "shop", "section-menu": "home", top: "home" };
-  const requestedRoute = window.location.hash.replace("#", "") || "home";
-  const route = aliases[requestedRoute] || requestedRoute;
-  const validRoute = document.querySelector(`[data-page="${route}"]`) ? route : "home";
-
-  document.querySelectorAll("[data-page]").forEach((page) => {
-    page.classList.toggle("is-active", page.dataset.page === validRoute);
-  });
-
-  document.querySelectorAll(".main-nav a").forEach((link) => {
-    link.classList.toggle("is-active", link.getAttribute("href") === `#${validRoute}`);
-  });
-
-  if (validRoute !== "checkout") {
-    dom.checkoutSuccess.hidden = true;
-    dom.checkoutSummary.hidden = false;
-    dom.checkoutForm.hidden = false;
-  }
-
-  window.scrollTo({ top: 0, behavior: "auto" });
-}
-
-function openDrawer(drawer, triggerSelector) {
-  lastFocusedElement = document.activeElement;
-  drawer.setAttribute("aria-hidden", "false");
-  document.querySelectorAll(triggerSelector).forEach((button) => button.setAttribute("aria-expanded", "true"));
-  document.body.classList.add("drawer-open");
-  if (drawer === dom.adminDrawer) {
-    dom.adminLoginError.textContent = "";
-    dom.adminLoginForm.hidden = state.adminAuthenticated;
-    dom.adminContent.hidden = !state.adminAuthenticated;
-    if (state.adminAuthenticated) renderProductEditor();
-  }
-  drawer.querySelector("button, [href], input, textarea")?.focus({ preventScroll: true });
-}
-
-function closeDrawer(drawer, triggerSelector) {
-  drawer.setAttribute("aria-hidden", "true");
-  document.querySelectorAll(triggerSelector).forEach((button) => button.setAttribute("aria-expanded", "false"));
-  const anyDrawerOpen = [dom.cartDrawer, dom.adminDrawer].some((item) => item.getAttribute("aria-hidden") === "false");
-  if (!anyDrawerOpen) document.body.classList.remove("drawer-open");
-  lastFocusedElement?.focus?.({ preventScroll: true });
-}
-
-function pulseCart() {
-  document.querySelector(".cart-trigger").classList.remove("is-pulsing");
-  requestAnimationFrame(() => document.querySelector(".cart-trigger").classList.add("is-pulsing"));
-}
-
-function toggleProductImage(button) {
-  const card = button.closest(".product-card");
-  if (!card || button.disabled) return;
-  const productName = button.dataset.productName || "prodotto";
-  const isShowingResult = card.classList.toggle("is-showing-result");
-  button.textContent = isShowingResult ? "Vedi prodotto" : "Vedi risultato";
-  button.setAttribute("aria-pressed", isShowingResult ? "true" : "false");
-  button.setAttribute(
-    "aria-label",
-    `${isShowingResult ? "Mostra prodotto" : "Mostra risultato"} ${productName}`
-  );
 }
 
 function showToast(message) {
   clearTimeout(state.toastTimer);
   dom.toast.textContent = message;
   dom.toast.classList.add("is-visible");
-  state.toastTimer = setTimeout(() => dom.toast.classList.remove("is-visible"), 2400);
+  state.toastTimer = setTimeout(() => dom.toast.classList.remove("is-visible"), 2600);
 }
 
-function getErrorNode(name) {
-  return dom.checkoutForm.querySelector(`[data-error-for="${name}"]`);
+function routeToPage() {
+  const aliases = { products: "shop", top: "home" };
+  const requestedRoute = window.location.hash.replace("#", "") || "home";
+  const route = aliases[requestedRoute] || requestedRoute;
+  const valid = document.querySelector(`[data-page="${route}"]`) ? route : "home";
+  document.querySelectorAll("[data-page]").forEach((page) => page.classList.toggle("is-active", page.dataset.page === valid));
+  document.querySelectorAll(".main-nav a").forEach((link) => link.classList.toggle("is-active", link.getAttribute("href") === `#${valid}`));
+  if (valid !== "checkout") {
+    dom.checkoutForm.hidden = false;
+    dom.checkoutSummary.hidden = false;
+    dom.checkoutSuccess.hidden = true;
+  }
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
-function setFieldError(name, message) {
-  const node = getErrorNode(name);
-  if (node) node.textContent = message;
+function trapFocus(drawer) {
+  const focusables = [...drawer.querySelectorAll("button,[href],input,select,textarea,[tabindex]:not([tabindex='-1'])")].filter((el) => !el.disabled && !el.hidden);
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables.at(-1);
+  const handler = (event) => {
+    if (event.key !== "Tab") return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  drawer._focusTrap = handler;
+  drawer.addEventListener("keydown", handler);
+  first.focus({ preventScroll: true });
 }
 
-function clearCheckoutErrors() {
-  dom.checkoutForm.querySelectorAll(".field-error").forEach((item) => {
-    item.textContent = "";
+function openDrawer(drawer, triggerSelector) {
+  drawerFocus.previous = document.activeElement;
+  drawer.setAttribute("aria-hidden", "false");
+  document.querySelectorAll(triggerSelector).forEach((item) => item.setAttribute("aria-expanded", "true"));
+  document.body.classList.add("drawer-open");
+  if (drawer === dom.adminDrawer) {
+    dom.adminLoginError.textContent = "";
+    dom.adminLoginForm.hidden = state.adminAuthenticated;
+    dom.adminContent.hidden = !state.adminAuthenticated;
+  }
+  trapFocus(drawer);
+}
+
+function closeDrawer(drawer, triggerSelector) {
+  drawer.setAttribute("aria-hidden", "true");
+  document.querySelectorAll(triggerSelector).forEach((item) => item.setAttribute("aria-expanded", "false"));
+  if (drawer._focusTrap) drawer.removeEventListener("keydown", drawer._focusTrap);
+  const anyOpen = [dom.cartDrawer, dom.adminDrawer].some((item) => item.getAttribute("aria-hidden") === "false");
+  if (!anyOpen) document.body.classList.remove("drawer-open");
+  drawerFocus.previous?.focus?.({ preventScroll: true });
+}
+
+function setCategory(category) {
+  state.activeCategory = category;
+  document.querySelectorAll("[data-category]").forEach((button) => button.classList.toggle("is-active", button.dataset.category === category));
+  renderProducts(dom, state.products, state.inventory, category);
+}
+
+async function addToCart(productId) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product || (state.inventory[productId] ?? 0) <= 0) return showToast("Prodotto esaurito.");
+  state.inventory[productId] = Math.max(0, (state.inventory[productId] ?? 0) - 1);
+  const row = state.cart.find((item) => item.productId === productId);
+  if (row) row.quantity += 1;
+  else state.cart.push({ productId, quantity: 1 });
+  await saveInventory(state.inventory);
+  await persistCart();
+  syncUi();
+  openDrawer(dom.cartDrawer, ".cart-trigger");
+}
+
+async function removeFromCart(productId) {
+  const row = state.cart.find((item) => item.productId === productId);
+  if (!row) return;
+  row.quantity -= 1;
+  state.inventory[productId] = (state.inventory[productId] ?? 0) + 1;
+  if (row.quantity <= 0) state.cart = state.cart.filter((item) => item.productId !== productId);
+  await saveInventory(state.inventory);
+  await persistCart();
+  syncUi();
+}
+
+async function adjustInventory(productId, amount) {
+  state.inventory[productId] = Math.max(0, (state.inventory[productId] ?? 0) + amount);
+  await saveInventory(state.inventory);
+  syncUi();
+}
+
+async function restockAll() {
+  state.products.forEach((product) => { state.inventory[product.id] = Number(product.restock || 0); });
+  await saveInventory(state.inventory);
+  syncUi();
+  showToast("Magazzino rifornito.");
+}
+
+async function saveFreshCut() {
+  const image = await uploadImage(dom.cutFileInput.files[0], { bucket: "cuts" }).catch(() => state.featuredCut.image);
+  const cut = {
+    id: `cut-${Date.now()}`,
+    name: dom.cutNameInput.value.trim() || defaultFreshCut.name,
+    description: dom.cutTextInput.value.trim() || defaultFreshCut.description,
+    image: image || state.featuredCut.image,
+    date: dom.cutDateInput.value || todayISO()
+  };
+  state.featuredCut = cut;
+  state.monthlyCuts = normalizeCuts([cut, ...state.monthlyCuts]);
+  await saveFeaturedCut(cut);
+  await saveMonthlyCuts(state.monthlyCuts);
+  dom.cutFileInput.value = "";
+  syncUi();
+  showToast("Taglio pubblicato.");
+}
+
+async function saveProductFromForm() {
+  const id = dom.productSelect.value;
+  const index = state.products.findIndex((item) => item.id === id);
+  if (index < 0) return;
+  const base = state.products[index];
+  const packshot = dom.productPackshotInput.files[0] ? await uploadImage(dom.productPackshotInput.files[0], { bucket: "products" }) : (base.images?.packshot || "");
+  const lifestyle = dom.productLifestyleInput.files[0] ? await uploadImage(dom.productLifestyleInput.files[0], { bucket: "products" }) : (base.images?.lifestyle || packshot);
+  state.products[index] = {
+    ...base,
+    name: dom.productNameInput.value.trim() || base.name,
+    category: dom.productCategoryInput.value.trim() || base.category,
+    label: dom.productCategoryInput.value.trim() || base.label,
+    price: Math.max(0, Number(dom.productPriceInput.value || base.price)),
+    restock: Math.max(0, Number(dom.productRestockInput.value || base.restock)),
+    images: { packshot, lifestyle }
+  };
+  await saveProducts(state.products);
+  dom.productPackshotInput.value = "";
+  dom.productLifestyleInput.value = "";
+  syncUi();
+  showToast("Prodotto aggiornato.");
+}
+
+async function deleteSelectedProduct() {
+  if (state.products.length <= 1) return showToast("Serve almeno un prodotto nel catalogo.");
+  const id = dom.productSelect.value;
+  const product = state.products.find((item) => item.id === id);
+  state.products = state.products.filter((item) => item.id !== id);
+  state.cart = state.cart.filter((item) => item.productId !== id);
+  delete state.inventory[id];
+  await saveProducts(state.products);
+  await saveInventory(state.inventory);
+  await persistCart();
+  syncUi();
+  showToast(`${product?.name || "Prodotto"} rimosso.`);
+}
+
+function validateCheckout(formData) {
+  const errors = {};
+  if (!String(formData.get("fullName") || "").trim()) errors.fullName = "Inserisci nome completo.";
+  if (!/\S+@\S+\.\S+/.test(String(formData.get("email") || ""))) errors.email = "Email non valida.";
+  if (String(formData.get("phone") || "").trim().length < 6) errors.phone = "Telefono non valido.";
+  if (formData.get("fulfillment") === "shipping") {
+    if (!String(formData.get("address") || "").trim()) errors.address = "Inserisci indirizzo.";
+    if (!String(formData.get("city") || "").trim()) errors.city = "Inserisci città.";
+    if (!String(formData.get("zip") || "").trim()) errors.zip = "Inserisci CAP.";
+  }
+  dom.checkoutForm.querySelectorAll(".field-error").forEach((node) => { node.textContent = ""; });
+  Object.entries(errors).forEach(([key, message]) => {
+    const node = dom.checkoutForm.querySelector(`[data-error-for="${key}"]`);
+    if (node) node.textContent = message;
   });
+  return Object.keys(errors).length === 0;
 }
 
-function validateCheckoutForm(formData) {
-  clearCheckoutErrors();
-  let valid = true;
-
-  const rules = [
-    ["fullName", formData.get("fullName").trim().length >= 2, "Inserisci nome e cognome."],
-    ["email", /\S+@\S+\.\S+/.test(formData.get("email")), "Inserisci un'email valida."],
-    ["phone", formData.get("phone").trim().length >= 6, "Inserisci un telefono valido."],
-    ["cardName", formData.get("cardName").trim().length >= 2, "Inserisci il nome sulla carta."]
-  ];
-
-  const cardDigits = String(formData.get("cardNumber")).replace(/\D/g, "");
-  const cvcDigits = String(formData.get("cardCvc")).replace(/\D/g, "");
-  const expiry = String(formData.get("cardExpiry")).trim();
-
-  rules.push(["cardNumber", cardDigits.length >= 12, "Inserisci un numero carta valido."]);
-  rules.push(["cardExpiry", /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry), "Formato scadenza: MM/AA."]);
-  rules.push(["cardCvc", cvcDigits.length >= 3, "Inserisci un CVC valido."]);
-
-  for (const [name, ok, message] of rules) {
-    if (!ok) {
-      setFieldError(name, message);
-      valid = false;
-    }
-  }
-
-  const fulfillment = formData.get("fulfillment");
-  if (fulfillment === "shipping") {
-    for (const [name, msg] of [["address", "Inserisci l'indirizzo."], ["city", "Inserisci la città."], ["zip", "Inserisci il CAP."]]) {
-      if (!String(formData.get(name)).trim()) {
-        setFieldError(name, msg);
-        valid = false;
-      }
-    }
-  }
-
-  return valid;
+function buildOrderPayload(formData) {
+  const items = cartExpanded().map((row) => ({
+    productId: row.product.id,
+    productName: row.product.name,
+    unitPrice: row.product.price,
+    quantity: row.quantity,
+    lineTotal: row.quantity * row.product.price
+  }));
+  const subtotal = items.reduce((sum, row) => sum + row.lineTotal, 0);
+  const shipping = formData.get("fulfillment") === "shipping" ? 6 : 0;
+  const total = subtotal + shipping;
+  return {
+    id: `order-${Date.now()}`,
+    orderNumber: `NC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    createdAt: new Date().toISOString(),
+    customer: {
+      fullName: String(formData.get("fullName")).trim(),
+      email: String(formData.get("email")).trim(),
+      phone: String(formData.get("phone")).trim()
+    },
+    fulfillment: formData.get("fulfillment"),
+    shippingAddress: formData.get("fulfillment") === "shipping"
+      ? { address: formData.get("address"), city: formData.get("city"), zip: formData.get("zip") }
+      : null,
+    items,
+    subtotal,
+    shipping,
+    total,
+    status: "demo-created",
+    paymentMode: formData.get("paymentMode") || "demo"
+  };
 }
 
-function buildOrderCode() {
-  const year = new Date().getFullYear();
-  const serial = Math.floor(1000 + Math.random() * 9000);
-  return `NC-${year}-${serial}`;
-}
-
-function setFulfillmentUi() {
-  const method = dom.checkoutForm.querySelector('input[name="fulfillment"]:checked')?.value;
-  const isShipping = method === "shipping";
-  dom.shippingFields.hidden = !isShipping;
-  ["address", "city", "zip"].forEach((name) => {
-    const input = dom.checkoutForm.elements[name];
-    if (input) input.required = isShipping;
-  });
-}
-
-function unlockAdmin(password) {
-  if (password !== ADMIN_PASSWORD) {
-    dom.adminLoginError.textContent = "Password non valida.";
-    return false;
-  }
-  state.adminAuthenticated = true;
-  saveJson(ADMIN_SESSION_STORAGE_KEY, true);
-  dom.adminLoginForm.hidden = true;
-  dom.adminContent.hidden = false;
-  renderProductEditor();
-  showToast("Accesso gestore abilitato.");
-  return true;
-}
-
-document.addEventListener("click", (event) => {
-  const addButton = event.target.closest("[data-add-to-cart]");
-  const categoryButton = event.target.closest("[data-category]");
-  const categoryLink = event.target.closest("[data-category-link]");
-  const adjustButton = event.target.closest("[data-adjust]");
-  const removeButton = event.target.closest("[data-remove-cart]");
-  const restockButton = event.target.closest("[data-restock]");
-  const toggleProductImageButton = event.target.closest("[data-toggle-product-image]");
-
-  if (addButton) addToCart(addButton.dataset.addToCart);
-  if (categoryButton) setCategory(categoryButton.dataset.category);
-  if (categoryLink) setCategory(categoryLink.dataset.categoryLink);
-  if (adjustButton) adjustInventory(adjustButton.dataset.adjust, Number(adjustButton.dataset.delta));
-  if (removeButton) removeFromCart(removeButton.dataset.removeCart);
-  if (toggleProductImageButton) toggleProductImage(toggleProductImageButton);
-  if (restockButton) {
-    const product = state.products.find((item) => item.id === restockButton.dataset.restock);
-    adjustInventory(product.id, product.restock);
-  }
-  if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
-  if (event.target.closest("[data-close-cart]")) closeDrawer(dom.cartDrawer, ".cart-trigger");
-  if (event.target.closest(".manager-toggle")) openDrawer(dom.adminDrawer, ".manager-toggle");
-  if (event.target.closest("[data-close-admin]")) closeDrawer(dom.adminDrawer, ".manager-toggle");
-  if (event.target.closest("[data-restock-all]")) restockAll();
-  if (event.target.closest("[data-reset-demo]")) resetExperience();
-  if (event.target.closest("[data-cut-reset]")) resetFreshCut();
-  if (event.target.closest("[data-checkout]")) {
-    closeDrawer(dom.cartDrawer, ".cart-trigger");
-    if (!state.cart.length) {
-      showToast("Il carrello è vuoto.");
-      return;
-    }
-    window.location.hash = "#checkout";
-  }
-});
-
-document.querySelector("[data-cut-form]").addEventListener("submit", (event) => {
-  event.preventDefault();
-  publishFreshCut();
-});
-
-document.querySelector("[data-contact-form]").addEventListener("submit", (event) => {
-  event.preventDefault();
-  event.currentTarget.reset();
-  showToast("Richiesta inviata. Ti ricontatteremo presto.");
-});
-
-dom.checkoutForm.addEventListener("change", (event) => {
-  if (event.target.name === "fulfillment") setFulfillmentUi();
-});
-
-dom.checkoutForm.addEventListener("submit", async (event) => {
+async function submitCheckout(event) {
   event.preventDefault();
   if (!state.cart.length) {
-    showToast("Il carrello è vuoto.");
+    showToast("Carrello vuoto.");
     window.location.hash = "#shop";
     return;
   }
-
   const formData = new FormData(dom.checkoutForm);
-  if (!validateCheckoutForm(formData)) return;
-
+  if (!validateCheckout(formData)) return;
   const payButton = dom.checkoutForm.querySelector("[data-pay-now]");
-  const originalText = payButton.textContent;
+  const old = payButton.textContent;
   payButton.disabled = true;
-  payButton.textContent = "Pagamento in corso...";
-
-  await new Promise((resolve) => setTimeout(resolve, 1300));
-
+  payButton.textContent = "Creazione ordine...";
+  const order = buildOrderPayload(formData);
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  await createOrder(order);
+  await clearCart();
+  state.orders = await getOrders();
   state.cart = [];
   syncUi();
-  dom.orderNumber.textContent = buildOrderCode();
-  dom.checkoutForm.reset();
-  setFulfillmentUi();
+  dom.orderNumber.textContent = order.orderNumber;
+  renderCheckoutSuccessSummary(dom, order);
   dom.checkoutForm.hidden = true;
   dom.checkoutSummary.hidden = true;
   dom.checkoutSuccess.hidden = false;
   payButton.disabled = false;
-  payButton.textContent = originalText;
-  showToast("Pagamento demo completato.");
-});
+  payButton.textContent = old;
+  showToast("Ordine demo creato con successo.");
+}
 
-dom.adminLoginForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  unlockAdmin(dom.adminPasswordInput.value.trim());
-});
+function setFulfillmentUi() {
+  const value = dom.checkoutForm.querySelector('input[name="fulfillment"]:checked')?.value;
+  const shipping = value === "shipping";
+  dom.shippingFields.hidden = !shipping;
+}
 
-document.querySelector("[data-product-form]").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  await saveProductFromForm();
-});
-
-dom.productSelect?.addEventListener("change", (event) => {
-  fillProductForm(event.target.value);
-});
-
-dom.productDeleteButton?.addEventListener("click", () => {
-  deleteSelectedProduct();
-});
-
-window.addEventListener("hashchange", routeToPage);
-window.addEventListener("scroll", () => {
-  document.querySelector(".site-header").dataset.elevated = window.scrollY > 12 ? "true" : "false";
-});
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    closeDrawer(dom.cartDrawer, ".cart-trigger");
-    closeDrawer(dom.adminDrawer, ".manager-toggle");
+function unlockAdmin(password) {
+  if (CONFIG.ADMIN_MODE !== "demo") return;
+  if (password !== CONFIG.DEMO_ADMIN_PASSWORD) {
+    dom.adminLoginError.textContent = "Password non valida.";
+    return;
   }
-  if (event.altKey && event.key.toLowerCase() === "g") {
-    openDrawer(dom.adminDrawer, ".manager-toggle");
-  }
-});
+  state.adminAuthenticated = true;
+  sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+  dom.adminLoginForm.hidden = true;
+  dom.adminContent.hidden = false;
+  showToast("Area gestore sbloccata.");
+}
 
-syncUi();
-setFulfillmentUi();
-routeToPage();
+function logoutAdmin() {
+  state.adminAuthenticated = false;
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  dom.adminLoginForm.hidden = false;
+  dom.adminContent.hidden = true;
+}
+
+function exportJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function bindEvents() {
+  document.addEventListener("click", async (event) => {
+    const add = event.target.closest("[data-add-to-cart]");
+    const cat = event.target.closest("[data-category]");
+    const catLink = event.target.closest("[data-category-link]");
+    const adjust = event.target.closest("[data-adjust]");
+    const remove = event.target.closest("[data-remove-cart]");
+    const restock = event.target.closest("[data-restock]");
+    const toggleImage = event.target.closest("[data-toggle-product-image]");
+
+    if (add) await addToCart(add.dataset.addToCart);
+    if (cat) setCategory(cat.dataset.category);
+    if (catLink) setCategory(catLink.dataset.categoryLink);
+    if (adjust) await adjustInventory(adjust.dataset.adjust, Number(adjust.dataset.delta));
+    if (remove) await removeFromCart(remove.dataset.removeCart);
+    if (restock) {
+      const product = state.products.find((item) => item.id === restock.dataset.restock);
+      if (product) await adjustInventory(product.id, Number(product.restock || 0));
+    }
+    if (toggleImage) {
+      const card = toggleImage.closest(".product-card");
+      const shown = card.classList.toggle("is-showing-result");
+      toggleImage.textContent = shown ? "Vedi prodotto" : "Vedi risultato";
+      toggleImage.setAttribute("aria-pressed", shown ? "true" : "false");
+    }
+
+    if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
+    if (event.target.closest(".manager-toggle")) openDrawer(dom.adminDrawer, ".manager-toggle");
+    if (event.target.closest("[data-close-cart]")) closeDrawer(dom.cartDrawer, ".cart-trigger");
+    if (event.target.closest("[data-close-admin]")) closeDrawer(dom.adminDrawer, ".manager-toggle");
+    if (event.target.closest("[data-restock-all]")) await restockAll();
+    if (event.target.closest("[data-reset-demo]")) {
+      if (!confirm("Confermi il reset totale della demo?")) return;
+      localStorage.clear();
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      window.location.reload();
+    }
+    if (event.target.closest("[data-cut-reset]")) {
+      state.featuredCut = { ...defaultFreshCut };
+      state.monthlyCuts = [defaultFreshCut];
+      await saveFeaturedCut(state.featuredCut);
+      await saveMonthlyCuts(state.monthlyCuts);
+      syncUi();
+    }
+    if (event.target.closest("[data-checkout]")) {
+      closeDrawer(dom.cartDrawer, ".cart-trigger");
+      if (!state.cart.length) return showToast("Il carrello è vuoto.");
+      window.location.hash = "#checkout";
+    }
+    if (event.target.closest("[data-product-delete]")) await deleteSelectedProduct();
+    if (event.target.closest("[data-admin-logout]")) logoutAdmin();
+    if (event.target.closest("[data-export-products]")) exportJson("products-demo.json", state.products);
+    if (event.target.closest("[data-export-orders]")) exportJson("orders-demo.json", state.orders);
+    if (event.target.closest("[data-export-leads]")) exportJson("leads-demo.json", state.leads);
+    if (event.target.closest("[data-export-cuts]")) exportJson("cuts-demo.json", state.monthlyCuts);
+    if (event.target.closest("[data-copy-order]")) {
+      const summary = dom.checkoutSuccessSummary.textContent || "";
+      await navigator.clipboard.writeText(`Ordine ${dom.orderNumber.textContent}\n${summary}`);
+      showToast("Riepilogo copiato.");
+    }
+    if (event.target.closest("[data-download-order]")) {
+      const order = state.orders[0];
+      if (order) exportJson(`${order.orderNumber}.json`, order);
+    }
+  });
+
+  dom.productSearchInput?.addEventListener("input", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
+  dom.productSortSelect?.addEventListener("change", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
+  dom.productSelect?.addEventListener("change", (event) => fillProductForm(event.target.value));
+
+  dom.checkoutForm.addEventListener("change", (event) => {
+    if (event.target.name === "fulfillment") setFulfillmentUi();
+  });
+  dom.checkoutForm.addEventListener("submit", submitCheckout);
+  dom.adminLoginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    unlockAdmin(dom.adminPasswordInput.value.trim());
+  });
+  document.querySelector("[data-product-form]").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveProductFromForm();
+  });
+  document.querySelector("[data-cut-form]").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveFreshCut();
+  });
+  document.querySelector("[data-contact-form]").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fd = new FormData(form);
+    const email = String(fd.get("email") || "").trim();
+    const phone = String(fd.get("phone") || "").trim();
+    const message = String(fd.get("message") || "").trim();
+    const privacy = fd.get("privacy") === "on";
+    if (!/\S+@\S+\.\S+/.test(email) || message.length < 5 || !privacy || phone.length < 6) {
+      return showToast("Compila correttamente il form contatti.");
+    }
+    await createLead({
+      email,
+      phone,
+      subject: String(fd.get("subject") || "").trim(),
+      message,
+      privacy_accepted: true,
+      source: "contact-form-demo"
+    });
+    state.leads = await getLeads();
+    form.reset();
+    showToast("Messaggio salvato in modalità demo. In produzione verrà inviato allo staff.");
+  });
+
+  window.addEventListener("hashchange", routeToPage);
+  window.addEventListener("scroll", () => {
+    document.querySelector(".site-header").dataset.elevated = window.scrollY > 12 ? "true" : "false";
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeDrawer(dom.cartDrawer, ".cart-trigger");
+      closeDrawer(dom.adminDrawer, ".manager-toggle");
+    }
+    if (event.altKey && event.key.toLowerCase() === "g") openDrawer(dom.adminDrawer, ".manager-toggle");
+    if (event.altKey && event.key.toLowerCase() === "l") logoutAdmin();
+  });
+}
+
+async function init() {
+  await loadState();
+  bindEvents();
+  syncUi();
+  setFulfillmentUi();
+  routeToPage();
+}
+
+init();

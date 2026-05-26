@@ -1,0 +1,10 @@
+{
+  "name": "No Cap Barber Shop",
+  "short_name": "No Cap",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090909",
+  "theme_color": "#090909",
+  "lang": "it"
+}
+

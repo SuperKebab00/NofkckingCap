@@ -1,25 +1,70 @@
-# No Cap Barber Shop
+# No Cap Barber Shop (Demo Statico)
 
-Esperienza frontend premium per shop prodotti, gestione catalogo, taglio del giorno e showcase mensile.
+Demo e-commerce statico, pronta per Cloudflare Pages, con fallback locale completo (`localStorage`/`sessionStorage`).
 
-## Avvio rapido
+## Avvio locale
 
-1. Apri `index.html` direttamente nel browser.
-2. In alternativa, avvia un server statico dalla cartella del progetto:
-
-```powershell
-python -m http.server 4173
+```bash
+python3 -m http.server 5173
 ```
 
-Poi visita `http://localhost:4173`.
+oppure:
 
-## Cosa include
+```bash
+npx serve .
+```
 
-- Catalogo prodotti responsive con card scure in stile No Cap.
-- Pagine client-side distinte per home, shop, taglio fresco, showcase e supporto.
-- Taglio fresco visibile al cliente, con caricamento foto/nome/descrizione solo dal drawer admin.
-- Showcase pubblico filtrato automaticamente sui tagli del mese corrente.
-- Hover immagine prodotto con transizione verso seconda vista.
-- Carrello laterale con micro-interazioni.
-- Giacenze persistenti in `localStorage`.
-- Modalita gestore nascosta in drawer admin con decremento, incremento, rifornimento e ripristino.
+Apri: `http://localhost:5173` (o la porta indicata).
+
+## Deploy Cloudflare Pages
+
+1. Push del repository su GitHub/GitLab.
+2. Crea progetto in Cloudflare Pages.
+3. Build command: vuoto.
+4. Output directory: `/`.
+5. Deploy.
+
+## Modalità demo
+
+- Dati prodotti/stock/cart/ordini/lead/tagli salvati localmente.
+- Checkout è dimostrativo (nessun pagamento reale).
+- Login admin demo locale (non sicuro).
+
+## Configurazione
+
+File: `js/config.js`
+
+- `DATA_PROVIDER = "local"`: usa solo locale.
+- `DATA_PROVIDER = "supabase"`: tenta Supabase, fallback locale se non configurato.
+- `SUPABASE_URL` e `SUPABASE_ANON_KEY`: solo chiavi pubbliche.
+
+Non inserire mai service role key nel frontend.
+
+## Collegamento futuro Supabase
+
+1. Crea progetto Supabase.
+2. Imposta in `js/config.js`:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `DATA_PROVIDER = "supabase"`
+3. Abilita bucket Storage:
+   - `products`
+   - `cuts`
+4. Configura RLS e policy per admin/auth.
+
+## Parti pronte per produzione (base)
+
+- Data layer async (`js/repository.js`)
+- Config centralizzata (`js/config.js`)
+- Client Supabase opzionale (`js/supabase-client.js`)
+- Checkout flow con oggetto ordine
+- Lead capture con consenso privacy
+
+## Da completare per produzione reale
+
+1. Autenticazione admin vera con Supabase Auth.
+2. API serverless (Edge Functions / Pages Functions) per ordini e lead.
+3. Pagamenti Stripe Checkout.
+4. Email transazionali (Resend/Brevo/serverless).
+5. Logging/error tracking e test E2E.
+
