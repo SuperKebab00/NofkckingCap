@@ -421,7 +421,8 @@ async function unlockAdmin(password, email = "") {
       password
     });
     if (error) {
-      dom.adminLoginError.textContent = "Credenziali non valide.";
+      dom.adminLoginError.textContent = error.message || "Credenziali non valide.";
+      showToast(`Login admin fallito: ${error.message || "errore sconosciuto"}`);
       return;
     }
     state.adminAuthenticated = true;
