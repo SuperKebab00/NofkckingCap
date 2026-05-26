@@ -777,9 +777,7 @@ async function init() {
       state.adminAuthenticated = Boolean(data?.session);
       sb.auth.onAuthStateChange((_event, session) => {
         state.adminAuthenticated = Boolean(session);
-        if (!state.adminAuthenticated) {
-          syncAdminVisibility();
-        }
+        syncAdminVisibility();
       });
     } else {
       state.adminAuthenticated = false;
