@@ -28,7 +28,7 @@ body {
   color: var(--ink);
   background:
     linear-gradient(rgba(247, 245, 241, 0.91), rgba(247, 245, 241, 0.91)),
-    url("Img/BACKGROUND SLIDE.webp") center top / cover fixed;
+    url("Img/Design/BACKGROUND SLIDE.webp") center top / cover fixed;
   font-family: var(--font-body);
   letter-spacing: 0;
 }
@@ -215,7 +215,7 @@ button {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.84) 39%, rgba(0, 0, 0, 0.15) 72%),
-    url("Img/1.webp") center 17% / cover;
+    url("Img/wallpaper/1.webp") center 17% / cover;
 }
 
 .hero::before {
@@ -397,7 +397,7 @@ button {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.56)),
-    url("Img/2.webp") center / cover;
+    url("Img/wallpaper/2.webp") center / cover;
 }
 
 .page-banner::after {
@@ -438,13 +438,13 @@ button {
 .page-banner--showcase {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.58)),
-    url("Img/6.webp") center / cover;
+    url("Img/wallpaper/6.webp") center / cover;
 }
 
 .page-banner--support {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.58)),
-    url("Img/BACKGROUND SLIDE.webp") center / cover;
+    url("Img/Design/BACKGROUND SLIDE.webp") center / cover;
 }
 
 .category-bar {
@@ -508,23 +508,23 @@ button {
 }
 
 .section-banner--shop::before {
-  background-image: url("Img/2.webp");
+  background-image: url("Img/wallpaper/2.webp");
 }
 
 .section-banner--styling::before {
-  background-image: url("Img/3.webp");
+  background-image: url("Img/wallpaper/3.webp");
 }
 
 .section-banner--tools::before {
-  background-image: url("Img/4.webp");
+  background-image: url("Img/wallpaper/4.webp");
 }
 
 .section-banner--cut::before {
-  background-image: url("Img/5.webp");
+  background-image: url("Img/wallpaper/5.webp");
 }
 
 .section-banner--showcase::before {
-  background-image: url("Img/6.webp");
+  background-image: url("Img/wallpaper/6.webp");
 }
 
 .section-banner:hover,
@@ -621,7 +621,7 @@ button {
   color: var(--white);
   background:
     linear-gradient(115deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.9) 48%, rgba(152, 9, 18, 0.92) 48% 100%),
-    url("Img/5.webp") center / cover;
+    url("Img/wallpaper/5.webp") center / cover;
 }
 
 .fresh-cut__media {
@@ -982,6 +982,17 @@ button {
   filter: drop-shadow(0 22px 28px rgba(212, 15, 25, 0.26));
 }
 
+.product-card.is-showing-result .product-media img:first-child {
+  opacity: 0;
+  transform: translateX(-22px) scale(1.04) rotate(-2deg);
+}
+
+.product-card.is-showing-result .product-media img:last-child {
+  opacity: 1;
+  transform: translateX(0) scale(1.02) rotate(0);
+  filter: drop-shadow(0 22px 28px rgba(212, 15, 25, 0.26));
+}
+
 .product-card__body {
   position: relative;
   z-index: 2;
@@ -1044,6 +1055,28 @@ button {
   min-height: 36px;
   padding: 0 14px;
   font-size: 0.76rem;
+}
+
+.product-media-toggle {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.product-media-toggle:hover {
+  border-color: var(--red);
+}
+
+.product-media-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .inventory-shell {
@@ -1681,6 +1714,19 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .product-card:hover .product-media img:first-child,
+  .product-card:focus-within .product-media img:first-child {
+    opacity: 1;
+    transform: none;
+  }
+
+  .product-card:hover .product-media img:last-child,
+  .product-card:focus-within .product-media img:last-child {
+    opacity: 0;
+    transform: translateX(24px) scale(0.94) rotate(2deg);
+    filter: drop-shadow(0 18px 20px rgba(0, 0, 0, 0.55));
+  }
+
   .section-banners {
     grid-template-columns: 1fr;
     padding-inline: 16px;
@@ -1793,4 +1839,5 @@ button {
     min-width: 620px;
   }
 }
+
 

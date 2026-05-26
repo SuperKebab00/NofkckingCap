@@ -203,6 +203,19 @@ function pulseCart() {
   requestAnimationFrame(() => document.querySelector(".cart-trigger").classList.add("is-pulsing"));
 }
 
+function toggleProductImage(button) {
+  const card = button.closest(".product-card");
+  if (!card || button.disabled) return;
+  const productName = button.dataset.productName || "prodotto";
+  const isShowingResult = card.classList.toggle("is-showing-result");
+  button.textContent = isShowingResult ? "Vedi prodotto" : "Vedi risultato";
+  button.setAttribute("aria-pressed", isShowingResult ? "true" : "false");
+  button.setAttribute(
+    "aria-label",
+    `${isShowingResult ? "Mostra prodotto" : "Mostra risultato"} ${productName}`
+  );
+}
+
 function showToast(message) {
   clearTimeout(state.toastTimer);
   dom.toast.textContent = message;
@@ -217,12 +230,14 @@ document.addEventListener("click", (event) => {
   const adjustButton = event.target.closest("[data-adjust]");
   const removeButton = event.target.closest("[data-remove-cart]");
   const restockButton = event.target.closest("[data-restock]");
+  const toggleProductImageButton = event.target.closest("[data-toggle-product-image]");
 
   if (addButton) addToCart(addButton.dataset.addToCart);
   if (categoryButton) setCategory(categoryButton.dataset.category);
   if (categoryLink) setCategory(categoryLink.dataset.categoryLink);
   if (adjustButton) adjustInventory(adjustButton.dataset.adjust, Number(adjustButton.dataset.delta));
   if (removeButton) removeFromCart(removeButton.dataset.removeCart);
+  if (toggleProductImageButton) toggleProductImage(toggleProductImageButton);
   if (restockButton) {
     const product = products.find((item) => item.id === restockButton.dataset.restock);
     adjustInventory(product.id, product.restock);

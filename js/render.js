@@ -1,4 +1,4 @@
-import { productImage } from "./product-art.js";
+import { resolveProductImage } from "./product-art.js";
 import {
   escapeHtml,
   formatCurrency,
@@ -39,11 +39,15 @@ export function renderProducts(dom, products, inventory, activeCategory) {
       const stock = getStockLabel(quantity);
       const soldOut = quantity <= 0;
 
+      const hasLifestyle = Boolean(product.images?.lifestyle);
+      const packshot = resolveProductImage(product, "packshot");
+      const lifestyle = resolveProductImage(product, "lifestyle");
+
       return `
         <article class="product-card ${soldOut ? "is-sold-out" : ""}" style="--stagger:${index * 70}ms">
           <div class="product-media">
-            <img src="${productImage(product, "front")}" alt="${escapeHtml(product.name)} vista frontale" loading="lazy" decoding="async">
-            <img src="${productImage(product, "detail")}" alt="${escapeHtml(product.name)} seconda vista" loading="lazy" decoding="async">
+            <img src="${packshot}" alt="${escapeHtml(product.name)} packshot prodotto" loading="lazy" decoding="async">
+            <img src="${lifestyle}" alt="${escapeHtml(product.name)} risultato sui capelli" loading="lazy" decoding="async">
           </div>
           <div class="product-card__body">
             <div class="product-card__category">${escapeHtml(product.label)}</div>
@@ -55,6 +59,17 @@ export function renderProducts(dom, products, inventory, activeCategory) {
                 ${soldOut ? "Esaurito" : "Aggiungi"}
               </button>
             </div>
+            <button
+              class="product-media-toggle"
+              type="button"
+              data-toggle-product-image="${product.id}"
+              data-product-name="${escapeHtml(product.name)}"
+              aria-pressed="false"
+              aria-label="Mostra risultato ${escapeHtml(product.name)}"
+              ${hasLifestyle ? "" : "disabled"}
+            >
+              ${hasLifestyle ? "Vedi risultato" : "Solo prodotto"}
+            </button>
           </div>
         </article>`;
     })
@@ -119,7 +134,7 @@ export function renderCart(dom, cart) {
   dom.cartItems.innerHTML = cart
     .map(({ product, quantity }) => `
       <article class="cart-item">
-        <img src="${productImage(product, "front")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">
+        <img src="${resolveProductImage(product, "packshot")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">
         <div>
           <h3>${escapeHtml(product.name)}</h3>
           <p>${quantity} x ${formatCurrency(product.price)}</p>

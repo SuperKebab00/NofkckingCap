@@ -14,7 +14,11 @@ export const products = [
     stock: 10,
     restock: 10,
     colors: ["#d7f4ee", "#c9935a", "#111111"],
-    shape: "bottle"
+    shape: "bottle",
+    images: {
+      packshot: "Img/products/aftershave-packshot.webp",
+      lifestyle: "Img/products/aftershave-lifestyle.webp"
+    }
   },
   {
     id: "black-wax",
@@ -25,7 +29,11 @@ export const products = [
     stock: 6,
     restock: 8,
     colors: ["#0d0d0d", "#f4f4f4", "#d40f19"],
-    shape: "jar"
+    shape: "jar",
+    images: {
+      packshot: "Img/products/black-wax-packshot.webp",
+      lifestyle: "Img/products/black-wax-lifestyle.webp"
+    }
   },
   {
     id: "clay-pomade",
@@ -36,7 +44,11 @@ export const products = [
     stock: 3,
     restock: 8,
     colors: ["#161616", "#8b4fd1", "#f2d5ff"],
-    shape: "jar"
+    shape: "jar",
+    images: {
+      packshot: "Img/products/clay-pomade-packshot.webp",
+      lifestyle: "Img/products/clay-pomade-lifestyle.webp"
+    }
   },
   {
     id: "dust-wax",
@@ -47,7 +59,11 @@ export const products = [
     stock: 2,
     restock: 7,
     colors: ["#111111", "#f5f5f5", "#d40f19"],
-    shape: "spray"
+    shape: "spray",
+    images: {
+      packshot: "Img/products/dust-wax-packshot.webp",
+      lifestyle: "Img/products/dust-wax-lifestyle.webp"
+    }
   },
   {
     id: "fade-dlc",
@@ -58,7 +74,11 @@ export const products = [
     stock: 4,
     restock: 6,
     colors: ["#080808", "#2c2c2c", "#ffffff"],
-    shape: "blade"
+    shape: "blade",
+    images: {
+      packshot: "Img/products/fade-dlc-packshot.webp",
+      lifestyle: "Img/products/fade-dlc-lifestyle.webp"
+    }
   },
   {
     id: "fade-gold",
@@ -69,7 +89,11 @@ export const products = [
     stock: 7,
     restock: 9,
     colors: ["#d6a61f", "#ffe37a", "#111111"],
-    shape: "blade"
+    shape: "blade",
+    images: {
+      packshot: "Img/products/fade-gold-packshot.webp",
+      lifestyle: "Img/products/fade-gold-lifestyle.webp"
+    }
   },
   {
     id: "faper-dlc",
@@ -128,6 +152,6 @@ export const defaultFreshCut = {
   id: "default-cut",
   name: "Skin fade crop",
   description: "Sfumatura pulita, texture naturale e finish opaco. Il taglio del giorno pronto per homepage, social e vetrina shop.",
-  image: "Img/5.webp",
+  image: "Img/wallpaper/5.webp",
   date: todayISO()
 };

@@ -48,3 +48,16 @@ export function productImage(product, variant = "front") {
 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
+
+export function resolveProductImage(product, variant = "packshot") {
+  const fallbackVariant = variant === "lifestyle" ? "detail" : "front";
+  const fallback = productImage(product, fallbackVariant);
+  const packshot = product.images?.packshot;
+  const lifestyle = product.images?.lifestyle || packshot;
+
+  if (variant === "lifestyle") {
+    return lifestyle || fallback;
+  }
+
+  return packshot || fallback;
+}
