@@ -173,6 +173,24 @@ export async function createOrder(order) {
   return created;
 }
 
+export async function updateOrderStatus(orderId, status) {
+  if (!orderId) return null;
+  const normalizedStatus = String(status || "").trim();
+  if (!normalizedStatus) return null;
+
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    await sb.from("orders").update({ status: normalizedStatus }).eq("id", orderId);
+  }
+
+  const list = await getOrders();
+  const index = list.findIndex((order) => order.id === orderId);
+  if (index < 0) return null;
+  list[index] = { ...list[index], status: normalizedStatus };
+  saveJson(ORDERS_STORAGE_KEY, list.slice(0, 200));
+  return list[index];
+}
+
 export async function getLeads() {
   return loadJson(LEADS_STORAGE_KEY, []);
 }

@@ -59,6 +59,22 @@ Non inserire mai service role key nel frontend.
 - Client Supabase opzionale (`js/supabase-client.js`)
 - Checkout flow con oggetto ordine
 - Lead capture con consenso privacy
+- Banner cookie + preferenze consenso (necessari / analytics / marketing)
+
+## Cookie & privacy per produzione
+
+1. Aggiorna testi legali in `#privacy` e `#cookie` con:
+   - titolare trattamento
+   - base giuridica
+   - tempi conservazione
+   - fornitori terzi reali
+2. Configura in `js/config.js`:
+   - `COOKIE_POLICY_VERSION` (incrementa a ogni update policy)
+   - `COOKIE_CONSENT_MAX_AGE_DAYS` (es. 180)
+   - `LEGAL_PRIVACY_EMAIL`
+3. Carica script analytics/marketing solo dopo consenso (`window.NoCapConsent.canUse("analytics" | "marketing")`).
+4. Mantieni bloccati i cookie non necessari finché non arriva opt-in.
+5. Verifica conformità GDPR/ePrivacy con consulente legale prima del go-live.
 
 ## Da completare per produzione reale
 
@@ -67,4 +83,3 @@ Non inserire mai service role key nel frontend.
 3. Pagamenti Stripe Checkout.
 4. Email transazionali (Resend/Brevo/serverless).
 5. Logging/error tracking e test E2E.
-

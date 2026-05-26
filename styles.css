@@ -40,6 +40,10 @@ body.drawer-open {
   touch-action: none;
 }
 
+body.consent-open {
+  overflow: hidden;
+}
+
 button,
 a {
   font: inherit;
@@ -1626,12 +1630,17 @@ button {
 }
 
 .admin-page {
-  padding: 32px max(16px, 7vw) 72px;
+  padding: 0 0 72px;
+  background:
+    linear-gradient(120deg, rgba(212, 15, 25, 0.14), transparent 34%),
+    var(--ink);
+  color: var(--white);
 }
 
 .admin-page .inventory-shell {
-  max-width: 1200px;
-  min-height: calc(100svh - 120px);
+  width: min(1200px, calc(100vw - 48px));
+  margin: 32px auto;
+  min-height: calc(100svh - 180px);
 }
 
 .admin-page .inventory-actions {
@@ -1645,6 +1654,7 @@ button {
 .admin-layout {
   display: grid;
   gap: 14px;
+  align-content: start;
 }
 
 .admin-block {
@@ -1689,9 +1699,9 @@ button {
 .admin-tabs {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  width: min(460px, 100%);
+  width: min(760px, 100%);
   margin: 0 auto 14px;
 }
 
@@ -1742,6 +1752,25 @@ button {
 .admin-manage-inventory {
   display: grid;
   gap: 12px;
+}
+
+.admin-block--orders .inventory-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.order-actions {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.order-actions select {
+  min-height: 34px;
+  padding: 6px 10px;
+  color: var(--white);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .admin-inline-note {
@@ -1962,6 +1991,134 @@ button {
   transform: translate(-50%, 0);
 }
 
+.site-legal {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 18px max(16px, 7vw) 22px;
+  color: rgba(255, 255, 255, 0.82);
+  background: var(--ink);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.site-legal strong {
+  display: block;
+  color: var(--white);
+  font-family: var(--font-display);
+  letter-spacing: 0.07em;
+}
+
+.site-legal span {
+  font-size: 0.88rem;
+}
+
+.site-legal nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.site-legal a {
+  color: var(--white);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.site-legal a:hover {
+  border-bottom-color: var(--red);
+}
+
+.legal-page {
+  padding: 16px 0 72px;
+  background:
+    linear-gradient(120deg, rgba(212, 15, 25, 0.14), transparent 34%),
+    var(--ink);
+  color: var(--white);
+}
+
+.legal-shell {
+  width: min(1100px, calc(100vw - 48px));
+  margin: 0 auto;
+}
+
+.legal-card {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(135deg, rgba(212, 15, 25, 0.12), transparent 42%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.legal-card p {
+  margin: 0;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.cookie-consent {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 90;
+  width: min(980px, calc(100vw - 24px));
+  padding: 14px;
+  color: var(--white);
+  background: rgba(9, 9, 9, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transform: translateX(-50%);
+  box-shadow: var(--shadow);
+}
+
+.cookie-consent p {
+  margin: 0 0 10px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.cookie-consent p a {
+  color: var(--white);
+}
+
+.cookie-consent__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cookie-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+}
+
+.cookie-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.cookie-modal__panel {
+  position: relative;
+  width: min(560px, calc(100vw - 24px));
+  margin: 8vh auto;
+  padding: 22px;
+  color: var(--white);
+  background: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 10px;
+}
+
+.cookie-modal__panel h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  text-transform: uppercase;
+}
+
 @keyframes cardIn {
   to {
     opacity: 1;
@@ -2038,6 +2195,10 @@ button {
 
   .admin-manage-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-tabs {
+    width: min(640px, 100%);
   }
 }
 
@@ -2248,13 +2409,13 @@ button {
   }
 
   .admin-page {
-    padding: 16px 0 40px;
+    padding: 0 0 40px;
   }
 
   .admin-page .inventory-shell {
+    width: calc(100vw - 24px);
+    margin: 16px auto;
     border-top-width: 3px;
-    border-left: 0;
-    border-right: 0;
   }
 
   .admin-shell-header {
@@ -2267,6 +2428,34 @@ button {
 
   .admin-tabs {
     width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .legal-shell {
+    width: calc(100vw - 24px);
+  }
+
+  .site-legal {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .site-legal nav {
+    flex-wrap: wrap;
+  }
+
+  .admin-block .inventory-summary,
+  .admin-block--orders .inventory-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .order-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .order-actions select {
+    grid-column: 1 / -1;
   }
 
   .category-bar {

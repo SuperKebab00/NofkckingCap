@@ -32,10 +32,12 @@ const {
   saveMonthlyCuts,
   saveSiteSections,
   saveProducts,
+  updateOrderStatus,
   uploadImage
 } = repository;
 
 const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
+const CONSENT_STORAGE_KEY = "no-cap-consent-v1";
 const MAX_MONTHLY_CUTS = 24;
 
 const state = {
@@ -43,6 +45,7 @@ const state = {
   adminAuthenticated: CONFIG.ADMIN_MODE === "demo" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
   adminView: "data",
   cart: [],
+  consent: null,
   featuredCut: defaultFreshCut,
   inventory: {},
   leads: [],
@@ -66,6 +69,87 @@ const state = {
 const dom = getDom();
 const drawerFocus = { previous: null };
 
+function defaultConsent() {
+  return {
+    necessary: true,
+    analytics: false,
+    marketing: false,
+    timestamp: new Date().toISOString(),
+    version: Number(CONFIG.COOKIE_POLICY_VERSION || 1)
+  };
+}
+
+function isConsentExpired(consent) {
+  const maxAgeDays = Number(CONFIG.COOKIE_CONSENT_MAX_AGE_DAYS || 180);
+  if (!consent?.timestamp || maxAgeDays <= 0) return true;
+  const ts = new Date(consent.timestamp).getTime();
+  if (!Number.isFinite(ts)) return true;
+  const ageMs = Date.now() - ts;
+  return ageMs > maxAgeDays * 24 * 60 * 60 * 1000;
+}
+
+function readConsent() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CONSENT_STORAGE_KEY));
+    if (!parsed || typeof parsed !== "object") return null;
+    const consent = {
+      ...defaultConsent(),
+      ...parsed,
+      necessary: true
+    };
+    const expectedVersion = Number(CONFIG.COOKIE_POLICY_VERSION || 1);
+    if (Number(consent.version || 0) !== expectedVersion) return null;
+    if (isConsentExpired(consent)) return null;
+    return consent;
+  } catch {
+    return null;
+  }
+}
+
+function applyConsent(consent) {
+  state.consent = { ...defaultConsent(), ...(consent || {}), necessary: true };
+  document.documentElement.dataset.consentAnalytics = state.consent.analytics ? "granted" : "denied";
+  document.documentElement.dataset.consentMarketing = state.consent.marketing ? "granted" : "denied";
+  window.NoCapConsent = {
+    ...state.consent,
+    canUse: (category) => Boolean(state.consent?.[category])
+  };
+}
+
+function saveConsent(consent) {
+  const next = { ...defaultConsent(), ...(consent || {}), necessary: true, timestamp: new Date().toISOString() };
+  localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
+  applyConsent(next);
+  if (dom.consentBanner) dom.consentBanner.hidden = true;
+  closeConsentModal();
+  showToast("Preferenze cookie salvate.");
+}
+
+function closeConsentModal() {
+  if (!dom.consentModal) return;
+  dom.consentModal.hidden = true;
+  document.body.classList.remove("consent-open");
+}
+
+function openConsentModal() {
+  if (!dom.consentModal) return;
+  dom.consentModal.hidden = false;
+  document.body.classList.add("consent-open");
+  if (dom.consentAnalytics) dom.consentAnalytics.checked = Boolean(state.consent?.analytics);
+  if (dom.consentMarketing) dom.consentMarketing.checked = Boolean(state.consent?.marketing);
+}
+
+function initConsentUi() {
+  const stored = readConsent();
+  if (stored) {
+    applyConsent(stored);
+    if (dom.consentBanner) dom.consentBanner.hidden = true;
+    return;
+  }
+  applyConsent(defaultConsent());
+  if (dom.consentBanner) dom.consentBanner.hidden = false;
+}
+
 function syncAdminVisibility({ clearError = false } = {}) {
   if (!dom.adminLoginForm || !dom.adminContent) return;
   if (clearError && dom.adminLoginError) dom.adminLoginError.textContent = "";
@@ -81,7 +165,8 @@ function syncAdminVisibility({ clearError = false } = {}) {
 }
 
 function setAdminView(view) {
-  state.adminView = view === "manage" ? "manage" : "data";
+  const next = String(view || "").trim();
+  state.adminView = ["data", "manage", "orders"].includes(next) ? next : "data";
   document.querySelectorAll("[data-admin-tab]").forEach((button) => {
     const active = button.dataset.adminTab === state.adminView;
     button.classList.toggle("is-active", active);
@@ -222,15 +307,19 @@ function syncUi() {
 
 function renderOrdersDashboard() {
   if (!dom.adminOrdersList) return;
-  const todayKey = todayISO();
   const orders = [...state.orders];
   const totalOrders = orders.length;
+  const todayKey = todayISO();
   const todayOrders = orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayKey).length;
+  const pendingOrders = orders.filter((order) => ["demo-created", "in-attesa", "pending"].includes(String(order.status || "").toLowerCase())).length;
+  const completedOrders = orders.filter((order) => ["completato", "completed"].includes(String(order.status || "").toLowerCase())).length;
   const revenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const avg = totalOrders ? revenue / totalOrders : 0;
 
   if (dom.adminOrdersTotal) dom.adminOrdersTotal.textContent = String(totalOrders);
   if (dom.adminOrdersToday) dom.adminOrdersToday.textContent = String(todayOrders);
+  if (dom.adminOrdersPending) dom.adminOrdersPending.textContent = String(pendingOrders);
+  if (dom.adminOrdersCompleted) dom.adminOrdersCompleted.textContent = String(completedOrders);
   if (dom.adminOrdersRevenue) dom.adminOrdersRevenue.textContent = formatCurrency(revenue);
   if (dom.adminOrdersAvg) dom.adminOrdersAvg.textContent = formatCurrency(avg);
 
@@ -245,12 +334,48 @@ function renderOrdersDashboard() {
       <tr>
         <td><strong>${order.orderNumber || order.id}</strong></td>
         <td>${order.customer?.fullName || "-"}</td>
-        <td>${order.fulfillment === "shipping" ? "Spedizione" : "Ritiro"}</td>
-        <td>${order.paymentMode === "paypal" ? "PayPal" : "In sede"}</td>
-        <td>${formatCurrency(Number(order.total || 0))}</td>
         <td>${String(order.createdAt || "").slice(0, 10) || "-"}</td>
+        <td>${formatCurrency(Number(order.total || 0))}</td>
+        <td>${String(order.status || "demo-created")}</td>
+        <td>
+          <div class="order-actions">
+            <select data-order-status="${order.id}" aria-label="Stato ordine ${order.orderNumber || order.id}">
+              <option value="in-attesa" ${String(order.status || "").toLowerCase() === "in-attesa" || String(order.status || "").toLowerCase() === "demo-created" ? "selected" : ""}>In attesa</option>
+              <option value="in-lavorazione" ${String(order.status || "").toLowerCase() === "in-lavorazione" ? "selected" : ""}>In lavorazione</option>
+              <option value="completato" ${String(order.status || "").toLowerCase() === "completato" || String(order.status || "").toLowerCase() === "completed" ? "selected" : ""}>Completato</option>
+              <option value="annullato" ${String(order.status || "").toLowerCase() === "annullato" ? "selected" : ""}>Annullato</option>
+            </select>
+            <button class="mini-button" type="button" data-order-status-save="${order.id}">Salva</button>
+            <button class="mini-button" type="button" data-order-detail="${order.id}">Dettagli</button>
+          </div>
+        </td>
       </tr>`)
     .join("");
+}
+
+async function saveOrderStatusFromUi(orderId) {
+  if (!requireAdmin()) return;
+  const select = document.querySelector(`[data-order-status="${orderId}"]`);
+  if (!select) return;
+  const nextStatus = String(select.value || "").trim();
+  if (!nextStatus) return;
+  try {
+    await updateOrderStatus(orderId, nextStatus);
+    state.orders = await getOrders();
+    renderOrdersDashboard();
+    showToast("Stato ordine aggiornato.");
+  } catch {
+    showToast("Impossibile aggiornare lo stato ordine.");
+  }
+}
+
+function showOrderDetail(orderId) {
+  const order = state.orders.find((item) => item.id === orderId);
+  if (!order) return;
+  const itemCount = Array.isArray(order.items) ? order.items.reduce((sum, row) => sum + Number(row.quantity || 0), 0) : 0;
+  const delivery = order.fulfillment === "shipping" ? "Spedizione" : "Ritiro";
+  const payment = order.paymentMode === "paypal" ? "PayPal" : "In sede";
+  showToast(`${order.orderNumber || order.id} · ${delivery} · ${payment} · ${itemCount} articoli`);
 }
 
 function renderCategoryBar() {
@@ -306,6 +431,8 @@ function renderAdminStats() {
   document.querySelector("[data-summary-cuts]").textContent = monthlyCount;
   document.querySelector("[data-summary-value]").textContent = formatCurrency(inventoryValue);
   document.querySelector("[data-summary-orders]").textContent = todayOrders;
+  if (dom.dataInventoryValue) dom.dataInventoryValue.textContent = formatCurrency(inventoryValue);
+  if (dom.dataLowStock) dom.dataLowStock.textContent = String(lowStock);
   if (dom.demoOrders) dom.demoOrders.textContent = state.orders.length;
   if (dom.demoLeads) dom.demoLeads.textContent = state.leads.length;
   if (dom.demoActiveProducts) dom.demoActiveProducts.textContent = state.products.length;
@@ -781,6 +908,11 @@ function bindEvents() {
     const remove = event.target.closest("[data-remove-cart]");
     const restock = event.target.closest("[data-restock]");
     const toggleImage = event.target.closest("[data-toggle-product-image]");
+    const consentOpen = event.target.closest("[data-open-consent], [data-consent-open]");
+    const consentClose = event.target.closest("[data-consent-close]");
+    const consentAccept = event.target.closest("[data-consent-accept]");
+    const consentReject = event.target.closest("[data-consent-reject]");
+    const consentSaveSelected = event.target.closest("[data-consent-save-selected]");
 
     if (add) await addToCart(add.dataset.addToCart);
     if (cat) setCategory(cat.dataset.category);
@@ -796,6 +928,17 @@ function bindEvents() {
       const shown = card.classList.toggle("is-showing-result");
       toggleImage.textContent = shown ? "Vedi prodotto" : "Vedi risultato";
       toggleImage.setAttribute("aria-pressed", shown ? "true" : "false");
+    }
+    if (consentOpen) openConsentModal();
+    if (consentClose) closeConsentModal();
+    if (consentAccept) saveConsent({ necessary: true, analytics: true, marketing: true });
+    if (consentReject) saveConsent({ necessary: true, analytics: false, marketing: false });
+    if (consentSaveSelected) {
+      saveConsent({
+        necessary: true,
+        analytics: Boolean(dom.consentAnalytics?.checked),
+        marketing: Boolean(dom.consentMarketing?.checked)
+      });
     }
 
     if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
@@ -824,6 +967,10 @@ function bindEvents() {
     if (event.target.closest("[data-admin-logout]")) await logoutAdmin();
     if (event.target.closest("[data-category-new]")) await addCategorySection();
     if (event.target.closest("[data-category-delete]")) await deleteCategorySection();
+    const orderSave = event.target.closest("[data-order-status-save]");
+    const orderDetail = event.target.closest("[data-order-detail]");
+    if (orderSave) await saveOrderStatusFromUi(orderSave.dataset.orderStatusSave);
+    if (orderDetail) showOrderDetail(orderDetail.dataset.orderDetail);
     const adminTab = event.target.closest("[data-admin-tab]");
     if (adminTab && requireAdmin()) {
       setAdminView(adminTab.dataset.adminTab);
@@ -902,6 +1049,7 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeDrawer(dom.cartDrawer, ".cart-trigger");
+      closeConsentModal();
     }
     if (event.altKey && event.key.toLowerCase() === "g") window.location.hash = "#admin";
     if (event.altKey && event.key.toLowerCase() === "l") logoutAdmin();
@@ -924,6 +1072,7 @@ async function init() {
     }
   }
   await loadState();
+  initConsentUi();
   bindEvents();
   syncAdminVisibility({ clearError: true });
   syncUi();

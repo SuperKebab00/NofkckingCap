@@ -196,11 +196,53 @@
             </label>
             <label class="checkout-radio">
               <input type="checkbox" name="privacy" required>
-              <span>Accetto il trattamento dati per essere ricontattato.</span>
+              <span>Accetto il trattamento dati per essere ricontattato come da <a href="#privacy">Privacy Policy</a>.</span>
             </label>
             <a class="ghost-button" href="https://wa.me/393208839692" target="_blank" rel="noreferrer">Scrivici su WhatsApp</a>
             <button class="primary-button" type="submit">Invia richiesta</button>
           </form>
+        </div>
+      </section>
+
+      <section class="page-view legal-page" id="privacy" data-page="privacy" aria-labelledby="privacy-title">
+        <div class="inventory-shell legal-shell">
+          <div class="section-heading section-heading--light">
+            <div>
+              <p class="eyebrow">Documenti legali</p>
+              <h2 id="privacy-title">Privacy Policy</h2>
+            </div>
+            <p>Informativa sul trattamento dati per utenti del sito No Cap Barber Shop.</p>
+          </div>
+          <div class="legal-card">
+            <p><strong>Titolare del trattamento:</strong> No Cap Barber Shop (da completare con ragione sociale e P.IVA).</p>
+            <p><strong>Dati raccolti:</strong> email, telefono, contenuto messaggi contatto, dati ordine demo.</p>
+            <p><strong>Finalita:</strong> gestione richieste, gestione ordini, sicurezza operativa, adempimenti di legge.</p>
+            <p><strong>Base giuridica:</strong> esecuzione di misure precontrattuali/contrattuali e consenso dove richiesto.</p>
+            <p><strong>Conservazione:</strong> i dati sono conservati per il tempo necessario alle finalita dichiarate.</p>
+            <p><strong>Diritti utente:</strong> accesso, rettifica, cancellazione, limitazione, opposizione, portabilita.</p>
+            <p><strong>Contatti privacy:</strong> inserire email dedicata (es. privacy@nocap.it).</p>
+            <p class="admin-inline-note">Documento informativo demo: personalizzare con consulente legale prima della pubblicazione definitiva.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-view legal-page" id="cookie" data-page="cookie" aria-labelledby="cookie-title">
+        <div class="inventory-shell legal-shell">
+          <div class="section-heading section-heading--light">
+            <div>
+              <p class="eyebrow">Documenti legali</p>
+              <h2 id="cookie-title">Cookie Policy</h2>
+            </div>
+            <p>Informativa cookie e preferenze di consenso.</p>
+          </div>
+          <div class="legal-card">
+            <p><strong>Cookie tecnici (necessari):</strong> sempre attivi, servono al funzionamento di base del sito.</p>
+            <p><strong>Cookie analytics:</strong> opzionali, usati solo con consenso per analisi aggregate.</p>
+            <p><strong>Cookie marketing:</strong> opzionali, usati solo con consenso per campagne/remarketing.</p>
+            <p><strong>Gestione preferenze:</strong> puoi aggiornare il consenso in qualsiasi momento dal link "Preferenze cookie".</p>
+            <p class="admin-inline-note">In questa demo non sono caricati script marketing di terze parti senza consenso esplicito.</p>
+            <button class="outline-button outline-button--light" type="button" data-open-consent>Apri preferenze cookie</button>
+          </div>
         </div>
       </section>
 
@@ -320,6 +362,7 @@
       <div class="admin-tabs" role="tablist" aria-label="Sezioni admin">
         <button class="admin-tab is-active" type="button" role="tab" aria-selected="true" data-admin-tab="data">DATI</button>
         <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="manage">GESTIONE</button>
+        <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="orders">ORDINI</button>
       </div>
 
       <div class="admin-layout">
@@ -329,45 +372,51 @@
               <p class="eyebrow">Sezione dati</p>
               <h2>Dati e andamento</h2>
             </div>
-            <p>Panoramica ordini, lead e stato catalogo.</p>
+            <p>Panoramica KPI principali: catalogo, lead e ordini di oggi.</p>
           </div>
 
           <div class="inventory-summary">
             <article><span data-demo-orders>0</span><p>Ordini demo</p></article>
             <article><span data-demo-leads>0</span><p>Lead demo</p></article>
             <article><span data-demo-active-products>0</span><p>Prodotti attivi</p></article>
+            <article><span data-admin-orders-today>0</span><p>Ordini oggi</p></article>
+            <article><span data-data-inventory-value>EUR 0</span><p>Valore inventario</p></article>
+            <article><span data-data-low-stock>0</span><p>Prodotti in soglia critica</p></article>
           </div>
+        </section>
 
+        <section class="admin-block admin-block--orders" data-admin-panel="orders" aria-label="Sezione ordini" hidden>
           <div class="section-heading section-heading--light section-heading--compact">
             <div>
-              <p class="eyebrow">Orders dashboard</p>
-              <h2>Panoramica ordini</h2>
+              <p class="eyebrow">Sezione ordini</p>
+              <h2>Gestione ordini</h2>
             </div>
-            <p>KPI essenziali e ultimi ordini ricevuti dal checkout demo.</p>
+            <p>Monitora, aggiorna stato e consulta i dettagli degli ordini creati dal checkout.</p>
           </div>
 
           <div class="inventory-summary">
             <article><span data-admin-orders-total>0</span><p>Ordini totali</p></article>
-            <article><span data-admin-orders-today>0</span><p>Ordini oggi</p></article>
-            <article><span data-admin-orders-revenue>EUR 0,00</span><p>Incasso totale</p></article>
-            <article><span data-admin-orders-avg>EUR 0,00</span><p>Scontrino medio</p></article>
+            <article><span data-admin-orders-pending>0</span><p>In attesa</p></article>
+            <article><span data-admin-orders-completed>0</span><p>Completati</p></article>
+            <article><span data-admin-orders-revenue>EUR 0,00</span><p>Valore totale</p></article>
           </div>
 
           <div class="inventory-table-wrap">
             <table class="inventory-table">
               <thead>
                 <tr>
-                  <th>Ordine</th>
+                  <th>ID ordine</th>
                   <th>Cliente</th>
-                  <th>Consegna</th>
-                  <th>Pagamento</th>
-                  <th>Totale</th>
                   <th>Data</th>
+                  <th>Totale</th>
+                  <th>Stato</th>
+                  <th>Azioni</th>
                 </tr>
               </thead>
               <tbody data-admin-orders-list></tbody>
             </table>
           </div>
+          <p class="admin-inline-note">Se non ci sono ordini, verrà mostrato uno stato vuoto in tabella.</p>
         </section>
 
         <section class="admin-block admin-block--manage" data-admin-panel="manage" aria-label="Sezione gestione" hidden>
@@ -495,7 +544,17 @@
 </section>
     </main>
 
-          
+    <footer class="site-legal">
+      <div>
+        <strong>No Cap Barber Shop</strong>
+        <span>Demo e-commerce. Aggiornare documenti legali prima della messa in produzione.</span>
+      </div>
+      <nav aria-label="Link legali">
+        <a href="#privacy">Privacy Policy</a>
+        <a href="#cookie">Cookie Policy</a>
+        <button type="button" class="ghost-button" data-open-consent>Preferenze cookie</button>
+      </nav>
+    </footer>
 
     <aside class="cart-drawer" id="cartDrawer" aria-hidden="true" aria-label="Carrello">
       <div class="cart-drawer__backdrop" data-close-cart></div>
@@ -517,6 +576,40 @@
         </footer>
       </section>
     </aside>
+
+    <section class="cookie-consent" data-cookie-banner hidden aria-live="polite">
+      <p>Usiamo cookie tecnici e, con consenso, cookie analytics/marketing. Leggi <a href="#cookie">Cookie Policy</a>.</p>
+      <div class="cookie-consent__actions">
+        <button class="outline-button" type="button" data-consent-reject>Rifiuta opzionali</button>
+        <button class="ghost-button" type="button" data-consent-open>Personalizza</button>
+        <button class="primary-button" type="button" data-consent-accept>Accetta tutto</button>
+      </div>
+    </section>
+
+    <section class="cookie-modal" data-cookie-modal hidden>
+      <div class="cookie-modal__backdrop" data-consent-close></div>
+      <div class="cookie-modal__panel" role="dialog" aria-modal="true" aria-labelledby="cookie-modal-title">
+        <h2 id="cookie-modal-title">Preferenze cookie</h2>
+        <p>Configura i consensi. I cookie necessari restano sempre attivi.</p>
+        <label class="checkout-radio">
+          <input type="checkbox" checked disabled>
+          <span>Necessari (sempre attivi)</span>
+        </label>
+        <label class="checkout-radio">
+          <input type="checkbox" data-consent-analytics>
+          <span>Analytics</span>
+        </label>
+        <label class="checkout-radio">
+          <input type="checkbox" data-consent-marketing>
+          <span>Marketing</span>
+        </label>
+        <div class="cookie-consent__actions">
+          <button class="outline-button" type="button" data-consent-save-selected>Salva selezione</button>
+          <button class="ghost-button" type="button" data-consent-close>Chiudi</button>
+          <button class="primary-button" type="button" data-consent-accept>Accetta tutto</button>
+        </div>
+      </div>
+    </section>
 
     <div class="toast" data-toast role="status" aria-live="polite"></div>
 
