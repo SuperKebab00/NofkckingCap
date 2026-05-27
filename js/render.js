@@ -31,9 +31,9 @@ export function getDom() {
     categoryValueInput: document.querySelector("[data-category-value]"),
     adminEmailInput: document.querySelector("[data-admin-email]"),
     adminPasswordInput: document.querySelector("[data-admin-password]"),
-    demoActiveProducts: document.querySelector("[data-demo-active-products]"),
-    demoLeads: document.querySelector("[data-demo-leads]"),
-    demoOrders: document.querySelector("[data-demo-orders]"),
+    adminKpiProducts: document.querySelector("[data-admin-kpi-products]"),
+    adminKpiLeads: document.querySelector("[data-admin-kpi-leads]"),
+    adminKpiOrders: document.querySelector("[data-admin-kpi-orders]"),
     consentAnalytics: document.querySelector("[data-consent-analytics]"),
     consentBanner: document.querySelector("[data-cookie-banner]"),
     consentMarketing: document.querySelector("[data-consent-marketing]"),
@@ -224,8 +224,10 @@ export function renderFreshCut(dom, freshCut) {
   dom.cutDateInput.value = freshCut.date || todayISO();
 }
 
-export function renderCheckoutSummary(dom, cart) {
-  const totalPrice = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+export function renderCheckoutSummary(dom, cart, totalOverride = null) {
+  const totalPrice = Number.isFinite(totalOverride)
+    ? totalOverride
+    : cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
   dom.checkoutTotal.textContent = formatCurrency(totalPrice);
 
   if (!cart.length) {
@@ -253,7 +255,9 @@ export function renderCheckoutSuccessSummary(dom, order) {
   if (!order) return;
   dom.checkoutSuccessSummary.innerHTML = `
     <p><strong>Totale:</strong> ${formatCurrency(order.total)}</p>
+    <p><strong>Pagamento:</strong> ${order.paymentMode === "paypal" ? "PayPal" : "Pagamento in sede"}</p>
     <p><strong>Consegna:</strong> ${order.fulfillment === "shipping" ? "Spedizione" : "Ritiro in shop"}</p>
+    ${order.shipping ? `<p><strong>Spedizione:</strong> ${formatCurrency(order.shipping)}</p>` : ""}
     <p>${order.fulfillment === "shipping" ? "Riceverai aggiornamenti spedizione dal team." : "Ritiro disponibile in negozio durante gli orari di apertura."}</p>`;
 }
 

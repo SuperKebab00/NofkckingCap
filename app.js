@@ -42,7 +42,7 @@ const MAX_MONTHLY_CUTS = 24;
 
 const state = {
   activeCategory: "all",
-  adminAuthenticated: CONFIG.ADMIN_MODE === "demo" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
+  adminAuthenticated: CONFIG.ADMIN_MODE === "local" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
   adminView: "data",
   cart: [],
   consent: null,
@@ -311,7 +311,7 @@ function renderOrdersDashboard() {
   const totalOrders = orders.length;
   const todayKey = todayISO();
   const todayOrders = orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayKey).length;
-  const pendingOrders = orders.filter((order) => ["demo-created", "in-attesa", "pending"].includes(String(order.status || "").toLowerCase())).length;
+  const pendingOrders = orders.filter((order) => ["in-attesa", "pending"].includes(String(order.status || "").toLowerCase())).length;
   const completedOrders = orders.filter((order) => ["completato", "completed"].includes(String(order.status || "").toLowerCase())).length;
   const revenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const avg = totalOrders ? revenue / totalOrders : 0;
@@ -336,11 +336,11 @@ function renderOrdersDashboard() {
         <td>${order.customer?.fullName || "-"}</td>
         <td>${String(order.createdAt || "").slice(0, 10) || "-"}</td>
         <td>${formatCurrency(Number(order.total || 0))}</td>
-        <td>${String(order.status || "demo-created")}</td>
+        <td>${String(order.status || "in-attesa")}</td>
         <td>
           <div class="order-actions">
             <select data-order-status="${order.id}" aria-label="Stato ordine ${order.orderNumber || order.id}">
-              <option value="in-attesa" ${String(order.status || "").toLowerCase() === "in-attesa" || String(order.status || "").toLowerCase() === "demo-created" ? "selected" : ""}>In attesa</option>
+              <option value="in-attesa" ${String(order.status || "").toLowerCase() === "in-attesa" ? "selected" : ""}>In attesa</option>
               <option value="in-lavorazione" ${String(order.status || "").toLowerCase() === "in-lavorazione" ? "selected" : ""}>In lavorazione</option>
               <option value="completato" ${String(order.status || "").toLowerCase() === "completato" || String(order.status || "").toLowerCase() === "completed" ? "selected" : ""}>Completato</option>
               <option value="annullato" ${String(order.status || "").toLowerCase() === "annullato" ? "selected" : ""}>Annullato</option>
@@ -433,9 +433,9 @@ function renderAdminStats() {
   document.querySelector("[data-summary-orders]").textContent = todayOrders;
   if (dom.dataInventoryValue) dom.dataInventoryValue.textContent = formatCurrency(inventoryValue);
   if (dom.dataLowStock) dom.dataLowStock.textContent = String(lowStock);
-  if (dom.demoOrders) dom.demoOrders.textContent = state.orders.length;
-  if (dom.demoLeads) dom.demoLeads.textContent = state.leads.length;
-  if (dom.demoActiveProducts) dom.demoActiveProducts.textContent = state.products.length;
+  if (dom.adminKpiOrders) dom.adminKpiOrders.textContent = state.orders.length;
+  if (dom.adminKpiLeads) dom.adminKpiLeads.textContent = state.leads.length;
+  if (dom.adminKpiProducts) dom.adminKpiProducts.textContent = state.products.length;
 }
 
 function renderProductEditor() {
@@ -484,7 +484,7 @@ function routeToPage() {
   document.querySelectorAll(".main-nav a").forEach((link) => link.classList.toggle("is-active", link.getAttribute("href") === `#${valid}`));
   if (valid !== "checkout") {
     dom.checkoutForm.hidden = false;
-    dom.checkoutSummary.hidden = false;
+    dom.checkoutSummary.hidden = true;
     dom.checkoutSuccess.hidden = true;
   }
   if (valid === "admin" && !state.adminAuthenticated) {
@@ -725,7 +725,7 @@ function buildOrderPayload(formData) {
     subtotal,
     shipping,
     total,
-    status: "demo-created",
+    status: "in-attesa",
     paymentMode: formData.get("paymentMode") || "in-shop"
   };
 }
@@ -805,7 +805,7 @@ async function submitCheckout(event) {
   payButton.textContent = "Creazione ordine...";
   const order = buildOrderPayload(formData);
   if (order.paymentMode === "paypal") {
-    showToast("PayPal selezionato: in demo viene creato un ordine simulato.");
+    showToast("PayPal selezionato per questo ordine.");
   }
   await new Promise((resolve) => setTimeout(resolve, 900));
   await createOrder(order);
@@ -815,12 +815,20 @@ async function submitCheckout(event) {
   syncUi();
   dom.orderNumber.textContent = order.orderNumber;
   renderCheckoutSuccessSummary(dom, order);
+  renderCheckoutSummary(
+    dom,
+    order.items.map((item) => ({
+      product: { name: item.productName, price: item.unitPrice },
+      quantity: item.quantity
+    })),
+    order.total
+  );
   dom.checkoutForm.hidden = true;
-  dom.checkoutSummary.hidden = true;
+  dom.checkoutSummary.hidden = false;
   dom.checkoutSuccess.hidden = false;
   payButton.disabled = false;
   payButton.textContent = old;
-  showToast("Ordine demo creato con successo.");
+  showToast("Ordine creato con successo.");
 }
 
 function setFulfillmentUi() {
@@ -864,8 +872,8 @@ async function unlockAdmin(password, email = "") {
     return;
   }
 
-  if (CONFIG.ADMIN_MODE === "demo") {
-    if (password !== CONFIG.DEMO_ADMIN_PASSWORD) {
+  if (CONFIG.ADMIN_MODE === "local") {
+    if (password !== CONFIG.LOCAL_ADMIN_PASSWORD) {
       dom.adminLoginError.textContent = "Password non valida.";
       return;
     }
@@ -944,9 +952,9 @@ function bindEvents() {
     if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
     if (event.target.closest("[data-close-cart]")) closeDrawer(dom.cartDrawer, ".cart-trigger");
     if (event.target.closest("[data-restock-all]")) await restockAll();
-    if (event.target.closest("[data-reset-demo]")) {
+    if (event.target.closest("[data-reset-local]")) {
       if (!requireAdmin()) return;
-      if (!confirm("Confermi il reset totale della demo?")) return;
+      if (!confirm("Confermi il ripristino dei dati locali?")) return;
       localStorage.clear();
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
       window.location.reload();
@@ -1035,11 +1043,11 @@ function bindEvents() {
       subject: String(fd.get("subject") || "").trim(),
       message,
       privacy_accepted: true,
-      source: "contact-form-demo"
+      source: "contact-form"
     });
     state.leads = await getLeads();
     form.reset();
-    showToast("Messaggio salvato in modalità demo. In produzione verrà inviato allo staff.");
+    showToast("Messaggio inviato allo staff.");
   });
 
   window.addEventListener("hashchange", routeToPage);
