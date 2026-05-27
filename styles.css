@@ -1500,6 +1500,28 @@ button {
   margin-top: 6px;
 }
 
+.contact-consent {
+  align-items: flex-start;
+  min-height: auto;
+  margin-top: 2px;
+}
+
+.contact-consent .checkout-option__body small {
+  font-size: 0.82rem;
+}
+
+.contact-consent a {
+  color: var(--white);
+  font-weight: 800;
+  text-decoration-color: var(--red);
+  text-underline-offset: 3px;
+}
+
+.contact-consent a:hover,
+.contact-consent a:focus-visible {
+  color: #ffd6d8;
+}
+
 .checkout-layout {
   display: grid;
   grid-template-columns: minmax(0, 760px);
@@ -1647,6 +1669,10 @@ button {
   line-height: 1.35;
 }
 
+.contact-form .contact-consent {
+  min-height: auto;
+}
+
 .shipping-fields {
   display: grid;
   gap: 8px;
@@ -1764,8 +1790,20 @@ button {
   font-size: clamp(2.1rem, 4vw, 2.8rem);
 }
 
+.admin-subsection {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
 .admin-block.is-active {
   animation: adminPanelIn 240ms ease;
+}
+
+.admin-layout > [data-admin-panel]:not(.is-active) {
+  display: none !important;
 }
 
 @keyframes adminPanelIn {
@@ -1783,9 +1821,9 @@ button {
 .admin-tabs {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  width: min(760px, 100%);
+  width: min(900px, 100%);
   margin: 0 auto 14px;
 }
 
@@ -1852,6 +1890,11 @@ button {
   align-items: center;
 }
 
+.order-actions--lead {
+  grid-template-columns: repeat(2, auto);
+  justify-content: start;
+}
+
 .order-actions select {
   min-height: 34px;
   padding: 6px 10px;
@@ -1864,6 +1907,18 @@ button {
   margin: 0;
   color: rgba(255, 255, 255, 0.78);
   line-height: 1.5;
+}
+
+.admin-page .inventory-table a {
+  color: var(--white);
+  font-weight: 800;
+  text-decoration-color: var(--red);
+  text-underline-offset: 3px;
+}
+
+.admin-page .inventory-table a:hover,
+.admin-page .inventory-table a:focus-visible {
+  color: #ffd6d8;
 }
 
 .admin-cut-form {
@@ -2521,7 +2576,7 @@ button {
 
   .admin-tabs {
     width: 100%;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .legal-shell {

@@ -12,12 +12,13 @@ import {
   renderProducts,
   renderShowcase
 } from "./js/render.js";
-import { formatCurrency, todayISO } from "./js/utils.js";
+import { escapeHtml, formatCurrency, todayISO } from "./js/utils.js";
 
 const {
   clearCart,
   createLead,
   createOrder,
+  deleteLead,
   getCart,
   getFeaturedCut,
   getInventory,
@@ -166,7 +167,7 @@ function syncAdminVisibility({ clearError = false } = {}) {
 
 function setAdminView(view) {
   const next = String(view || "").trim();
-  state.adminView = ["data", "manage", "orders"].includes(next) ? next : "data";
+  state.adminView = ["data", "manage", "orders", "leads"].includes(next) ? next : "data";
   document.querySelectorAll("[data-admin-tab]").forEach((button) => {
     const active = button.dataset.adminTab === state.adminView;
     button.classList.toggle("is-active", active);
@@ -297,6 +298,7 @@ function syncUi() {
   renderShowcase(dom, state.monthlyCuts);
   renderAdminStats();
   renderOrdersDashboard();
+  renderLeadsDashboard();
   renderProductEditor();
   renderSiteSectionsEditor();
   renderCategoryEditor();
@@ -351,6 +353,50 @@ function renderOrdersDashboard() {
         </td>
       </tr>`)
     .join("");
+}
+
+function renderLeadsDashboard() {
+  if (!dom.adminLeadsList) return;
+  const leads = [...state.leads];
+  const todayKey = todayISO();
+  const todayLeads = leads.filter((lead) => String(lead.createdAt || "").slice(0, 10) === todayKey).length;
+  if (dom.adminLeadsTotal) dom.adminLeadsTotal.textContent = String(leads.length);
+  if (dom.adminLeadsToday) dom.adminLeadsToday.textContent = String(todayLeads);
+  if (!leads.length) {
+    dom.adminLeadsList.innerHTML = `<tr><td colspan="6">Nessuna richiesta contatto registrata.</td></tr>`;
+    return;
+  }
+
+  dom.adminLeadsList.innerHTML = leads
+    .slice(0, 12)
+    .map((lead) => `
+      <tr>
+        <td>${escapeHtml(String(lead.createdAt || "").slice(0, 10) || "-")}</td>
+        <td><a href="mailto:${escapeHtml(lead.email || "")}">${escapeHtml(lead.email || "-")}</a></td>
+        <td><a href="tel:${escapeHtml(String(lead.phone || "").replace(/\\s+/g, ""))}">${escapeHtml(lead.phone || "-")}</a></td>
+        <td>${escapeHtml(lead.subject || "-")}</td>
+        <td>${escapeHtml(lead.message || "-")}</td>
+        <td>
+          <div class="order-actions order-actions--lead">
+            <button class="mini-button" type="button" data-lead-done="${escapeHtml(lead.id)}">Fatta</button>
+            <button class="mini-button" type="button" data-lead-delete="${escapeHtml(lead.id)}">Elimina</button>
+          </div>
+        </td>
+      </tr>`)
+    .join("");
+}
+
+async function removeLeadFromUi(leadId, label = "Richiesta rimossa.") {
+  if (!requireAdmin()) return;
+  try {
+    await deleteLead(leadId);
+    state.leads = await getLeads();
+    renderLeadsDashboard();
+    renderAdminStats();
+    showToast(label);
+  } catch {
+    showToast("Impossibile aggiornare la richiesta.");
+  }
 }
 
 async function saveOrderStatusFromUi(orderId) {
@@ -697,6 +743,46 @@ function validateCheckout(formData) {
   return Object.keys(errors).length === 0;
 }
 
+function normalizePhone(value) {
+  return String(value || "").replace(/[^\d+]/g, "");
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || "").trim());
+}
+
+function isValidPhone(value) {
+  const normalized = normalizePhone(value);
+  const digits = normalized.replace(/\D/g, "");
+  return /^\+?\d{8,15}$/.test(normalized) && digits.length >= 8 && digits.length <= 15 && !/^(\d)\1+$/.test(digits);
+}
+
+function validateContactForm(form, formData) {
+  const errors = {};
+  const email = String(formData.get("email") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const subject = String(formData.get("subject") || "").trim();
+  const message = String(formData.get("message") || "").trim();
+  const privacy = formData.get("privacy") === "on";
+
+  if (!email) errors.email = "Inserisci la tua email.";
+  else if (!isValidEmail(email)) errors.email = "Inserisci una email valida.";
+  if (!phone) errors.phone = "Inserisci un numero di telefono.";
+  else if (!isValidPhone(phone)) errors.phone = "Inserisci un numero reale con prefisso, es. +39 320 000 0000.";
+  if (!subject) errors.subject = "Inserisci l'oggetto della richiesta.";
+  if (!message) errors.message = "Scrivi il messaggio.";
+  else if (message.length < 10) errors.message = "Scrivi almeno 10 caratteri.";
+  if (!privacy) errors.privacy = "Accetta la Privacy Policy per inviare la richiesta.";
+
+  form.querySelectorAll("[data-contact-error-for]").forEach((node) => { node.textContent = ""; });
+  Object.entries(errors).forEach(([key, messageText]) => {
+    const node = form.querySelector(`[data-contact-error-for="${key}"]`);
+    if (node) node.textContent = messageText;
+  });
+
+  return Object.keys(errors).length === 0;
+}
+
 function buildOrderPayload(formData) {
   const items = cartExpanded().map((row) => ({
     productId: row.product.id,
@@ -977,8 +1063,12 @@ function bindEvents() {
     if (event.target.closest("[data-category-delete]")) await deleteCategorySection();
     const orderSave = event.target.closest("[data-order-status-save]");
     const orderDetail = event.target.closest("[data-order-detail]");
+    const leadDone = event.target.closest("[data-lead-done]");
+    const leadDelete = event.target.closest("[data-lead-delete]");
     if (orderSave) await saveOrderStatusFromUi(orderSave.dataset.orderStatusSave);
     if (orderDetail) showOrderDetail(orderDetail.dataset.orderDetail);
+    if (leadDone) await removeLeadFromUi(leadDone.dataset.leadDone, "Richiesta segnata come fatta.");
+    if (leadDelete) await removeLeadFromUi(leadDelete.dataset.leadDelete, "Richiesta eliminata.");
     const adminTab = event.target.closest("[data-admin-tab]");
     if (adminTab && requireAdmin()) {
       setAdminView(adminTab.dataset.adminTab);
@@ -1030,22 +1120,24 @@ function bindEvents() {
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
+    if (!validateContactForm(form, fd)) {
+      return showToast("Controlla i campi del form contatti.");
+    }
     const email = String(fd.get("email") || "").trim();
     const phone = String(fd.get("phone") || "").trim();
+    const subject = String(fd.get("subject") || "").trim();
     const message = String(fd.get("message") || "").trim();
-    const privacy = fd.get("privacy") === "on";
-    if (!/\S+@\S+\.\S+/.test(email) || message.length < 5 || !privacy || phone.length < 6) {
-      return showToast("Compila correttamente il form contatti.");
-    }
     await createLead({
       email,
       phone,
-      subject: String(fd.get("subject") || "").trim(),
+      subject,
       message,
       privacy_accepted: true,
       source: "contact-form"
     });
     state.leads = await getLeads();
+    renderLeadsDashboard();
+    renderAdminStats();
     form.reset();
     showToast("Messaggio inviato allo staff.");
   });

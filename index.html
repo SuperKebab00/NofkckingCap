@@ -169,7 +169,7 @@
             </a>
           </div>
 
-          <form class="contact-form" data-contact-form>
+          <form class="contact-form" data-contact-form novalidate>
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Contattaci</p>
@@ -182,22 +182,30 @@
               Email
               <input type="email" name="email" placeholder="nome@email.com" autocomplete="email" required>
             </label>
+            <span class="field-error" data-contact-error-for="email"></span>
             <label>
               Numero di telefono
-              <input type="tel" name="phone" placeholder="+39 320 000 0000" autocomplete="tel">
+              <input type="tel" name="phone" placeholder="+39 320 000 0000" autocomplete="tel" required>
             </label>
+            <span class="field-error" data-contact-error-for="phone"></span>
             <label>
               Oggetto
               <input type="text" name="subject" placeholder="Prenotazione, prodotti, informazioni" required>
             </label>
+            <span class="field-error" data-contact-error-for="subject"></span>
             <label>
               Messaggio
               <textarea name="message" rows="5" placeholder="Scrivi qui il tuo messaggio..." required></textarea>
             </label>
-            <label class="checkout-radio">
+            <span class="field-error" data-contact-error-for="message"></span>
+            <label class="checkout-radio checkout-option contact-consent">
               <input type="checkbox" name="privacy" required>
-              <span>Accetto il trattamento dati per essere ricontattato come da <a href="#privacy">Privacy Policy</a>.</span>
+              <span class="checkout-option__body">
+                <strong>Privacy Policy</strong>
+                <small>Accetto il trattamento dati per essere ricontattato come da <a href="#privacy">Privacy Policy</a>.</small>
+              </span>
             </label>
+            <span class="field-error" data-contact-error-for="privacy"></span>
             <a class="ghost-button" href="https://wa.me/393208839692" target="_blank" rel="noreferrer">Scrivici su WhatsApp</a>
             <button class="primary-button" type="submit">Invia richiesta</button>
           </form>
@@ -385,6 +393,7 @@
         <button class="admin-tab is-active" type="button" role="tab" aria-selected="true" data-admin-tab="data">DATI</button>
         <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="manage">GESTIONE</button>
         <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="orders">ORDINI</button>
+        <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="leads">RICHIESTE</button>
       </div>
 
       <div class="admin-layout">
@@ -405,6 +414,39 @@
             <article><span data-data-inventory-value>EUR 0</span><p>Valore inventario</p></article>
             <article><span data-data-low-stock>0</span><p>Prodotti in soglia critica</p></article>
           </div>
+
+        </section>
+
+        <section class="admin-block admin-block--leads" data-admin-panel="leads" aria-label="Sezione richieste" hidden>
+          <div class="section-heading section-heading--light section-heading--compact">
+            <div>
+              <p class="eyebrow">Sezione richieste</p>
+              <h2>Richieste contatto</h2>
+            </div>
+            <p>Gestisci i messaggi inviati dal form contatti. Segna fatta quando la richiesta e stata gestita.</p>
+          </div>
+
+          <div class="inventory-summary">
+            <article><span data-admin-leads-total>0</span><p>Richieste aperte</p></article>
+            <article><span data-admin-leads-today>0</span><p>Ricevute oggi</p></article>
+          </div>
+
+          <div class="inventory-table-wrap">
+            <table class="inventory-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Email</th>
+                  <th>Telefono</th>
+                  <th>Oggetto</th>
+                  <th>Messaggio</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody data-admin-leads-list></tbody>
+            </table>
+          </div>
+          <p class="admin-inline-note">Le richieste gestite vengono rimosse dalla lista operativa.</p>
         </section>
 
         <section class="admin-block admin-block--orders" data-admin-panel="orders" aria-label="Sezione ordini" hidden>
