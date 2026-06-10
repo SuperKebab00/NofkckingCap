@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>No Cap Barber Shop | Shop prodotti barber professionali</title>
-    <meta name="description" content="Demo e-commerce No Cap Barber Shop: prodotti professionali, checkout demo, gestione stock e area admin locale.">
+    <meta name="description" content="E-commerce No Cap Barber Shop: prodotti professionali, checkout, gestione stock e area gestore.">
     <meta name="theme-color" content="#090909">
     <meta property="og:title" content="No Cap Barber Shop">
-    <meta property="og:description" content="Shop barber professionale con demo checkout e gestione catalogo.">
+    <meta property="og:description" content="Shop barber professionale con checkout e gestione catalogo.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://example.pages.dev/">
     <meta property="og:image" content="Img/wallpaper/1-opt.webp">
@@ -169,7 +169,7 @@
             </a>
           </div>
 
-          <form class="contact-form" data-contact-form>
+          <form class="contact-form" data-contact-form novalidate>
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Contattaci</p>
@@ -182,22 +182,30 @@
               Email
               <input type="email" name="email" placeholder="nome@email.com" autocomplete="email" required>
             </label>
+            <span class="field-error" data-contact-error-for="email"></span>
             <label>
               Numero di telefono
-              <input type="tel" name="phone" placeholder="+39 320 000 0000" autocomplete="tel">
+              <input type="tel" name="phone" placeholder="+39 320 000 0000" autocomplete="tel" required>
             </label>
+            <span class="field-error" data-contact-error-for="phone"></span>
             <label>
               Oggetto
               <input type="text" name="subject" placeholder="Prenotazione, prodotti, informazioni" required>
             </label>
+            <span class="field-error" data-contact-error-for="subject"></span>
             <label>
               Messaggio
               <textarea name="message" rows="5" placeholder="Scrivi qui il tuo messaggio..." required></textarea>
             </label>
-            <label class="checkout-radio">
+            <span class="field-error" data-contact-error-for="message"></span>
+            <label class="checkout-radio checkout-option contact-consent">
               <input type="checkbox" name="privacy" required>
-              <span>Accetto il trattamento dati per essere ricontattato come da <a href="#privacy">Privacy Policy</a>.</span>
+              <span class="checkout-option__body">
+                <strong>Privacy Policy</strong>
+                <small>Accetto il trattamento dati per essere ricontattato come da <a href="#privacy">Privacy Policy</a>.</small>
+              </span>
             </label>
+            <span class="field-error" data-contact-error-for="privacy"></span>
             <a class="ghost-button" href="https://wa.me/393208839692" target="_blank" rel="noreferrer">Scrivici su WhatsApp</a>
             <button class="primary-button" type="submit">Invia richiesta</button>
           </form>
@@ -215,13 +223,13 @@
           </div>
           <div class="legal-card">
             <p><strong>Titolare del trattamento:</strong> No Cap Barber Shop (da completare con ragione sociale e P.IVA).</p>
-            <p><strong>Dati raccolti:</strong> email, telefono, contenuto messaggi contatto, dati ordine demo.</p>
+            <p><strong>Dati raccolti:</strong> email, telefono, contenuto messaggi contatto, dati ordine.</p>
             <p><strong>Finalita:</strong> gestione richieste, gestione ordini, sicurezza operativa, adempimenti di legge.</p>
             <p><strong>Base giuridica:</strong> esecuzione di misure precontrattuali/contrattuali e consenso dove richiesto.</p>
             <p><strong>Conservazione:</strong> i dati sono conservati per il tempo necessario alle finalita dichiarate.</p>
             <p><strong>Diritti utente:</strong> accesso, rettifica, cancellazione, limitazione, opposizione, portabilita.</p>
             <p><strong>Contatti privacy:</strong> inserire email dedicata (es. privacy@nocap.it).</p>
-            <p class="admin-inline-note">Documento informativo demo: personalizzare con consulente legale prima della pubblicazione definitiva.</p>
+            <p class="admin-inline-note">Documento informativo da completare con consulente legale prima della pubblicazione definitiva.</p>
           </div>
         </div>
       </section>
@@ -240,7 +248,7 @@
             <p><strong>Cookie analytics:</strong> opzionali, usati solo con consenso per analisi aggregate.</p>
             <p><strong>Cookie marketing:</strong> opzionali, usati solo con consenso per campagne/remarketing.</p>
             <p><strong>Gestione preferenze:</strong> puoi aggiornare il consenso in qualsiasi momento dal link "Preferenze cookie".</p>
-            <p class="admin-inline-note">In questa demo non sono caricati script marketing di terze parti senza consenso esplicito.</p>
+            <p class="admin-inline-note">Gli script marketing di terze parti vengono caricati solo dopo consenso esplicito.</p>
             <button class="outline-button outline-button--light" type="button" data-open-consent>Apri preferenze cookie</button>
           </div>
         </div>
@@ -250,7 +258,7 @@
         <div class="page-banner page-banner--shop">
           <p class="eyebrow">Checkout</p>
           <h1 id="checkout-title">Conferma ordine</h1>
-          <p>Inserisci i dati e completa il pagamento dimostrativo in modo rapido.</p>
+          <p>Inserisci i dati, scegli ritiro o consegna e conferma l'ordine.</p>
         </div>
 
         <div class="checkout-layout">
@@ -272,15 +280,23 @@
             </div>
 
             <fieldset class="checkout-block">
-              <legend>Consegna</legend>
-              <label class="checkout-radio">
+              <legend>Ritiro o consegna</legend>
+              <div class="checkout-options" role="radiogroup" aria-label="Ritiro o consegna">
+              <label class="checkout-radio checkout-option">
                 <input type="radio" name="fulfillment" value="pickup" checked>
-                <span>Ritiro in shop</span>
+                <span class="checkout-option__body">
+                  <strong>Ritiro in shop</strong>
+                  <small>Prepariamo l'ordine per il ritiro in negozio.</small>
+                </span>
               </label>
-              <label class="checkout-radio">
+              <label class="checkout-radio checkout-option">
                 <input type="radio" name="fulfillment" value="shipping">
-                <span>Spedizione</span>
+                <span class="checkout-option__body">
+                  <strong>Spedizione</strong>
+                  <small>Ricevi l'ordine all'indirizzo indicato.</small>
+                </span>
               </label>
+              </div>
 
               <div class="shipping-fields" data-shipping-fields hidden>
                 <label>Indirizzo
@@ -299,16 +315,37 @@
             </fieldset>
 
             <div class="checkout-block">
-              <h2>Pagamento demo</h2>
-              <p class="checkout-note">Nessun pagamento reale viene eseguito in modalità demo. In produzione collega PayPal Checkout o Stripe.</p>
-              <label class="checkout-radio"><input type="radio" name="paymentMode" value="in-shop" checked><span>Pagamento in sede</span></label>
-              <label class="checkout-radio"><input type="radio" name="paymentMode" value="paypal"><span>Pagamento con PayPal</span></label>
+              <h2>Pagamento</h2>
+              <p class="checkout-note">Scegli come completare il pagamento dell'ordine.</p>
+              <div class="checkout-options" role="radiogroup" aria-label="Tipo di pagamento">
+                <label class="checkout-radio checkout-option">
+                  <input type="radio" name="paymentMode" value="in-shop" checked>
+                  <span class="checkout-option__body">
+                    <strong>Pagamento in sede</strong>
+                    <small>Saldo al ritiro o alla consegna concordata.</small>
+                  </span>
+                </label>
+                <label class="checkout-radio checkout-option">
+                  <input type="radio" name="paymentMode" value="paypal">
+                  <span class="checkout-option__body">
+                    <strong>PayPal</strong>
+                    <small>Pagamento digitale collegato all'ordine.</small>
+                  </span>
+                </label>
+              </div>
             </div>
 
-            <button class="primary-button primary-button--wide" type="submit" data-pay-now>Conferma ordine (demo)</button>
+            <button class="primary-button primary-button--wide" type="submit" data-pay-now>Conferma ordine</button>
           </form>
 
-          <aside class="checkout-summary" data-checkout-summary>
+        </div>
+
+        <div class="checkout-success" data-checkout-success hidden>
+          <p class="eyebrow">Ordine confermato</p>
+          <h2>Ordine ricevuto</h2>
+          <p>Numero ordine: <strong data-order-number>NC-0000-0000</strong></p>
+          <div data-checkout-success-summary></div>
+          <aside class="checkout-summary checkout-summary--confirmed" data-checkout-summary hidden>
             <h2>Riepilogo ordine</h2>
             <div data-checkout-items></div>
             <div class="checkout-total">
@@ -316,13 +353,6 @@
               <strong data-checkout-total>EUR 0,00</strong>
             </div>
           </aside>
-        </div>
-
-        <div class="checkout-success" data-checkout-success hidden>
-          <p class="eyebrow">Ordine confermato</p>
-          <h2>Pagamento demo completato</h2>
-          <p>Numero ordine: <strong data-order-number>NC-0000-0000</strong></p>
-          <div data-checkout-success-summary></div>
           <div class="hero__actions">
             <a class="primary-button" href="#shop">Torna allo shop</a>
             <a class="ghost-button" href="#home">Torna alla home</a>
@@ -347,7 +377,7 @@
       </label>
       <span class="field-error" data-admin-login-error></span>
       <button class="primary-button" type="submit">Accedi</button>
-      <p class="checkout-note">Modalità demo: accesso locale. In produzione usa Supabase Auth.</p>
+      <p class="checkout-note">Accesso riservato al personale autorizzato.</p>
     </form>
 
     <div class="admin-content" data-admin-content hidden>
@@ -363,6 +393,7 @@
         <button class="admin-tab is-active" type="button" role="tab" aria-selected="true" data-admin-tab="data">DATI</button>
         <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="manage">GESTIONE</button>
         <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="orders">ORDINI</button>
+        <button class="admin-tab" type="button" role="tab" aria-selected="false" data-admin-tab="leads">RICHIESTE</button>
       </div>
 
       <div class="admin-layout">
@@ -376,13 +407,46 @@
           </div>
 
           <div class="inventory-summary">
-            <article><span data-demo-orders>0</span><p>Ordini demo</p></article>
-            <article><span data-demo-leads>0</span><p>Lead demo</p></article>
-            <article><span data-demo-active-products>0</span><p>Prodotti attivi</p></article>
+            <article><span data-admin-kpi-orders>0</span><p>Ordini registrati</p></article>
+            <article><span data-admin-kpi-leads>0</span><p>Richieste contatto</p></article>
+            <article><span data-admin-kpi-products>0</span><p>Prodotti attivi</p></article>
             <article><span data-admin-orders-today>0</span><p>Ordini oggi</p></article>
             <article><span data-data-inventory-value>EUR 0</span><p>Valore inventario</p></article>
             <article><span data-data-low-stock>0</span><p>Prodotti in soglia critica</p></article>
           </div>
+
+        </section>
+
+        <section class="admin-block admin-block--leads" data-admin-panel="leads" aria-label="Sezione richieste" hidden>
+          <div class="section-heading section-heading--light section-heading--compact">
+            <div>
+              <p class="eyebrow">Sezione richieste</p>
+              <h2>Richieste contatto</h2>
+            </div>
+            <p>Gestisci i messaggi inviati dal form contatti. Segna fatta quando la richiesta e stata gestita.</p>
+          </div>
+
+          <div class="inventory-summary">
+            <article><span data-admin-leads-total>0</span><p>Richieste aperte</p></article>
+            <article><span data-admin-leads-today>0</span><p>Ricevute oggi</p></article>
+          </div>
+
+          <div class="inventory-table-wrap">
+            <table class="inventory-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Email</th>
+                  <th>Telefono</th>
+                  <th>Oggetto</th>
+                  <th>Messaggio</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody data-admin-leads-list></tbody>
+            </table>
+          </div>
+          <p class="admin-inline-note">Le richieste gestite vengono rimosse dalla lista operativa.</p>
         </section>
 
         <section class="admin-block admin-block--orders" data-admin-panel="orders" aria-label="Sezione ordini" hidden>
@@ -430,7 +494,7 @@
 
           <div class="inventory-actions">
             <button class="outline-button outline-button--light" type="button" data-restock-all>Rifornisci tutto</button>
-            <button class="ghost-button ghost-button--light" type="button" data-reset-demo>Ripristina</button>
+            <button class="ghost-button ghost-button--light" type="button" data-reset-local>Ripristina dati locali</button>
           </div>
 
           <div class="admin-manage-grid">
@@ -547,7 +611,7 @@
     <footer class="site-legal">
       <div>
         <strong>No Cap Barber Shop</strong>
-        <span>Demo e-commerce. Aggiornare documenti legali prima della messa in produzione.</span>
+        <span>E-commerce No Cap Barber Shop. Aggiornare i documenti legali quando cambiano servizi o trattamenti dati.</span>
       </div>
       <nav aria-label="Link legali">
         <a href="#privacy">Privacy Policy</a>

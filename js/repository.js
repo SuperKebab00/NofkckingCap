@@ -192,27 +192,58 @@ export async function updateOrderStatus(orderId, status) {
 }
 
 export async function getLeads() {
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    const { data } = await sb.from("leads").select("*").order("created_at", { ascending: false });
+    if (Array.isArray(data)) {
+      const leads = data.map((item) => ({
+        id: item.id,
+        email: item.email,
+        phone: item.phone || "",
+        subject: item.subject || "",
+        message: item.message || "",
+        privacy_accepted: Boolean(item.privacy_accepted),
+        source: item.source || "site",
+        createdAt: item.created_at || new Date().toISOString()
+      }));
+      saveJson(LEADS_STORAGE_KEY, leads);
+      return leads;
+    }
+  }
   return loadJson(LEADS_STORAGE_KEY, []);
 }
 
 export async function createLead(lead) {
+  const id = lead.id || `lead-${Date.now()}`;
+  const createdAt = lead.createdAt || new Date().toISOString();
   const sb = await getSupabaseOrNull();
   if (sb) {
     await sb.from("leads").insert({
-      id: lead.id || `lead-${Date.now()}`,
+      id,
       email: lead.email,
       phone: lead.phone || null,
       subject: lead.subject || null,
       message: lead.message,
       privacy_accepted: Boolean(lead.privacy_accepted),
-      source: lead.source || "site"
+      source: lead.source || "site",
+      created_at: createdAt
     });
   }
   const list = await getLeads();
-  const created = { ...lead, id: lead.id || `lead-${Date.now()}`, createdAt: lead.createdAt || new Date().toISOString() };
-  list.unshift(created);
-  saveJson(LEADS_STORAGE_KEY, list.slice(0, 200));
+  const created = { ...lead, id, createdAt };
+  saveJson(LEADS_STORAGE_KEY, [created, ...list.filter((item) => item.id !== id)].slice(0, 200));
   return created;
+}
+
+export async function deleteLead(leadId) {
+  if (!leadId) return false;
+  const sb = await getSupabaseOrNull();
+  if (sb) {
+    await sb.from("leads").delete().eq("id", leadId);
+  }
+  const list = await getLeads();
+  saveJson(LEADS_STORAGE_KEY, list.filter((lead) => lead.id !== leadId).slice(0, 200));
+  return true;
 }
 
 export async function uploadImage(file, options = {}) {

@@ -7,7 +7,7 @@ export async function getSupabaseClient() {
   if (cachedClient) return cachedClient;
 
   try {
-    // opzionale: funziona solo online. In demo locale/offline si usa fallback repository locale.
+    // opzionale: funziona solo online. In locale/offline si usa il repository locale.
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
     cachedClient = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
     return cachedClient;

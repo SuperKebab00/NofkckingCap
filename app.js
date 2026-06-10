@@ -12,12 +12,13 @@ import {
   renderProducts,
   renderShowcase
 } from "./js/render.js";
-import { formatCurrency, todayISO } from "./js/utils.js";
+import { escapeHtml, formatCurrency, todayISO } from "./js/utils.js";
 
 const {
   clearCart,
   createLead,
   createOrder,
+  deleteLead,
   getCart,
   getFeaturedCut,
   getInventory,
@@ -43,7 +44,7 @@ const MOBILE_HEADER_BREAKPOINT = 780;
 
 const state = {
   activeCategory: "all",
-  adminAuthenticated: CONFIG.ADMIN_MODE === "demo" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
+  adminAuthenticated: CONFIG.ADMIN_MODE === "local" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
   adminView: "data",
   cart: [],
   consent: null,
@@ -195,7 +196,7 @@ function syncAdminVisibility({ clearError = false } = {}) {
 
 function setAdminView(view) {
   const next = String(view || "").trim();
-  state.adminView = ["data", "manage", "orders"].includes(next) ? next : "data";
+  state.adminView = ["data", "manage", "orders", "leads"].includes(next) ? next : "data";
   document.querySelectorAll("[data-admin-tab]").forEach((button) => {
     const active = button.dataset.adminTab === state.adminView;
     button.classList.toggle("is-active", active);
@@ -326,6 +327,7 @@ function syncUi() {
   renderShowcase(dom, state.monthlyCuts);
   renderAdminStats();
   renderOrdersDashboard();
+  renderLeadsDashboard();
   renderProductEditor();
   renderSiteSectionsEditor();
   renderCategoryEditor();
@@ -340,7 +342,7 @@ function renderOrdersDashboard() {
   const totalOrders = orders.length;
   const todayKey = todayISO();
   const todayOrders = orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayKey).length;
-  const pendingOrders = orders.filter((order) => ["demo-created", "in-attesa", "pending"].includes(String(order.status || "").toLowerCase())).length;
+  const pendingOrders = orders.filter((order) => ["in-attesa", "pending"].includes(String(order.status || "").toLowerCase())).length;
   const completedOrders = orders.filter((order) => ["completato", "completed"].includes(String(order.status || "").toLowerCase())).length;
   const revenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const avg = totalOrders ? revenue / totalOrders : 0;
@@ -365,11 +367,11 @@ function renderOrdersDashboard() {
         <td>${order.customer?.fullName || "-"}</td>
         <td>${String(order.createdAt || "").slice(0, 10) || "-"}</td>
         <td>${formatCurrency(Number(order.total || 0))}</td>
-        <td>${String(order.status || "demo-created")}</td>
+        <td>${String(order.status || "in-attesa")}</td>
         <td>
           <div class="order-actions">
             <select data-order-status="${order.id}" aria-label="Stato ordine ${order.orderNumber || order.id}">
-              <option value="in-attesa" ${String(order.status || "").toLowerCase() === "in-attesa" || String(order.status || "").toLowerCase() === "demo-created" ? "selected" : ""}>In attesa</option>
+              <option value="in-attesa" ${String(order.status || "").toLowerCase() === "in-attesa" ? "selected" : ""}>In attesa</option>
               <option value="in-lavorazione" ${String(order.status || "").toLowerCase() === "in-lavorazione" ? "selected" : ""}>In lavorazione</option>
               <option value="completato" ${String(order.status || "").toLowerCase() === "completato" || String(order.status || "").toLowerCase() === "completed" ? "selected" : ""}>Completato</option>
               <option value="annullato" ${String(order.status || "").toLowerCase() === "annullato" ? "selected" : ""}>Annullato</option>
@@ -380,6 +382,50 @@ function renderOrdersDashboard() {
         </td>
       </tr>`)
     .join("");
+}
+
+function renderLeadsDashboard() {
+  if (!dom.adminLeadsList) return;
+  const leads = [...state.leads];
+  const todayKey = todayISO();
+  const todayLeads = leads.filter((lead) => String(lead.createdAt || "").slice(0, 10) === todayKey).length;
+  if (dom.adminLeadsTotal) dom.adminLeadsTotal.textContent = String(leads.length);
+  if (dom.adminLeadsToday) dom.adminLeadsToday.textContent = String(todayLeads);
+  if (!leads.length) {
+    dom.adminLeadsList.innerHTML = `<tr><td colspan="6">Nessuna richiesta contatto registrata.</td></tr>`;
+    return;
+  }
+
+  dom.adminLeadsList.innerHTML = leads
+    .slice(0, 12)
+    .map((lead) => `
+      <tr>
+        <td>${escapeHtml(String(lead.createdAt || "").slice(0, 10) || "-")}</td>
+        <td><a href="mailto:${escapeHtml(lead.email || "")}">${escapeHtml(lead.email || "-")}</a></td>
+        <td><a href="tel:${escapeHtml(String(lead.phone || "").replace(/\\s+/g, ""))}">${escapeHtml(lead.phone || "-")}</a></td>
+        <td>${escapeHtml(lead.subject || "-")}</td>
+        <td>${escapeHtml(lead.message || "-")}</td>
+        <td>
+          <div class="order-actions order-actions--lead">
+            <button class="mini-button" type="button" data-lead-done="${escapeHtml(lead.id)}">Fatta</button>
+            <button class="mini-button" type="button" data-lead-delete="${escapeHtml(lead.id)}">Elimina</button>
+          </div>
+        </td>
+      </tr>`)
+    .join("");
+}
+
+async function removeLeadFromUi(leadId, label = "Richiesta rimossa.") {
+  if (!requireAdmin()) return;
+  try {
+    await deleteLead(leadId);
+    state.leads = await getLeads();
+    renderLeadsDashboard();
+    renderAdminStats();
+    showToast(label);
+  } catch {
+    showToast("Impossibile aggiornare la richiesta.");
+  }
 }
 
 async function saveOrderStatusFromUi(orderId) {
@@ -462,9 +508,9 @@ function renderAdminStats() {
   document.querySelector("[data-summary-orders]").textContent = todayOrders;
   if (dom.dataInventoryValue) dom.dataInventoryValue.textContent = formatCurrency(inventoryValue);
   if (dom.dataLowStock) dom.dataLowStock.textContent = String(lowStock);
-  if (dom.demoOrders) dom.demoOrders.textContent = state.orders.length;
-  if (dom.demoLeads) dom.demoLeads.textContent = state.leads.length;
-  if (dom.demoActiveProducts) dom.demoActiveProducts.textContent = state.products.length;
+  if (dom.adminKpiOrders) dom.adminKpiOrders.textContent = state.orders.length;
+  if (dom.adminKpiLeads) dom.adminKpiLeads.textContent = state.leads.length;
+  if (dom.adminKpiProducts) dom.adminKpiProducts.textContent = state.products.length;
 }
 
 function renderProductEditor() {
@@ -513,7 +559,7 @@ function routeToPage() {
   document.querySelectorAll(".main-nav a").forEach((link) => link.classList.toggle("is-active", link.getAttribute("href") === `#${valid}`));
   if (valid !== "checkout") {
     dom.checkoutForm.hidden = false;
-    dom.checkoutSummary.hidden = false;
+    dom.checkoutSummary.hidden = true;
     dom.checkoutSuccess.hidden = true;
   }
   if (valid === "admin" && !state.adminAuthenticated) {
@@ -726,6 +772,46 @@ function validateCheckout(formData) {
   return Object.keys(errors).length === 0;
 }
 
+function normalizePhone(value) {
+  return String(value || "").replace(/[^\d+]/g, "");
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || "").trim());
+}
+
+function isValidPhone(value) {
+  const normalized = normalizePhone(value);
+  const digits = normalized.replace(/\D/g, "");
+  return /^\+?\d{8,15}$/.test(normalized) && digits.length >= 8 && digits.length <= 15 && !/^(\d)\1+$/.test(digits);
+}
+
+function validateContactForm(form, formData) {
+  const errors = {};
+  const email = String(formData.get("email") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const subject = String(formData.get("subject") || "").trim();
+  const message = String(formData.get("message") || "").trim();
+  const privacy = formData.get("privacy") === "on";
+
+  if (!email) errors.email = "Inserisci la tua email.";
+  else if (!isValidEmail(email)) errors.email = "Inserisci una email valida.";
+  if (!phone) errors.phone = "Inserisci un numero di telefono.";
+  else if (!isValidPhone(phone)) errors.phone = "Inserisci un numero reale con prefisso, es. +39 320 000 0000.";
+  if (!subject) errors.subject = "Inserisci l'oggetto della richiesta.";
+  if (!message) errors.message = "Scrivi il messaggio.";
+  else if (message.length < 10) errors.message = "Scrivi almeno 10 caratteri.";
+  if (!privacy) errors.privacy = "Accetta la Privacy Policy per inviare la richiesta.";
+
+  form.querySelectorAll("[data-contact-error-for]").forEach((node) => { node.textContent = ""; });
+  Object.entries(errors).forEach(([key, messageText]) => {
+    const node = form.querySelector(`[data-contact-error-for="${key}"]`);
+    if (node) node.textContent = messageText;
+  });
+
+  return Object.keys(errors).length === 0;
+}
+
 function buildOrderPayload(formData) {
   const items = cartExpanded().map((row) => ({
     productId: row.product.id,
@@ -754,7 +840,7 @@ function buildOrderPayload(formData) {
     subtotal,
     shipping,
     total,
-    status: "demo-created",
+    status: "in-attesa",
     paymentMode: formData.get("paymentMode") || "in-shop"
   };
 }
@@ -834,7 +920,7 @@ async function submitCheckout(event) {
   payButton.textContent = "Creazione ordine...";
   const order = buildOrderPayload(formData);
   if (order.paymentMode === "paypal") {
-    showToast("PayPal selezionato: in demo viene creato un ordine simulato.");
+    showToast("PayPal selezionato per questo ordine.");
   }
   await new Promise((resolve) => setTimeout(resolve, 900));
   await createOrder(order);
@@ -844,12 +930,20 @@ async function submitCheckout(event) {
   syncUi();
   dom.orderNumber.textContent = order.orderNumber;
   renderCheckoutSuccessSummary(dom, order);
+  renderCheckoutSummary(
+    dom,
+    order.items.map((item) => ({
+      product: { name: item.productName, price: item.unitPrice },
+      quantity: item.quantity
+    })),
+    order.total
+  );
   dom.checkoutForm.hidden = true;
-  dom.checkoutSummary.hidden = true;
+  dom.checkoutSummary.hidden = false;
   dom.checkoutSuccess.hidden = false;
   payButton.disabled = false;
   payButton.textContent = old;
-  showToast("Ordine demo creato con successo.");
+  showToast("Ordine creato con successo.");
 }
 
 function setFulfillmentUi() {
@@ -893,8 +987,8 @@ async function unlockAdmin(password, email = "") {
     return;
   }
 
-  if (CONFIG.ADMIN_MODE === "demo") {
-    if (password !== CONFIG.DEMO_ADMIN_PASSWORD) {
+  if (CONFIG.ADMIN_MODE === "local") {
+    if (password !== CONFIG.LOCAL_ADMIN_PASSWORD) {
       dom.adminLoginError.textContent = "Password non valida.";
       return;
     }
@@ -973,9 +1067,9 @@ function bindEvents() {
     if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
     if (event.target.closest("[data-close-cart]")) closeDrawer(dom.cartDrawer, ".cart-trigger");
     if (event.target.closest("[data-restock-all]")) await restockAll();
-    if (event.target.closest("[data-reset-demo]")) {
+    if (event.target.closest("[data-reset-local]")) {
       if (!requireAdmin()) return;
-      if (!confirm("Confermi il reset totale della demo?")) return;
+      if (!confirm("Confermi il ripristino dei dati locali?")) return;
       localStorage.clear();
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
       window.location.reload();
@@ -998,8 +1092,12 @@ function bindEvents() {
     if (event.target.closest("[data-category-delete]")) await deleteCategorySection();
     const orderSave = event.target.closest("[data-order-status-save]");
     const orderDetail = event.target.closest("[data-order-detail]");
+    const leadDone = event.target.closest("[data-lead-done]");
+    const leadDelete = event.target.closest("[data-lead-delete]");
     if (orderSave) await saveOrderStatusFromUi(orderSave.dataset.orderStatusSave);
     if (orderDetail) showOrderDetail(orderDetail.dataset.orderDetail);
+    if (leadDone) await removeLeadFromUi(leadDone.dataset.leadDone, "Richiesta segnata come fatta.");
+    if (leadDelete) await removeLeadFromUi(leadDelete.dataset.leadDelete, "Richiesta eliminata.");
     const adminTab = event.target.closest("[data-admin-tab]");
     if (adminTab && requireAdmin()) {
       setAdminView(adminTab.dataset.adminTab);
@@ -1051,24 +1149,26 @@ function bindEvents() {
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
+    if (!validateContactForm(form, fd)) {
+      return showToast("Controlla i campi del form contatti.");
+    }
     const email = String(fd.get("email") || "").trim();
     const phone = String(fd.get("phone") || "").trim();
+    const subject = String(fd.get("subject") || "").trim();
     const message = String(fd.get("message") || "").trim();
-    const privacy = fd.get("privacy") === "on";
-    if (!/\S+@\S+\.\S+/.test(email) || message.length < 5 || !privacy || phone.length < 6) {
-      return showToast("Compila correttamente il form contatti.");
-    }
     await createLead({
       email,
       phone,
-      subject: String(fd.get("subject") || "").trim(),
+      subject,
       message,
       privacy_accepted: true,
-      source: "contact-form-demo"
+      source: "contact-form"
     });
     state.leads = await getLeads();
+    renderLeadsDashboard();
+    renderAdminStats();
     form.reset();
-    showToast("Messaggio salvato in modalità demo. In produzione verrà inviato allo staff.");
+    showToast("Messaggio inviato allo staff.");
   });
 
   window.addEventListener("hashchange", routeToPage);

@@ -1,6 +1,6 @@
-# No Cap Barber Shop (Demo Statico)
+# No Cap Barber Shop
 
-Demo e-commerce statico, pronta per Cloudflare Pages, con fallback locale completo (`localStorage`/`sessionStorage`).
+E-commerce statico pronto per Cloudflare Pages, con fallback locale completo (`localStorage`/`sessionStorage`).
 
 ## Avvio locale
 
@@ -24,11 +24,11 @@ Apri: `http://localhost:5173` (o la porta indicata).
 4. Output directory: `/`.
 5. Deploy.
 
-## Modalità demo
+## Modalita locale
 
 - Dati prodotti/stock/cart/ordini/lead/tagli salvati localmente.
-- Checkout è dimostrativo (nessun pagamento reale).
-- Login admin demo locale (non sicuro).
+- Checkout con creazione ordine e riepilogo finale.
+- Login gestore locale per sviluppo interno.
 
 ## Configurazione
 

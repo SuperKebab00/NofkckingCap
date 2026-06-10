@@ -14,7 +14,7 @@ export const CONFIG = {
   CHECKOUT_MODE: "paypal", 
   ADMIN_MODE: "supabase-auth",
 
-  DEMO_ADMIN_PASSWORD: "",
+  LOCAL_ADMIN_PASSWORD: "",
 
   LEGAL_COMPANY_NAME: "No Cap Barber Shop",
   LEGAL_PRIVACY_EMAIL: "privacy@nocap.it",
