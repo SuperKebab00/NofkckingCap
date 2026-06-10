@@ -70,7 +70,7 @@ button {
   background: rgba(255, 255, 255, 0.94);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(14px);
-  transition: box-shadow 220ms ease, min-height 220ms ease;
+  transition: box-shadow 220ms ease, min-height 220ms ease, transform 220ms ease, opacity 220ms ease;
 }
 
 .site-header[data-elevated="true"] {
@@ -2204,10 +2204,29 @@ button {
 
 @media (max-width: 780px) {
   .site-header {
-    grid-template-columns: 1fr auto;
-    gap: 10px;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 8px;
     min-height: 58px;
-    padding: 8px max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left));
+    padding: calc(8px + env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left));
+  }
+
+  .site-header[data-scroll="hidden"] {
+    transform: translateY(calc(-100% - 8px));
+    opacity: 0;
+  }
+
+  .site-header[data-scroll="visible"] {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .brand {
+    justify-self: center;
+  }
+
+  .brand img {
+    width: min(150px, 48vw);
   }
 
   .header-actions {

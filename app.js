@@ -39,6 +39,7 @@ const {
 const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
 const CONSENT_STORAGE_KEY = "no-cap-consent-v1";
 const MAX_MONTHLY_CUTS = 24;
+const MOBILE_HEADER_BREAKPOINT = 780;
 
 const state = {
   activeCategory: "all",
@@ -68,6 +69,7 @@ const state = {
 
 const dom = getDom();
 const drawerFocus = { previous: null };
+let lastScrollY = 0;
 
 function defaultConsent() {
   return {
@@ -104,6 +106,33 @@ function readConsent() {
   } catch {
     return null;
   }
+}
+
+function syncHeaderOnScroll() {
+  if (!dom.siteHeader) return;
+
+  const currentScrollY = window.scrollY;
+  dom.siteHeader.dataset.elevated = currentScrollY > 12 ? "true" : "false";
+
+  if (!window.matchMedia(`(max-width: ${MOBILE_HEADER_BREAKPOINT}px)`).matches) {
+    dom.siteHeader.dataset.scroll = "visible";
+    lastScrollY = currentScrollY;
+    return;
+  }
+
+  if (currentScrollY <= 16) {
+    dom.siteHeader.dataset.scroll = "visible";
+    lastScrollY = currentScrollY;
+    return;
+  }
+
+  if (currentScrollY > lastScrollY + 4) {
+    dom.siteHeader.dataset.scroll = "hidden";
+  } else if (currentScrollY < lastScrollY - 4) {
+    dom.siteHeader.dataset.scroll = "visible";
+  }
+
+  lastScrollY = currentScrollY;
 }
 
 function applyConsent(consent) {
@@ -1043,9 +1072,9 @@ function bindEvents() {
   });
 
   window.addEventListener("hashchange", routeToPage);
-  window.addEventListener("scroll", () => {
-    document.querySelector(".site-header").dataset.elevated = window.scrollY > 12 ? "true" : "false";
-  });
+  window.addEventListener("scroll", syncHeaderOnScroll, { passive: true });
+  window.addEventListener("resize", syncHeaderOnScroll);
+  syncHeaderOnScroll();
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeDrawer(dom.cartDrawer, ".cart-trigger");

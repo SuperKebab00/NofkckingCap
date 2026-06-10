@@ -70,6 +70,7 @@ export function getDom() {
     productDeleteButton: document.querySelector("[data-product-delete]"),
     sectionShopTitleInput: document.querySelector("[data-section-shop-title]"),
     sectionShopCopyInput: document.querySelector("[data-section-shop-copy]"),
+    siteHeader: document.querySelector(".site-header"),
     siteShopTitle: document.querySelector("[data-shop-title]"),
     siteShopCopy: document.querySelector("[data-shop-copy]"),
     orderNumber: document.querySelector("[data-order-number]"),
