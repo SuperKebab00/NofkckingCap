@@ -170,6 +170,7 @@
           </div>
 
           <form class="contact-form" data-contact-form novalidate>
+            <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" hidden>
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Contattaci</p>
@@ -258,7 +259,7 @@
         <div class="page-banner page-banner--shop">
           <p class="eyebrow">Checkout</p>
           <h1 id="checkout-title">Conferma ordine</h1>
-          <p>Inserisci i dati, scegli ritiro o consegna e conferma l'ordine.</p>
+          <p>Inserisci i dati, scegli ritiro o consegna e completa il checkout.</p>
         </div>
 
         <div class="checkout-layout">
@@ -281,12 +282,12 @@
 
             <fieldset class="checkout-block">
               <legend>Ritiro o consegna</legend>
-              <div class="checkout-options" role="radiogroup" aria-label="Ritiro o consegna">
+              <div class="checkout-options" role="radiogroup" aria-label="Ritiro ordine">
               <label class="checkout-radio checkout-option">
                 <input type="radio" name="fulfillment" value="pickup" checked>
                 <span class="checkout-option__body">
                   <strong>Ritiro in shop</strong>
-                  <small>Prepariamo l'ordine per il ritiro in negozio.</small>
+                  <small>Prepariamo l'ordine e ti aspettiamo in negozio per il ritiro.</small>
                 </span>
               </label>
               <label class="checkout-radio checkout-option">
@@ -329,10 +330,18 @@
                   <input type="radio" name="paymentMode" value="paypal">
                   <span class="checkout-option__body">
                     <strong>PayPal</strong>
-                    <small>Pagamento digitale collegato all'ordine.</small>
+                    <small>Verrai reindirizzato su PayPal per autorizzare il pagamento.</small>
+                  </span>
+                </label>
+                <label class="checkout-radio checkout-option">
+                  <input type="radio" name="paymentMode" value="stripe">
+                  <span class="checkout-option__body">
+                    <strong>Carta</strong>
+                    <small>Checkout Stripe ospitato, coerente con il look No Cap.</small>
                   </span>
                 </label>
               </div>
+              <p class="checkout-note">La giacenza viene aggiornata automaticamente alla conferma del pagamento PayPal o Stripe.</p>
             </div>
 
             <button class="primary-button primary-button--wide" type="submit" data-pay-now>Conferma ordine</button>

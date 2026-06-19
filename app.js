@@ -1,4 +1,4 @@
-import { CONFIG } from "./js/config.js";
+import { CONFIG, isPaymentMethodEnabled } from "./js/config.js";
 import { defaultFreshCut } from "./js/data.js";
 import { getSupabaseClient } from "./js/supabase-client.js";
 import * as repository from "./js/repository.js";
@@ -16,8 +16,7 @@ import { escapeHtml, formatCurrency, todayISO } from "./js/utils.js";
 
 const {
   clearCart,
-  createLead,
-  createOrder,
+  deleteProduct,
   deleteLead,
   getCart,
   getFeaturedCut,
@@ -39,8 +38,33 @@ const {
 
 const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
 const CONSENT_STORAGE_KEY = "no-cap-consent-v1";
+const PAYPAL_CHECKOUT_KEY = "no-cap-paypal-checkout-v1";
+const STRIPE_CHECKOUT_KEY = "no-cap-stripe-checkout-v1";
 const MAX_MONTHLY_CUTS = 24;
 const MOBILE_HEADER_BREAKPOINT = 780;
+const ORDER_PENDING_STATUSES = ["prenotato", "pending-payment", "pagato", "in-lavorazione"];
+const ORDER_COMPLETED_STATUSES = ["spedito", "completato", "completed"];
+
+function normalizeOrderStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "in-attesa" || normalized === "pending") return "prenotato";
+  if (normalized === "paid") return "pagato";
+  if (normalized === "completed") return "completato";
+  return normalized || "prenotato";
+}
+
+function getOrderStatusLabel(status) {
+  switch (normalizeOrderStatus(status)) {
+    case "prenotato": return "Prenotato";
+    case "pending-payment": return "Attesa pagamento";
+    case "pagato": return "Pagato";
+    case "in-lavorazione": return "In lavorazione";
+    case "spedito": return "Spedito";
+    case "completato": return "Completato";
+    case "annullato": return "Annullato";
+    default: return String(status || "Prenotato");
+  }
+}
 
 const state = {
   activeCategory: "all",
@@ -239,6 +263,10 @@ function normalizeCuts(cuts) {
   return unique;
 }
 
+function getRealMonthlyCuts(cuts) {
+  return (Array.isArray(cuts) ? cuts : []).filter((cut) => cut?.id && cut.id !== defaultFreshCut.id);
+}
+
 function getDefaultShopCategories(products) {
   const base = [{ value: "all", label: "All products" }];
   const seen = new Set(["all"]);
@@ -293,15 +321,13 @@ async function persistCart() {
   await saveCart(state.cart);
 }
 
-async function loadState() {
-  const [products, inventory, featuredCut, monthlyCuts, cart, orders, leads, siteSections] = await Promise.all([
+async function loadPublicState() {
+  const [products, inventory, featuredCut, monthlyCuts, cart, siteSections] = await Promise.all([
     getProducts(),
     getInventory(),
     getFeaturedCut(),
     getMonthlyCuts(),
     getCart(),
-    getOrders(),
-    getLeads(),
     getSiteSections()
   ]);
   state.products = products;
@@ -309,11 +335,40 @@ async function loadState() {
   state.featuredCut = { ...defaultFreshCut, ...featuredCut };
   state.monthlyCuts = normalizeCuts(monthlyCuts);
   state.cart = normalizeCart(cart, state.products, state.inventory);
-  state.orders = orders;
-  state.leads = leads;
+  state.orders = [];
+  state.leads = [];
   state.siteSections = { ...state.siteSections, ...(siteSections || {}) };
   state.siteSections.shopCategories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
   await persistCart();
+}
+
+async function loadAdminState() {
+  if (!state.adminAuthenticated) {
+    state.orders = [];
+    state.leads = [];
+    renderOrdersDashboard();
+    renderLeadsDashboard();
+    renderAdminStats();
+    return;
+  }
+
+  const [orders, leads] = await Promise.all([
+    getOrders(),
+    getLeads()
+  ]);
+  state.orders = orders;
+  state.leads = leads;
+  renderOrdersDashboard();
+  renderLeadsDashboard();
+  renderAdminStats();
+}
+
+async function reloadDbBackedState() {
+  await loadPublicState();
+  if (state.adminAuthenticated) {
+    await loadAdminState();
+  }
+  syncUi();
 }
 
 function syncUi() {
@@ -334,6 +389,8 @@ function syncUi() {
   applySiteSections();
   syncAdminVisibility();
   setAdminView(state.adminView);
+  syncPaymentMethodAvailability();
+  syncCheckoutButtonLabel();
 }
 
 function renderOrdersDashboard() {
@@ -342,8 +399,8 @@ function renderOrdersDashboard() {
   const totalOrders = orders.length;
   const todayKey = todayISO();
   const todayOrders = orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayKey).length;
-  const pendingOrders = orders.filter((order) => ["in-attesa", "pending"].includes(String(order.status || "").toLowerCase())).length;
-  const completedOrders = orders.filter((order) => ["completato", "completed"].includes(String(order.status || "").toLowerCase())).length;
+  const pendingOrders = orders.filter((order) => ORDER_PENDING_STATUSES.includes(normalizeOrderStatus(order.status))).length;
+  const completedOrders = orders.filter((order) => ORDER_COMPLETED_STATUSES.includes(normalizeOrderStatus(order.status))).length;
   const revenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const avg = totalOrders ? revenue / totalOrders : 0;
 
@@ -363,21 +420,24 @@ function renderOrdersDashboard() {
     .slice(0, 12)
     .map((order) => `
       <tr>
-        <td><strong>${order.orderNumber || order.id}</strong></td>
-        <td>${order.customer?.fullName || "-"}</td>
-        <td>${String(order.createdAt || "").slice(0, 10) || "-"}</td>
+        <td><strong>${escapeHtml(order.orderNumber || order.id || "-")}</strong></td>
+        <td>${escapeHtml(order.customer?.fullName || "-")}</td>
+        <td>${escapeHtml(String(order.createdAt || "").slice(0, 10) || "-")}</td>
         <td>${formatCurrency(Number(order.total || 0))}</td>
-        <td>${String(order.status || "in-attesa")}</td>
+        <td>${escapeHtml(getOrderStatusLabel(order.status))}</td>
         <td>
           <div class="order-actions">
-            <select data-order-status="${order.id}" aria-label="Stato ordine ${order.orderNumber || order.id}">
-              <option value="in-attesa" ${String(order.status || "").toLowerCase() === "in-attesa" ? "selected" : ""}>In attesa</option>
-              <option value="in-lavorazione" ${String(order.status || "").toLowerCase() === "in-lavorazione" ? "selected" : ""}>In lavorazione</option>
-              <option value="completato" ${String(order.status || "").toLowerCase() === "completato" || String(order.status || "").toLowerCase() === "completed" ? "selected" : ""}>Completato</option>
-              <option value="annullato" ${String(order.status || "").toLowerCase() === "annullato" ? "selected" : ""}>Annullato</option>
+            <select data-order-status="${escapeHtml(order.id)}" aria-label="Stato ordine ${escapeHtml(order.orderNumber || order.id || "-")}">
+              <option value="prenotato" ${normalizeOrderStatus(order.status) === "prenotato" ? "selected" : ""}>Prenotato</option>
+              <option value="pending-payment" ${normalizeOrderStatus(order.status) === "pending-payment" ? "selected" : ""}>Attesa pagamento</option>
+              <option value="pagato" ${normalizeOrderStatus(order.status) === "pagato" ? "selected" : ""}>Pagato</option>
+              <option value="in-lavorazione" ${normalizeOrderStatus(order.status) === "in-lavorazione" ? "selected" : ""}>In lavorazione</option>
+              <option value="spedito" ${normalizeOrderStatus(order.status) === "spedito" ? "selected" : ""}>Spedito</option>
+              <option value="completato" ${normalizeOrderStatus(order.status) === "completato" ? "selected" : ""}>Completato</option>
+              <option value="annullato" ${normalizeOrderStatus(order.status) === "annullato" ? "selected" : ""}>Annullato</option>
             </select>
-            <button class="mini-button" type="button" data-order-status-save="${order.id}">Salva</button>
-            <button class="mini-button" type="button" data-order-detail="${order.id}">Dettagli</button>
+            <button class="mini-button" type="button" data-order-status-save="${escapeHtml(order.id)}">Salva</button>
+            <button class="mini-button" type="button" data-order-detail="${escapeHtml(order.id)}">Dettagli</button>
           </div>
         </td>
       </tr>`)
@@ -419,12 +479,10 @@ async function removeLeadFromUi(leadId, label = "Richiesta rimossa.") {
   if (!requireAdmin()) return;
   try {
     await deleteLead(leadId);
-    state.leads = await getLeads();
-    renderLeadsDashboard();
-    renderAdminStats();
+    await reloadDbBackedState();
     showToast(label);
-  } catch {
-    showToast("Impossibile aggiornare la richiesta.");
+  } catch (error) {
+    showToast(error.message || "Impossibile aggiornare la richiesta.");
   }
 }
 
@@ -436,11 +494,10 @@ async function saveOrderStatusFromUi(orderId) {
   if (!nextStatus) return;
   try {
     await updateOrderStatus(orderId, nextStatus);
-    state.orders = await getOrders();
-    renderOrdersDashboard();
+    await reloadDbBackedState();
     showToast("Stato ordine aggiornato.");
-  } catch {
-    showToast("Impossibile aggiornare lo stato ordine.");
+  } catch (error) {
+    showToast(error.message || "Impossibile aggiornare lo stato ordine.");
   }
 }
 
@@ -449,7 +506,9 @@ function showOrderDetail(orderId) {
   if (!order) return;
   const itemCount = Array.isArray(order.items) ? order.items.reduce((sum, row) => sum + Number(row.quantity || 0), 0) : 0;
   const delivery = order.fulfillment === "shipping" ? "Spedizione" : "Ritiro";
-  const payment = order.paymentMode === "paypal" ? "PayPal" : "In sede";
+  const payment = order.paymentMode === "paypal"
+    ? "PayPal"
+    : (order.paymentMode === "stripe" ? "Carta / Stripe" : "In sede");
   showToast(`${order.orderNumber || order.id} · ${delivery} · ${payment} · ${itemCount} articoli`);
 }
 
@@ -498,7 +557,7 @@ function renderAdminStats() {
   const lowStock = quantities.filter((value) => value > 0 && value <= 2).length;
   const soldOut = quantities.filter((value) => value <= 0).length;
   const inventoryValue = state.products.reduce((sum, product) => sum + (state.inventory[product.id] ?? 0) * Number(product.price || 0), 0);
-  const monthlyCount = state.monthlyCuts.filter((cut) => String(cut.date).startsWith(todayISO().slice(0, 7))).length;
+  const monthlyCount = getRealMonthlyCuts(state.monthlyCuts).filter((cut) => String(cut.date).startsWith(todayISO().slice(0, 7))).length;
   const todayOrders = state.orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayISO()).length;
   document.querySelector("[data-summary-total]").textContent = totalUnits;
   document.querySelector("[data-summary-low]").textContent = lowStock;
@@ -547,6 +606,213 @@ function showToast(message) {
   dom.toast.textContent = message;
   dom.toast.classList.add("is-visible");
   state.toastTimer = setTimeout(() => dom.toast.classList.remove("is-visible"), 2600);
+}
+
+function getEnabledPaymentMode(requestedMode) {
+  if (requestedMode === "stripe" && isPaymentMethodEnabled("stripe")) return "stripe";
+  if (requestedMode === "paypal" && isPaymentMethodEnabled("paypal")) return "paypal";
+  return "in-shop";
+}
+
+function syncPaymentMethodAvailability() {
+  document.querySelectorAll('input[name="paymentMode"]').forEach((input) => {
+    const enabled = getEnabledPaymentMode(input.value) === input.value;
+    input.disabled = !enabled;
+    input.closest(".checkout-option")?.classList.toggle("is-disabled", !enabled);
+  });
+
+  const selectedValue = dom.checkoutForm.querySelector('input[name="paymentMode"]:checked')?.value || "in-shop";
+  const validValue = getEnabledPaymentMode(selectedValue);
+  if (selectedValue !== validValue) {
+    const fallbackInput = dom.checkoutForm.querySelector(`input[name="paymentMode"][value="${validValue}"]`);
+    if (fallbackInput) fallbackInput.checked = true;
+  }
+}
+
+function syncCheckoutButtonLabel() {
+  const payButton = dom.checkoutForm?.querySelector("[data-pay-now]");
+  if (!payButton) return;
+  const paymentMode = getEnabledPaymentMode(dom.checkoutForm.querySelector('input[name="paymentMode"]:checked')?.value);
+  if (paymentMode === "paypal") {
+    payButton.textContent = "Continua con PayPal";
+    return;
+  }
+  if (paymentMode === "stripe") {
+    payButton.textContent = "Continua con carta";
+    return;
+  }
+  payButton.textContent = "Conferma ordine";
+}
+
+function renderCheckoutSuccess(order) {
+  dom.orderNumber.textContent = order.orderNumber;
+  renderCheckoutSuccessSummary(dom, order);
+  renderCheckoutSummary(
+    dom,
+    order.items.map((item) => ({
+      product: { name: item.productName, price: item.unitPrice },
+      quantity: item.quantity
+    })),
+    order.total
+  );
+  dom.checkoutForm.hidden = true;
+  dom.checkoutSummary.hidden = false;
+  dom.checkoutSuccess.hidden = false;
+}
+
+async function postJson(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (response.status === 404 || response.status === 501) {
+    throw new Error("API backend non disponibile in questo ambiente locale. Avvia il progetto con Cloudflare Pages Functions attive.");
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error("API error", {
+      url,
+      status: response.status
+    });
+    throw new Error(data?.error || "Richiesta non riuscita.");
+  }
+  return data;
+}
+
+async function submitLeadRequest(payload) {
+  return postJson("/api/contact/create", payload);
+}
+
+function writePendingPaypal(payload) {
+  sessionStorage.setItem(PAYPAL_CHECKOUT_KEY, JSON.stringify(payload));
+}
+
+function readPendingPaypal() {
+  try {
+    return JSON.parse(sessionStorage.getItem(PAYPAL_CHECKOUT_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingPaypal() {
+  sessionStorage.removeItem(PAYPAL_CHECKOUT_KEY);
+}
+
+function writePendingStripe(payload) {
+  sessionStorage.setItem(STRIPE_CHECKOUT_KEY, JSON.stringify(payload));
+}
+
+function readPendingStripe() {
+  try {
+    return JSON.parse(sessionStorage.getItem(STRIPE_CHECKOUT_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingStripe() {
+  sessionStorage.removeItem(STRIPE_CHECKOUT_KEY);
+}
+
+function clearCheckoutSearch(hash = "#checkout") {
+  window.history.replaceState({}, "", `${window.location.pathname}${hash}`);
+}
+
+async function refreshStorefrontState() {
+  state.inventory = await getInventory();
+  state.products = await getProducts();
+}
+
+async function handlePaypalReturn() {
+  const url = new URL(window.location.href);
+  const paypalState = url.searchParams.get("paypal");
+  if (!paypalState) return;
+
+  const pending = readPendingPaypal();
+  const orderId = url.searchParams.get("orderId") || pending?.orderId || "";
+  const paypalOrderId = url.searchParams.get("token") || pending?.paypalOrderId || "";
+
+  window.location.hash = "#checkout";
+
+  if (paypalState === "cancel") {
+    clearPendingPaypal();
+    clearCheckoutSearch("#checkout");
+    showToast("Pagamento PayPal annullato.");
+    return;
+  }
+
+  if (paypalState !== "success" || !orderId || !paypalOrderId) {
+    clearPendingPaypal();
+    clearCheckoutSearch("#checkout");
+    showToast("Ritorno PayPal non valido.");
+    return;
+  }
+
+  try {
+    const { order } = await postJson("/api/checkout/capture", { orderId, paypalOrderId });
+    await clearCart();
+    clearPendingPaypal();
+    state.cart = [];
+    await refreshStorefrontState();
+    if (state.adminAuthenticated) {
+      await loadAdminState();
+    }
+    syncUi();
+    renderCheckoutSuccess(order);
+    clearCheckoutSearch("#checkout");
+    showToast("Pagamento PayPal completato.");
+  } catch (error) {
+    clearCheckoutSearch("#checkout");
+    showToast(error.message || "Impossibile confermare il pagamento PayPal.");
+  }
+}
+
+async function handleStripeReturn() {
+  const url = new URL(window.location.href);
+  const stripeState = url.searchParams.get("stripe");
+  if (!stripeState) return;
+
+  const pending = readPendingStripe();
+  const orderId = url.searchParams.get("orderId") || pending?.orderId || "";
+  const stripeSessionId = url.searchParams.get("session_id") || pending?.stripeSessionId || "";
+
+  window.location.hash = "#checkout";
+
+  if (stripeState === "cancel") {
+    clearPendingStripe();
+    clearCheckoutSearch("#checkout");
+    showToast("Pagamento con carta annullato.");
+    return;
+  }
+
+  if (stripeState !== "success" || !orderId || !stripeSessionId) {
+    clearPendingStripe();
+    clearCheckoutSearch("#checkout");
+    showToast("Ritorno Stripe non valido.");
+    return;
+  }
+
+  try {
+    const { order } = await postJson("/api/checkout/stripe/verify", { orderId, stripeSessionId });
+    await clearCart();
+    clearPendingStripe();
+    state.cart = [];
+    await refreshStorefrontState();
+    if (state.adminAuthenticated) {
+      await loadAdminState();
+    }
+    syncUi();
+    renderCheckoutSuccess(order);
+    clearCheckoutSearch("#checkout");
+    showToast("Pagamento con carta completato.");
+  } catch (error) {
+    clearCheckoutSearch("#checkout");
+    showToast(error.message || "Impossibile confermare il pagamento Stripe.");
+  }
 }
 
 function routeToPage() {
@@ -615,12 +881,13 @@ function setCategory(category) {
 
 async function addToCart(productId) {
   const product = state.products.find((item) => item.id === productId);
-  if (!product || (state.inventory[productId] ?? 0) <= 0) return showToast("Prodotto esaurito.");
-  state.inventory[productId] = Math.max(0, (state.inventory[productId] ?? 0) - 1);
+  const available = Math.max(0, Number(state.inventory[productId] ?? 0));
   const row = state.cart.find((item) => item.productId === productId);
+  const inCart = Number(row?.quantity || 0);
+  if (!product || available <= 0) return showToast("Prodotto esaurito.");
+  if (inCart >= available) return showToast("Hai raggiunto la disponibilita massima per questo prodotto.");
   if (row) row.quantity += 1;
   else state.cart.push({ productId, quantity: 1 });
-  await saveInventory(state.inventory);
   await persistCart();
   syncUi();
   openDrawer(dom.cartDrawer, ".cart-trigger");
@@ -630,30 +897,31 @@ async function removeFromCart(productId) {
   const row = state.cart.find((item) => item.productId === productId);
   if (!row) return;
   row.quantity -= 1;
-  state.inventory[productId] = (state.inventory[productId] ?? 0) + 1;
   if (row.quantity <= 0) state.cart = state.cart.filter((item) => item.productId !== productId);
-  await saveInventory(state.inventory);
   await persistCart();
   syncUi();
 }
 
 async function adjustInventory(productId, amount) {
+  if (!requireAdmin()) return;
   state.inventory[productId] = Math.max(0, (state.inventory[productId] ?? 0) + amount);
   await saveInventory(state.inventory);
-  syncUi();
+  await reloadDbBackedState();
 }
 
 async function restockAll() {
   if (!requireAdmin()) return;
   state.products.forEach((product) => { state.inventory[product.id] = Number(product.restock || 0); });
   await saveInventory(state.inventory);
-  syncUi();
+  await reloadDbBackedState();
   showToast("Magazzino rifornito.");
 }
 
 async function saveFreshCut() {
   if (!requireAdmin()) return;
-  const image = await uploadImage(dom.cutFileInput.files[0], { bucket: "cuts" }).catch(() => state.featuredCut.image);
+  const image = dom.cutFileInput.files[0]
+    ? await uploadImage(dom.cutFileInput.files[0], { bucket: "cuts" })
+    : state.featuredCut.image;
   const cut = {
     id: `cut-${Date.now()}`,
     name: dom.cutNameInput.value.trim() || defaultFreshCut.name,
@@ -665,8 +933,8 @@ async function saveFreshCut() {
   state.monthlyCuts = normalizeCuts([cut, ...state.monthlyCuts]);
   await saveFeaturedCut(cut);
   await saveMonthlyCuts(state.monthlyCuts);
+  await reloadDbBackedState();
   dom.cutFileInput.value = "";
-  syncUi();
   showToast("Taglio pubblicato.");
 }
 
@@ -711,10 +979,11 @@ async function saveProductFromForm() {
     state.inventory[newId] = restock;
     await saveProducts(state.products);
     await saveInventory(state.inventory);
+    await reloadDbBackedState();
     dom.productSelect.value = newId;
+    fillProductForm(newId);
     dom.productPackshotInput.value = "";
     dom.productLifestyleInput.value = "";
-    syncUi();
     showToast("Prodotto aggiunto al catalogo.");
     return;
   }
@@ -733,9 +1002,11 @@ async function saveProductFromForm() {
     images: { packshot, lifestyle }
   };
   await saveProducts(state.products);
+  await reloadDbBackedState();
+  dom.productSelect.value = id;
+  fillProductForm(id);
   dom.productPackshotInput.value = "";
   dom.productLifestyleInput.value = "";
-  syncUi();
   showToast("Prodotto aggiornato.");
 }
 
@@ -744,13 +1015,12 @@ async function deleteSelectedProduct() {
   if (state.products.length <= 1) return showToast("Serve almeno un prodotto nel catalogo.");
   const id = dom.productSelect.value;
   const product = state.products.find((item) => item.id === id);
+  await deleteProduct(id);
   state.products = state.products.filter((item) => item.id !== id);
   state.cart = state.cart.filter((item) => item.productId !== id);
   delete state.inventory[id];
-  await saveProducts(state.products);
-  await saveInventory(state.inventory);
   await persistCart();
-  syncUi();
+  await reloadDbBackedState();
   showToast(`${product?.name || "Prodotto"} rimosso.`);
 }
 
@@ -813,20 +1083,13 @@ function validateContactForm(form, formData) {
 }
 
 function buildOrderPayload(formData) {
+  const requestedPaymentMode = String(formData.get("paymentMode") || "in-shop");
+  const paymentMode = getEnabledPaymentMode(requestedPaymentMode);
   const items = cartExpanded().map((row) => ({
     productId: row.product.id,
-    productName: row.product.name,
-    unitPrice: row.product.price,
-    quantity: row.quantity,
-    lineTotal: row.quantity * row.product.price
+    quantity: row.quantity
   }));
-  const subtotal = items.reduce((sum, row) => sum + row.lineTotal, 0);
-  const shipping = formData.get("fulfillment") === "shipping" ? 6 : 0;
-  const total = subtotal + shipping;
   return {
-    id: `order-${Date.now()}`,
-    orderNumber: `NC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-    createdAt: new Date().toISOString(),
     customer: {
       fullName: String(formData.get("fullName")).trim(),
       email: String(formData.get("email")).trim(),
@@ -837,11 +1100,7 @@ function buildOrderPayload(formData) {
       ? { address: formData.get("address"), city: formData.get("city"), zip: formData.get("zip") }
       : null,
     items,
-    subtotal,
-    shipping,
-    total,
-    status: "in-attesa",
-    paymentMode: formData.get("paymentMode") || "in-shop"
+    paymentMode
   };
 }
 
@@ -868,9 +1127,7 @@ async function saveSiteSectionsFromForm() {
   };
   await saveProducts(state.products);
   await saveSiteSections(state.siteSections);
-  applySiteSections();
-  renderCategoryBar();
-  renderCategoryEditor();
+  await reloadDbBackedState();
   showToast("Sezioni aggiornate.");
 }
 
@@ -883,8 +1140,7 @@ async function addCategorySection() {
   state.siteSections.shopCategories.push({ value, label });
   state.siteSections.shopCategories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
   await saveSiteSections(state.siteSections);
-  renderCategoryBar();
-  renderCategoryEditor();
+  await reloadDbBackedState();
   dom.categorySelect.value = value;
   fillCategoryEditor(value);
   showToast("Sezione categoria aggiunta.");
@@ -901,7 +1157,7 @@ async function deleteCategorySection() {
   if (state.activeCategory === value) state.activeCategory = "all";
   await saveProducts(state.products);
   await saveSiteSections(state.siteSections);
-  syncUi();
+  await reloadDbBackedState();
   showToast("Sezione categoria rimossa.");
 }
 
@@ -915,41 +1171,56 @@ async function submitCheckout(event) {
   const formData = new FormData(dom.checkoutForm);
   if (!validateCheckout(formData)) return;
   const payButton = dom.checkoutForm.querySelector("[data-pay-now]");
-  const old = payButton.textContent;
   payButton.disabled = true;
   payButton.textContent = "Creazione ordine...";
-  const order = buildOrderPayload(formData);
-  if (order.paymentMode === "paypal") {
-    showToast("PayPal selezionato per questo ordine.");
+
+  try {
+    const orderDraft = buildOrderPayload(formData);
+    const result = await postJson("/api/checkout/create", { order: orderDraft });
+
+    if (result.mode === "paypal") {
+      writePendingPaypal({
+        orderId: result.order.id,
+        orderNumber: result.order.orderNumber,
+        paypalOrderId: result.paypalOrderId
+      });
+      window.location.href = result.approvalUrl;
+      return;
+    }
+
+    if (result.mode === "stripe") {
+      writePendingStripe({
+        orderId: result.order.id,
+        orderNumber: result.order.orderNumber,
+        stripeSessionId: result.stripeSessionId
+      });
+      window.location.href = result.checkoutUrl;
+      return;
+    }
+
+    await clearCart();
+    state.cart = [];
+    await refreshStorefrontState();
+    if (state.adminAuthenticated) {
+      await loadAdminState();
+    }
+    syncUi();
+    renderCheckoutSuccess(result.order);
+    showToast("Ordine creato con successo.");
+  } catch (error) {
+    showToast(error.message || "Impossibile creare l'ordine.");
+  } finally {
+    payButton.disabled = false;
+    syncCheckoutButtonLabel();
   }
-  await new Promise((resolve) => setTimeout(resolve, 900));
-  await createOrder(order);
-  await clearCart();
-  state.orders = await getOrders();
-  state.cart = [];
-  syncUi();
-  dom.orderNumber.textContent = order.orderNumber;
-  renderCheckoutSuccessSummary(dom, order);
-  renderCheckoutSummary(
-    dom,
-    order.items.map((item) => ({
-      product: { name: item.productName, price: item.unitPrice },
-      quantity: item.quantity
-    })),
-    order.total
-  );
-  dom.checkoutForm.hidden = true;
-  dom.checkoutSummary.hidden = false;
-  dom.checkoutSuccess.hidden = false;
-  payButton.disabled = false;
-  payButton.textContent = old;
-  showToast("Ordine creato con successo.");
 }
 
 function setFulfillmentUi() {
   const value = dom.checkoutForm.querySelector('input[name="fulfillment"]:checked')?.value;
   const shipping = value === "shipping";
   dom.shippingFields.hidden = !shipping;
+  syncPaymentMethodAvailability();
+  syncCheckoutButtonLabel();
 }
 
 async function unlockAdmin(password, email = "") {
@@ -979,6 +1250,7 @@ async function unlockAdmin(password, email = "") {
       return;
     }
     state.adminAuthenticated = true;
+    await loadAdminState();
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
     state.adminView = "data";
     syncAdminVisibility({ clearError: true });
@@ -993,6 +1265,7 @@ async function unlockAdmin(password, email = "") {
       return;
     }
     state.adminAuthenticated = true;
+    await loadAdminState();
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
     state.adminView = "data";
     syncAdminVisibility({ clearError: true });
@@ -1008,6 +1281,7 @@ async function logoutAdmin() {
   }
   state.adminAuthenticated = false;
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  await loadAdminState();
   syncAdminVisibility({ clearError: true });
   setAdminView("data");
   if (isAdminRoute()) dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus();
@@ -1075,12 +1349,12 @@ function bindEvents() {
       window.location.reload();
     }
     if (event.target.closest("[data-cut-reset]")) {
-      state.featuredCut = { ...defaultFreshCut };
-      state.monthlyCuts = [defaultFreshCut];
-      await saveFeaturedCut(state.featuredCut);
-      await saveMonthlyCuts(state.monthlyCuts);
-      syncUi();
-    }
+    state.featuredCut = { ...defaultFreshCut };
+    state.monthlyCuts = [defaultFreshCut];
+    await saveFeaturedCut(state.featuredCut);
+    await saveMonthlyCuts(state.monthlyCuts);
+    await reloadDbBackedState();
+  }
     if (event.target.closest("[data-checkout]")) {
       closeDrawer(dom.cartDrawer, ".cart-trigger");
       if (!state.cart.length) return showToast("Il carrello è vuoto.");
@@ -1123,7 +1397,7 @@ function bindEvents() {
   });
 
   dom.checkoutForm.addEventListener("change", (event) => {
-    if (event.target.name === "fulfillment") setFulfillmentUi();
+    if (event.target.name === "fulfillment" || event.target.name === "paymentMode") setFulfillmentUi();
   });
   dom.checkoutForm.addEventListener("submit", submitCheckout);
   dom.adminLoginForm.addEventListener("submit", (event) => {
@@ -1156,17 +1430,18 @@ function bindEvents() {
     const phone = String(fd.get("phone") || "").trim();
     const subject = String(fd.get("subject") || "").trim();
     const message = String(fd.get("message") || "").trim();
-    await createLead({
+    await submitLeadRequest({
       email,
       phone,
       subject,
       message,
       privacy_accepted: true,
-      source: "contact-form"
+      source: "contact-form",
+      website: String(fd.get("website") || "")
     });
-    state.leads = await getLeads();
-    renderLeadsDashboard();
-    renderAdminStats();
+    if (state.adminAuthenticated) {
+      await loadAdminState();
+    }
     form.reset();
     showToast("Messaggio inviato allo staff.");
   });
@@ -1193,6 +1468,10 @@ async function init() {
       state.adminAuthenticated = Boolean(data?.session);
       sb.auth.onAuthStateChange((_event, session) => {
         state.adminAuthenticated = Boolean(session);
+        loadAdminState().catch(() => {
+          state.orders = [];
+          state.leads = [];
+        });
         syncAdminVisibility({ clearError: true });
         routeToPage();
       });
@@ -1200,9 +1479,14 @@ async function init() {
       state.adminAuthenticated = false;
     }
   }
-  await loadState();
+  await loadPublicState();
+  if (state.adminAuthenticated) {
+    await loadAdminState();
+  }
   initConsentUi();
   bindEvents();
+  await handlePaypalReturn();
+  await handleStripeReturn();
   syncAdminVisibility({ clearError: true });
   syncUi();
   setFulfillmentUi();

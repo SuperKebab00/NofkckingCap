@@ -1,85 +1,144 @@
 # No Cap Barber Shop
 
-E-commerce statico pronto per Cloudflare Pages, con fallback locale completo (`localStorage`/`sessionStorage`).
+Frontend statico ecommerce per barber shop con Supabase, Cloudflare Pages Functions, PayPal e Stripe opzionali.
 
 ## Avvio locale
 
-```bash
-python3 -m http.server 5173
-```
-
-oppure:
+Per sola UI statica:
 
 ```bash
-npx serve .
+python -m http.server 5173
 ```
 
-Apri: `http://localhost:5173` (o la porta indicata).
+Per test reale con Pages Functions:
 
-## Deploy Cloudflare Pages
+```bash
+npx wrangler pages dev . --local
+```
 
-1. Push del repository su GitHub/GitLab.
-2. Crea progetto in Cloudflare Pages.
-3. Build command: vuoto.
-4. Output directory: `/`.
-5. Deploy.
+Copia `.dev.vars.example` in `.dev.vars` e inserisci solo valori locali. `.dev.vars` non deve mai essere committato.
 
-## Modalita locale
+## Variabili ambiente
 
-- Dati prodotti/stock/cart/ordini/lead/tagli salvati localmente.
-- Checkout con creazione ordine e riepilogo finale.
-- Login gestore locale per sviluppo interno.
+Frontend-safe:
 
-## Configurazione
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `PUBLIC_SITE_URL`
+- `PUBLIC_STRIPE_PUBLISHABLE_KEY` se usato
+- `PUBLIC_PAYPAL_CLIENT_ID` se usato
 
-File: `js/config.js`
+Server-side Cloudflare only:
 
-- `DATA_PROVIDER = "local"`: usa solo locale.
-- `DATA_PROVIDER = "supabase"`: tenta Supabase, fallback locale se non configurato.
-- `SUPABASE_URL` e `SUPABASE_ANON_KEY`: solo chiavi pubbliche.
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `PAYPAL_CLIENT_ID`
+- `PAYPAL_CLIENT_SECRET`
+- `PAYPAL_ENV` (`sandbox` o `live`)
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `TURNSTILE_SECRET_KEY` opzionale
+- `APP_ENV=production` in produzione
+- `RATE_LIMIT_KV` opzionale come binding KV per rate limit condiviso
 
-Non inserire mai service role key nel frontend.
+Non inserire mai service role key, Stripe secret, PayPal secret o webhook secret in `index.html`, `app.js`, `js/*`, `_headers` o file pubblici.
 
-## Collegamento futuro Supabase
+## Sicurezza API
 
-1. Crea progetto Supabase.
-2. Imposta in `js/config.js`:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `DATA_PROVIDER = "supabase"`
-3. Abilita bucket Storage:
-   - `products`
-   - `cuts`
-4. Configura RLS e policy per admin/auth.
+Le Functions pubbliche accettano solo `POST` JSON con payload limitato, rate limit best-effort, errori client-safe e Turnstile opzionale:
 
-## Parti pronte per produzione (base)
+- `/api/contact/create`
+- `/api/checkout/create`
+- `/api/checkout/capture`
+- `/api/checkout/stripe/verify`
+- `/api/stripe/webhook`
 
-- Data layer async (`js/repository.js`)
-- Config centralizzata (`js/config.js`)
-- Client Supabase opzionale (`js/supabase-client.js`)
-- Checkout flow con oggetto ordine
-- Lead capture con consenso privacy
-- Banner cookie + preferenze consenso (necessari / analytics / marketing)
+Il checkout server-side ricalcola prodotti, prezzi, stock, spedizione, totale e status da Supabase. Il client invia solo dati cliente, fulfillment, payment mode, product id e quantity.
 
-## Cookie & privacy per produzione
+## SQL e ordine migration
 
-1. Aggiorna testi legali in `#privacy` e `#cookie` con:
-   - titolare trattamento
-   - base giuridica
-   - tempi conservazione
-   - fornitori terzi reali
-2. Configura in `js/config.js`:
-   - `COOKIE_POLICY_VERSION` (incrementa a ogni update policy)
-   - `COOKIE_CONSENT_MAX_AGE_DAYS` (es. 180)
-   - `LEGAL_PRIVACY_EMAIL`
-3. Carica script analytics/marketing solo dopo consenso (`window.NoCapConsent.canUse("analytics" | "marketing")`).
-4. Mantieni bloccati i cookie non necessari finché non arriva opt-in.
-5. Verifica conformità GDPR/ePrivacy con consulente legale prima del go-live.
+Applica in questo ordine:
 
-## Da completare per produzione reale
+1. `sql/2026-06-18-seed-products-catalog.sql` se parti da DB vuoto.
+2. `sql/2026-06-18-order-status-normalization.sql`
+3. `sql/2026-06-18-order-status-stock-flow.sql`
+4. `sql/2026-06-18-admin-policies-template.sql`
+5. `sql/2026-06-18-close-public-order-lead-inserts.sql` solo dopo deploy Functions funzionante.
+6. `sql/2026-06-19-security-hardening.sql`
 
-1. Autenticazione admin vera con Supabase Auth.
-2. API serverless (Edge Functions / Pages Functions) per ordini e lead.
-3. Pagamenti Stripe Checkout.
-4. Email transazionali (Resend/Brevo/serverless).
-5. Logging/error tracking e test E2E.
+Dopo la migration di hardening, inserisci gli admin:
+
+```sql
+insert into public.admin_users (user_id, role)
+values ('UUID_AUTH_USER_ADMIN', 'owner')
+on conflict (user_id) do update set role = excluded.role;
+```
+
+La migration `2026-06-19-security-hardening.sql` aggiunge `admin_users`, ID pagamento, tabella idempotenza `payment_events`, reservation expiry sugli ordini online e funzione `expire_stock_reservations()`.
+
+Esegui periodicamente:
+
+```sql
+select public.expire_stock_reservations();
+```
+
+Puoi schedularla con Supabase cron o con un job Cloudflare protetto.
+
+## Pagamenti
+
+Stripe:
+
+- configura il webhook verso `/api/stripe/webhook`;
+- usa `STRIPE_WEBHOOK_SECRET`;
+- considera il webhook firmato fonte primaria dello stato pagamento;
+- la verify client-side serve solo a riconciliare UX dopo il redirect.
+
+PayPal:
+
+- la capture avviene server-side;
+- `PayPal-Request-Id` usa l'order id PayPal per ridurre duplicati;
+- per produzione aggiungi webhook PayPal o riconciliazione operativa giornaliera.
+
+## Delivery zip pulito
+
+Genera un pacchetto senza `.git`, `.wrangler`, `.dev.vars`, log e zip precedenti:
+
+```powershell
+.\scripts\make-delivery-zip.ps1
+```
+
+Output: `delivery/no-cap-clean.zip`.
+
+## Smoke test
+
+```bash
+node tests/security-smoke-tests.mjs
+```
+
+Controlla ignore file, placeholder env e uso degli helper sicuri nelle Functions.
+
+## Checklist rotazione secret
+
+Esegui questa checklist se un secret è stato esposto o copiato in un file pubblico:
+
+- ruota `SUPABASE_SERVICE_ROLE_KEY`;
+- ruota `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`;
+- ruota `PAYPAL_CLIENT_SECRET`;
+- ruota `TURNSTILE_SECRET_KEY` se configurata;
+- invalida eventuali token locali in `.dev.vars`;
+- controlla deploy history e zip consegnati;
+- ridistribuisci Cloudflare Pages con i nuovi secret.
+
+## Checklist pre go-live
+
+- `.dev.vars`, `.env`, `.wrangler`, `.git`, log e zip non sono nel pacchetto.
+- Cloudflare env contiene solo secret server-side.
+- `APP_ENV=production` è impostato in Cloudflare.
+- Stripe webhook firma correttamente e riceve `checkout.session.completed`.
+- PayPal è in `live` solo dopo test sandbox.
+- Turnstile è configurato per contact e checkout, oppure il rischio spam è accettato.
+- `admin_users` contiene solo account autorizzati.
+- RLS e storage policy sono applicate.
+- `expire_stock_reservations()` è schedulata.
+- Test manuale: contatto, checkout in sede, checkout PayPal, checkout Stripe, ordine duplicato/webhook duplicato.
+- Privacy Policy, Cookie Policy, ragione sociale e contatti legali sono completati.

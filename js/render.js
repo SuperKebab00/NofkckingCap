@@ -119,8 +119,8 @@ export function renderProducts(dom, products, inventory, activeCategory) {
       return `
         <article class="product-card ${soldOut ? "is-sold-out" : ""}" style="--stagger:${index * 70}ms">
           <div class="product-media">
-            <img src="${packshot}" alt="${escapeHtml(product.name)} packshot prodotto" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${resolveProductImage(product, "packshot")}'">
-            <img src="${lifestyle}" alt="${escapeHtml(product.name)} risultato sui capelli" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${resolveProductImage(product, "packshot")}'">
+            <img src="${packshot}" alt="${escapeHtml(product.name)} packshot prodotto" loading="lazy" decoding="async">
+            <img src="${lifestyle}" alt="${escapeHtml(product.name)} risultato sui capelli" loading="lazy" decoding="async">
           </div>
           <div class="product-card__body">
             <div class="product-card__category">${escapeHtml(product.label)}</div>
@@ -180,7 +180,7 @@ export function renderInventory(dom, products, inventory, monthlyCuts) {
   const lowStock = quantities.filter((quantity) => quantity > 0 && quantity <= 2).length;
   const soldOut = quantities.filter((quantity) => quantity <= 0).length;
   const inventoryValue = products.reduce((total, product) => total + product.price * (inventory[product.id] ?? 0), 0);
-  const monthlyCount = monthlyCuts.filter((cut) => getMonthKey(cut.date || todayISO()) === getMonthKey()).length;
+  const monthlyCount = monthlyCuts.filter((cut) => cut?.id !== "default-cut" && getMonthKey(cut.date || todayISO()) === getMonthKey()).length;
 
   document.querySelector("[data-summary-total]").textContent = totalUnits;
   document.querySelector("[data-summary-low]").textContent = lowStock;
@@ -257,9 +257,12 @@ export function renderCheckoutSummary(dom, cart, totalOverride = null) {
 
 export function renderCheckoutSuccessSummary(dom, order) {
   if (!order) return;
+  const paymentLabel = order.paymentMode === "paypal"
+    ? "PayPal"
+    : (order.paymentMode === "stripe" ? "Carta / Stripe" : "Pagamento in sede");
   dom.checkoutSuccessSummary.innerHTML = `
     <p><strong>Totale:</strong> ${formatCurrency(order.total)}</p>
-    <p><strong>Pagamento:</strong> ${order.paymentMode === "paypal" ? "PayPal" : "Pagamento in sede"}</p>
+    <p><strong>Pagamento:</strong> ${paymentLabel}</p>
     <p><strong>Consegna:</strong> ${order.fulfillment === "shipping" ? "Spedizione" : "Ritiro in shop"}</p>
     ${order.shipping ? `<p><strong>Spedizione:</strong> ${formatCurrency(order.shipping)}</p>` : ""}
     <p>${order.fulfillment === "shipping" ? "Riceverai aggiornamenti spedizione dal team." : "Ritiro disponibile in negozio durante gli orari di apertura."}</p>`;
