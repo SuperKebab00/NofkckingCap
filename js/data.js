@@ -1,4 +1,4 @@
-import { todayISO } from "./utils.js";
+﻿import { todayISO } from "./utils.js";
 
 export const INVENTORY_STORAGE_KEY = "no-cap-inventory-v1";
 export const FEATURED_CUT_STORAGE_KEY = "no-cap-fresh-cut-v1";
@@ -143,4 +143,5 @@ export const defaultFreshCut = {
   image: "Img/wallpaper/5-opt.webp",
   date: todayISO()
 };
+
 

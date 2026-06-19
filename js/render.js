@@ -11,15 +11,36 @@ import {
 
 export function getDom() {
   return {
-    adminDrawer: document.querySelector("#inventoryDrawer"),
     adminContent: document.querySelector("[data-admin-content]"),
     adminLoginError: document.querySelector("[data-admin-login-error]"),
     adminLoginForm: document.querySelector("[data-admin-login]"),
+    adminLeadsList: document.querySelector("[data-admin-leads-list]"),
+    adminLeadsToday: document.querySelector("[data-admin-leads-today]"),
+    adminLeadsTotal: document.querySelector("[data-admin-leads-total]"),
+    adminOrdersAvg: document.querySelector("[data-admin-orders-avg]"),
+    adminOrdersList: document.querySelector("[data-admin-orders-list]"),
+    adminOrdersPending: document.querySelector("[data-admin-orders-pending]"),
+    adminOrdersCompleted: document.querySelector("[data-admin-orders-completed]"),
+    adminOrdersToday: document.querySelector("[data-admin-orders-today]"),
+    adminOrdersTotal: document.querySelector("[data-admin-orders-total]"),
+    adminOrdersRevenue: document.querySelector("[data-admin-orders-revenue]"),
+    dataInventoryValue: document.querySelector("[data-data-inventory-value]"),
+    dataLowStock: document.querySelector("[data-data-low-stock]"),
+    categoryBar: document.querySelector("[data-category-bar]"),
+    categoryDeleteButton: document.querySelector("[data-category-delete]"),
+    categoryLabelInput: document.querySelector("[data-category-label]"),
+    categoryNewButton: document.querySelector("[data-category-new]"),
+    categorySelect: document.querySelector("[data-category-select]"),
+    categoryValueInput: document.querySelector("[data-category-value]"),
     adminEmailInput: document.querySelector("[data-admin-email]"),
     adminPasswordInput: document.querySelector("[data-admin-password]"),
-    demoActiveProducts: document.querySelector("[data-demo-active-products]"),
-    demoLeads: document.querySelector("[data-demo-leads]"),
-    demoOrders: document.querySelector("[data-demo-orders]"),
+    adminKpiProducts: document.querySelector("[data-admin-kpi-products]"),
+    adminKpiLeads: document.querySelector("[data-admin-kpi-leads]"),
+    adminKpiOrders: document.querySelector("[data-admin-kpi-orders]"),
+    consentAnalytics: document.querySelector("[data-consent-analytics]"),
+    consentBanner: document.querySelector("[data-cookie-banner]"),
+    consentMarketing: document.querySelector("[data-consent-marketing]"),
+    consentModal: document.querySelector("[data-cookie-modal]"),
     cartCount: document.querySelector("[data-cart-count]"),
     cartDrawer: document.querySelector("#cartDrawer"),
     cartItems: document.querySelector("[data-cart-items]"),
@@ -41,6 +62,7 @@ export function getDom() {
     inventoryBody: document.querySelector("[data-inventory-body]"),
     productCategoryInput: document.querySelector("[data-product-category]"),
     productLifestyleInput: document.querySelector("[data-product-lifestyle]"),
+    productNewButton: document.querySelector("[data-product-new]"),
     productNameInput: document.querySelector("[data-product-name]"),
     productPackshotInput: document.querySelector("[data-product-packshot]"),
     productPriceInput: document.querySelector("[data-product-price]"),
@@ -49,6 +71,11 @@ export function getDom() {
     productSearchInput: document.querySelector("[data-product-search]"),
     productSortSelect: document.querySelector("[data-product-sort]"),
     productDeleteButton: document.querySelector("[data-product-delete]"),
+    sectionShopTitleInput: document.querySelector("[data-section-shop-title]"),
+    sectionShopCopyInput: document.querySelector("[data-section-shop-copy]"),
+    siteHeader: document.querySelector(".site-header"),
+    siteShopTitle: document.querySelector("[data-shop-title]"),
+    siteShopCopy: document.querySelector("[data-shop-copy]"),
     orderNumber: document.querySelector("[data-order-number]"),
     shippingFields: document.querySelector("[data-shipping-fields]"),
     showcaseGrid: document.querySelector("[data-showcase-grid]"),
@@ -92,12 +119,12 @@ export function renderProducts(dom, products, inventory, activeCategory) {
       return `
         <article class="product-card ${soldOut ? "is-sold-out" : ""}" style="--stagger:${index * 70}ms">
           <div class="product-media">
-            <img src="${packshot}" alt="${escapeHtml(product.name)} packshot prodotto" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${resolveProductImage(product, "packshot")}'">
-            <img src="${lifestyle}" alt="${escapeHtml(product.name)} risultato sui capelli" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${resolveProductImage(product, "packshot")}'">
+            <img src="${packshot}" alt="${escapeHtml(product.name)} packshot prodotto" loading="lazy" decoding="async">
+            <img src="${lifestyle}" alt="${escapeHtml(product.name)} risultato sui capelli" loading="lazy" decoding="async">
           </div>
           <div class="product-card__body">
             <div class="product-card__category">${escapeHtml(product.label)}</div>
-            ${badge ? `<div class="stock-badge" data-level="${soldOut ? "empty" : "ok"}">${escapeHtml(badge)}</div>` : ""}
+            ${badge ? `<div class="product-badge" data-level="${soldOut ? "empty" : "ok"}">${escapeHtml(badge)}</div>` : ""}
             <h3>${escapeHtml(product.name)}</h3>
             <p class="product-card__copy">${escapeHtml(product.description || "Prodotto professionale No Cap.")}</p>
             <div class="product-card__price">${formatCurrency(product.price)}</div>
@@ -153,7 +180,7 @@ export function renderInventory(dom, products, inventory, monthlyCuts) {
   const lowStock = quantities.filter((quantity) => quantity > 0 && quantity <= 2).length;
   const soldOut = quantities.filter((quantity) => quantity <= 0).length;
   const inventoryValue = products.reduce((total, product) => total + product.price * (inventory[product.id] ?? 0), 0);
-  const monthlyCount = monthlyCuts.filter((cut) => getMonthKey(cut.date || todayISO()) === getMonthKey()).length;
+  const monthlyCount = monthlyCuts.filter((cut) => cut?.id !== "default-cut" && getMonthKey(cut.date || todayISO()) === getMonthKey()).length;
 
   document.querySelector("[data-summary-total]").textContent = totalUnits;
   document.querySelector("[data-summary-low]").textContent = lowStock;
@@ -201,8 +228,10 @@ export function renderFreshCut(dom, freshCut) {
   dom.cutDateInput.value = freshCut.date || todayISO();
 }
 
-export function renderCheckoutSummary(dom, cart) {
-  const totalPrice = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+export function renderCheckoutSummary(dom, cart, totalOverride = null) {
+  const totalPrice = Number.isFinite(totalOverride)
+    ? totalOverride
+    : cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
   dom.checkoutTotal.textContent = formatCurrency(totalPrice);
 
   if (!cart.length) {
@@ -228,9 +257,14 @@ export function renderCheckoutSummary(dom, cart) {
 
 export function renderCheckoutSuccessSummary(dom, order) {
   if (!order) return;
+  const paymentLabel = order.paymentMode === "paypal"
+    ? "PayPal"
+    : (order.paymentMode === "stripe" ? "Carta / Stripe" : "Pagamento in sede");
   dom.checkoutSuccessSummary.innerHTML = `
     <p><strong>Totale:</strong> ${formatCurrency(order.total)}</p>
+    <p><strong>Pagamento:</strong> ${paymentLabel}</p>
     <p><strong>Consegna:</strong> ${order.fulfillment === "shipping" ? "Spedizione" : "Ritiro in shop"}</p>
+    ${order.shipping ? `<p><strong>Spedizione:</strong> ${formatCurrency(order.shipping)}</p>` : ""}
     <p>${order.fulfillment === "shipping" ? "Riceverai aggiornamenti spedizione dal team." : "Ritiro disponibile in negozio durante gli orari di apertura."}</p>`;
 }
 
