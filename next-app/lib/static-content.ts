@@ -17,10 +17,11 @@ export type PlaceholderContent = {
 };
 
 export const navItems: NavItem[] = [
-  { label: "Home", href: "#home" },
+  { label: "Home", href: "/" },
   { label: "Shop", href: "/shop" },
   { label: "Checkout", href: "/checkout" },
   { label: "Admin", href: "/admin" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export const heroContent = {
@@ -134,6 +135,29 @@ export const adminPageContent = {
   goNoGoItems: [
     "GO solo dopo checklist auth, RLS e mutazioni.",
     "NO-GO se si rischia di confondere UI admin con sicurezza reale.",
+  ],
+  homeAction: {
+    label: "Torna alla home",
+    href: "/",
+  },
+  shopAction: {
+    label: "Vai allo shop statico",
+    href: "/shop",
+  },
+};
+
+export const contactPageContent = {
+  eyebrow: "Contact migration placeholder",
+  title: "Contact non ancora migrato",
+  description:
+    "Questa pagina documenta lo stato del contatto durante la migrazione Next.js. Il form reale resta nella app vanilla e nelle API Cloudflare esistenti.",
+  notice:
+    "Placeholder di migrazione: nessun form funzionante e nessuna submit attiva.",
+  currentStatusTitle: "Stato attuale",
+  currentStatusItems: [
+    "Contact reale ancora vanilla/API Cloudflare",
+    "Nessuna submit attiva in Next",
+    "Nessun dato inviato",
   ],
   homeAction: {
     label: "Torna alla home",

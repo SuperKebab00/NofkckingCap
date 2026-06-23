@@ -350,7 +350,8 @@ p {
 
 .shop-page__intro,
 .checkout-page__intro,
-.admin-page__intro {
+.admin-page__intro,
+.contact-page__intro {
   display: grid;
   gap: 12px;
   max-width: 820px;
@@ -358,7 +359,8 @@ p {
 
 .shop-page__intro h1,
 .checkout-page__intro h1,
-.admin-page__intro h1 {
+.admin-page__intro h1,
+.contact-page__intro h1 {
   margin-bottom: 0;
 }
 
@@ -410,7 +412,8 @@ p {
 }
 
 .checkout-page,
-.admin-page {
+.admin-page,
+.contact-page {
   display: grid;
   gap: 34px;
   padding-top: 64px;
