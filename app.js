@@ -1,4 +1,5 @@
 import { CONFIG, isPaymentMethodEnabled } from "./js/config.js";
+import { buildCheckoutOrderPayload } from "./js/checkout-domain.js";
 import { defaultFreshCut } from "./js/data.js";
 import {
   getOrderStatusLabel,
@@ -1168,30 +1169,11 @@ function validateContactForm(form, formData) {
 }
 
 function buildOrderPayload(formData) {
-  const requestedPaymentMode = String(formData.get("paymentMode") || "in-shop");
-  const paymentMode = getEnabledPaymentMode(requestedPaymentMode);
-  const items = cartExpanded().map((row) => ({
-    productId: row.product.id,
-    quantity: row.quantity,
-  }));
-  return {
-    customer: {
-      fullName: String(formData.get("fullName")).trim(),
-      email: String(formData.get("email")).trim(),
-      phone: String(formData.get("phone")).trim(),
-    },
-    fulfillment: formData.get("fulfillment"),
-    shippingAddress:
-      formData.get("fulfillment") === "shipping"
-        ? {
-            address: formData.get("address"),
-            city: formData.get("city"),
-            zip: formData.get("zip"),
-          }
-        : null,
-    items,
-    paymentMode,
-  };
+  return buildCheckoutOrderPayload({
+    formData,
+    cartRows: cartExpanded(),
+    resolvePaymentMode: getEnabledPaymentMode,
+  });
 }
 
 async function saveSiteSectionsFromForm() {
