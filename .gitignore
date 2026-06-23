@@ -17,3 +17,5 @@ delivery/
 *.bak
 *.swp
 coverage/
+next-app/.next/
+next-app/tsconfig.tsbuildinfo
