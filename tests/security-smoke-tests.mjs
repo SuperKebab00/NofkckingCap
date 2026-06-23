@@ -18,9 +18,10 @@ const envExample = read(".env.example");
   /sk_live_/,
   /sk_test_[A-Za-z0-9]{12,}/,
   /whsec_[A-Za-z0-9]{12,}/,
-  /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/
+  /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/,
 ].forEach((pattern) => {
-  if (pattern.test(envExample)) fail(".env.example appears to contain a real secret");
+  if (pattern.test(envExample))
+    fail(".env.example appears to contain a real secret");
 });
 
 const functionsDir = join(root, "functions", "api");
@@ -29,7 +30,8 @@ const walk = (dir) => {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) walk(path);
-    else if (path.endsWith(".js") && !path.includes(`${join("api", "_lib")}`)) endpointFiles.push(path);
+    else if (path.endsWith(".js") && !path.includes(`${join("api", "_lib")}`))
+      endpointFiles.push(path);
   }
 };
 walk(functionsDir);
@@ -37,11 +39,14 @@ walk(functionsDir);
 for (const file of endpointFiles) {
   const source = readFileSync(file, "utf8");
   if (file.endsWith(join("stripe", "webhook.js"))) {
-    if (!source.includes("verifyStripeWebhookSignature")) fail("Stripe webhook must verify signatures");
+    if (!source.includes("verifyStripeWebhookSignature"))
+      fail("Stripe webhook must verify signatures");
     continue;
   }
-  if (!source.includes("parseGuardedJson")) fail(`${file} must use guarded JSON parsing`);
-  if (source.includes("error.message ||")) fail(`${file} should use safeError for client responses`);
+  if (!source.includes("parseGuardedJson"))
+    fail(`${file} must use guarded JSON parsing`);
+  if (source.includes("error.message ||"))
+    fail(`${file} should use safeError for client responses`);
 }
 
 console.log("Security smoke checks passed.");

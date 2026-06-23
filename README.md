@@ -55,34 +55,15 @@ Le Functions pubbliche accettano solo `POST` JSON con payload limitato, rate lim
 
 Il checkout server-side ricalcola prodotti, prezzi, stock, spedizione, totale e status da Supabase. Il client invia solo dati cliente, fulfillment, payment mode, product id e quantity.
 
-## SQL e ordine migration
+## Database e script SQL
 
-Applica in questo ordine:
+Lo schema Supabase reale attuale e il modello RLS sono documentati in `DATABASE.md`. Considera quel file la fonte documentale corrente per tabelle, colonne, letture pubbliche, inserimenti backend-only e modello admin.
 
-1. `sql/2026-06-18-seed-products-catalog.sql` se parti da DB vuoto.
-2. `sql/2026-06-18-order-status-normalization.sql`
-3. `sql/2026-06-18-order-status-stock-flow.sql`
-4. `sql/2026-06-18-admin-policies-template.sql`
-5. `sql/2026-06-18-close-public-order-lead-inserts.sql` solo dopo deploy Functions funzionante.
-6. `sql/2026-06-19-security-hardening.sql`
+La cartella `sql/` non fa parte del working tree attuale. Se trovi riferimenti a `sql/` in note o task precedenti, trattali come script operativi esterni/storici da lanciare manualmente su Supabase, non come una cartella richiesta da questo repo nello stato corrente.
 
-Dopo la migration di hardening, inserisci gli admin:
+Non aggiungere migrations o script SQL al repo senza una richiesta esplicita e senza prima verificare lo schema reale contro `DATABASE.md`.
 
-```sql
-insert into public.admin_users (user_id, role)
-values ('UUID_AUTH_USER_ADMIN', 'owner')
-on conflict (user_id) do update set role = excluded.role;
-```
-
-La migration `2026-06-19-security-hardening.sql` aggiunge `admin_users`, ID pagamento, tabella idempotenza `payment_events`, reservation expiry sugli ordini online e funzione `expire_stock_reservations()`.
-
-Esegui periodicamente:
-
-```sql
-select public.expire_stock_reservations();
-```
-
-Puoi schedularla con Supabase cron o con un job Cloudflare protetto.
+Eventuali miglioramenti futuri, come `admin_users`, eventi webhook/idempotenza o stock reservation, sono da considerare proposte documentate e non parte garantita dello schema attuale.
 
 ## Pagamenti
 
@@ -137,8 +118,8 @@ Esegui questa checklist se un secret è stato esposto o copiato in un file pubbl
 - Stripe webhook firma correttamente e riceve `checkout.session.completed`.
 - PayPal è in `live` solo dopo test sandbox.
 - Turnstile è configurato per contact e checkout, oppure il rischio spam è accettato.
-- `admin_users` contiene solo account autorizzati.
-- RLS e storage policy sono applicate.
-- `expire_stock_reservations()` è schedulata.
+- Lo schema e le RLS corrispondono a quanto documentato in `DATABASE.md`.
+- Le policy admin/storage sono verificate sul progetto Supabase reale.
+- Eventuali script SQL operativi esterni sono stati applicati manualmente e documentati.
 - Test manuale: contatto, checkout in sede, checkout PayPal, checkout Stripe, ordine duplicato/webhook duplicato.
 - Privacy Policy, Cookie Policy, ragione sociale e contatti legali sono completati.

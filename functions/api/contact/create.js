@@ -6,7 +6,7 @@ import {
   safeError,
   safeLog,
   statusFromError,
-  supabaseRequest
+  supabaseRequest,
 } from "../_lib/checkout.js";
 
 function isValidEmail(value) {
@@ -16,7 +16,12 @@ function isValidEmail(value) {
 function isValidPhone(value) {
   const normalized = normalizePhone(value);
   const digits = normalized.replace(/\D/g, "");
-  return /^\+?\d{8,15}$/.test(normalized) && digits.length >= 8 && digits.length <= 15 && !/^(\d)\1+$/.test(digits);
+  return (
+    /^\+?\d{8,15}$/.test(normalized) &&
+    digits.length >= 8 &&
+    digits.length <= 15 &&
+    !/^(\d)\1+$/.test(digits)
+  );
 }
 
 export async function onRequestPost(context) {
@@ -24,7 +29,7 @@ export async function onRequestPost(context) {
     const payload = await parseGuardedJson(context, {
       rateLimitKey: "contact:create",
       rateLimit: 5,
-      turnstile: true
+      turnstile: true,
     });
     const email = clampText(payload.email, 160).toLowerCase();
     const phone = normalizePhone(payload.phone);
@@ -38,7 +43,8 @@ export async function onRequestPost(context) {
     if (!isValidPhone(phone)) throw new Error("CLIENT: Telefono non valido.");
     if (!subject) throw new Error("CLIENT: Oggetto mancante.");
     if (message.length < 10) throw new Error("CLIENT: Messaggio troppo corto.");
-    if (!privacyAccepted) throw new Error("CLIENT: Consenso privacy richiesto.");
+    if (!privacyAccepted)
+      throw new Error("CLIENT: Consenso privacy richiesto.");
 
     const lead = {
       id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -48,20 +54,32 @@ export async function onRequestPost(context) {
       message,
       privacy_accepted: true,
       source: "contact-form",
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
     await supabaseRequest(context.env, "leads", {
       method: "POST",
       headers: {
-        Prefer: "return=minimal"
+        Prefer: "return=minimal",
       },
-      body: JSON.stringify(lead)
+      body: JSON.stringify(lead),
     });
 
     return json({ ok: true });
   } catch (error) {
-    safeLog(context, "contact-create failed", { status: statusFromError(error), message: error?.message });
-    return json({ error: safeError(error, "Impossibile inviare la richiesta.", context.env.APP_ENV !== "production") }, statusFromError(error));
+    safeLog(context, "contact-create failed", {
+      status: statusFromError(error),
+      message: error?.message,
+    });
+    return json(
+      {
+        error: safeError(
+          error,
+          "Impossibile inviare la richiesta.",
+          context.env.APP_ENV !== "production",
+        ),
+      },
+      statusFromError(error),
+    );
   }
 }
