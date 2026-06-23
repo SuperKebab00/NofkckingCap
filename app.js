@@ -1,5 +1,29 @@
 import { CONFIG, isPaymentMethodEnabled } from "./js/config.js";
 import { defaultFreshCut } from "./js/data.js";
+import {
+  getOrderStatusLabel,
+  isValidEmail,
+  isValidPhone,
+  normalizeCart,
+  normalizeOrderStatus,
+  normalizeShopCategories,
+  ORDER_COMPLETED_STATUSES,
+  ORDER_PENDING_STATUSES,
+} from "./js/app-domain.js";
+import {
+  clearAdminSession,
+  clearLocalAppData,
+  clearPendingPaypal,
+  clearPendingStripe,
+  hasAdminSession,
+  readPendingPaypal,
+  readPendingStripe,
+  readStoredConsent,
+  writeAdminSession,
+  writePendingPaypal,
+  writePendingStripe,
+  writeStoredConsent,
+} from "./js/app-storage.js";
 import { getSupabaseClient } from "./js/supabase-client.js";
 import * as repository from "./js/repository.js";
 import {
@@ -36,57 +60,12 @@ const {
   uploadImage,
 } = repository;
 
-const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
-const CONSENT_STORAGE_KEY = "no-cap-consent-v1";
-const PAYPAL_CHECKOUT_KEY = "no-cap-paypal-checkout-v1";
-const STRIPE_CHECKOUT_KEY = "no-cap-stripe-checkout-v1";
 const MAX_MONTHLY_CUTS = 24;
 const MOBILE_HEADER_BREAKPOINT = 780;
-const ORDER_PENDING_STATUSES = [
-  "prenotato",
-  "pending-payment",
-  "pagato",
-  "in-lavorazione",
-];
-const ORDER_COMPLETED_STATUSES = ["spedito", "completato", "completed"];
-
-function normalizeOrderStatus(status) {
-  const normalized = String(status || "")
-    .trim()
-    .toLowerCase();
-  if (normalized === "in-attesa" || normalized === "pending")
-    return "prenotato";
-  if (normalized === "paid") return "pagato";
-  if (normalized === "completed") return "completato";
-  return normalized || "prenotato";
-}
-
-function getOrderStatusLabel(status) {
-  switch (normalizeOrderStatus(status)) {
-    case "prenotato":
-      return "Prenotato";
-    case "pending-payment":
-      return "Attesa pagamento";
-    case "pagato":
-      return "Pagato";
-    case "in-lavorazione":
-      return "In lavorazione";
-    case "spedito":
-      return "Spedito";
-    case "completato":
-      return "Completato";
-    case "annullato":
-      return "Annullato";
-    default:
-      return String(status || "Prenotato");
-  }
-}
 
 const state = {
   activeCategory: "all",
-  adminAuthenticated:
-    CONFIG.ADMIN_MODE === "local" &&
-    sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
+  adminAuthenticated: CONFIG.ADMIN_MODE === "local" && hasAdminSession(),
   adminView: "data",
   cart: [],
   consent: null,
@@ -135,21 +114,11 @@ function isConsentExpired(consent) {
 }
 
 function readConsent() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(CONSENT_STORAGE_KEY));
-    if (!parsed || typeof parsed !== "object") return null;
-    const consent = {
-      ...defaultConsent(),
-      ...parsed,
-      necessary: true,
-    };
-    const expectedVersion = Number(CONFIG.COOKIE_POLICY_VERSION || 1);
-    if (Number(consent.version || 0) !== expectedVersion) return null;
-    if (isConsentExpired(consent)) return null;
-    return consent;
-  } catch {
-    return null;
-  }
+  return readStoredConsent({
+    defaultConsent: defaultConsent(),
+    expectedVersion: Number(CONFIG.COOKIE_POLICY_VERSION || 1),
+    isExpired: isConsentExpired,
+  });
 }
 
 function syncHeaderOnScroll() {
@@ -202,7 +171,7 @@ function saveConsent(consent) {
     necessary: true,
     timestamp: new Date().toISOString(),
   };
-  localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
+  writeStoredConsent(next);
   applyConsent(next);
   if (dom.consentBanner) dom.consentBanner.hidden = true;
   closeConsentModal();
@@ -305,56 +274,6 @@ function getRealMonthlyCuts(cuts) {
   return (Array.isArray(cuts) ? cuts : []).filter(
     (cut) => cut?.id && cut.id !== defaultFreshCut.id,
   );
-}
-
-function getDefaultShopCategories(products) {
-  const base = [{ value: "all", label: "All products" }];
-  const seen = new Set(["all"]);
-  products.forEach((product) => {
-    const value = String(product.category || "")
-      .trim()
-      .toLowerCase();
-    if (!value || seen.has(value)) return;
-    seen.add(value);
-    base.push({ value, label: value.charAt(0).toUpperCase() + value.slice(1) });
-  });
-  return base;
-}
-
-function normalizeShopCategories(raw, products) {
-  const source =
-    Array.isArray(raw) && raw.length ? raw : getDefaultShopCategories(products);
-  const unique = [];
-  const seen = new Set();
-  source.forEach((item) => {
-    const value = String(item?.value || "")
-      .trim()
-      .toLowerCase();
-    const label = String(item?.label || "").trim();
-    if (!value || seen.has(value)) return;
-    seen.add(value);
-    unique.push({
-      value,
-      label: label || value.charAt(0).toUpperCase() + value.slice(1),
-    });
-  });
-  if (!unique.some((item) => item.value === "all"))
-    unique.unshift({ value: "all", label: "All products" });
-  return unique;
-}
-
-function normalizeCart(rawCart, products, inventory) {
-  const normalized = [];
-  for (const row of rawCart || []) {
-    const productId = row.productId || row.id;
-    const quantity = Number(row.quantity || 0);
-    const product = products.find((item) => item.id === productId);
-    if (!product || quantity <= 0) continue;
-    const maxQty = Math.max(0, Number(inventory[productId] ?? 0));
-    if (maxQty <= 0) continue;
-    normalized.push({ productId, quantity: Math.min(quantity, maxQty) });
-  }
-  return normalized;
 }
 
 function cartExpanded() {
@@ -813,38 +732,6 @@ async function submitLeadRequest(payload) {
   return postJson("/api/contact/create", payload);
 }
 
-function writePendingPaypal(payload) {
-  sessionStorage.setItem(PAYPAL_CHECKOUT_KEY, JSON.stringify(payload));
-}
-
-function readPendingPaypal() {
-  try {
-    return JSON.parse(sessionStorage.getItem(PAYPAL_CHECKOUT_KEY) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function clearPendingPaypal() {
-  sessionStorage.removeItem(PAYPAL_CHECKOUT_KEY);
-}
-
-function writePendingStripe(payload) {
-  sessionStorage.setItem(STRIPE_CHECKOUT_KEY, JSON.stringify(payload));
-}
-
-function readPendingStripe() {
-  try {
-    return JSON.parse(sessionStorage.getItem(STRIPE_CHECKOUT_KEY) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function clearPendingStripe() {
-  sessionStorage.removeItem(STRIPE_CHECKOUT_KEY);
-}
-
 function clearCheckoutSearch(hash = "#checkout") {
   window.history.replaceState({}, "", `${window.location.pathname}${hash}`);
 }
@@ -1249,25 +1136,6 @@ function validateCheckout(formData) {
   return Object.keys(errors).length === 0;
 }
 
-function normalizePhone(value) {
-  return String(value || "").replace(/[^\d+]/g, "");
-}
-
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || "").trim());
-}
-
-function isValidPhone(value) {
-  const normalized = normalizePhone(value);
-  const digits = normalized.replace(/\D/g, "");
-  return (
-    /^\+?\d{8,15}$/.test(normalized) &&
-    digits.length >= 8 &&
-    digits.length <= 15 &&
-    !/^(\d)\1+$/.test(digits)
-  );
-}
-
 function validateContactForm(form, formData) {
   const errors = {};
   const email = String(formData.get("email") || "").trim();
@@ -1511,7 +1379,7 @@ async function unlockAdmin(password, email = "") {
     }
     state.adminAuthenticated = true;
     await loadAdminState();
-    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    writeAdminSession();
     state.adminView = "data";
     syncAdminVisibility({ clearError: true });
     setAdminView("data");
@@ -1526,7 +1394,7 @@ async function unlockAdmin(password, email = "") {
     }
     state.adminAuthenticated = true;
     await loadAdminState();
-    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    writeAdminSession();
     state.adminView = "data";
     syncAdminVisibility({ clearError: true });
     setAdminView("data");
@@ -1540,7 +1408,7 @@ async function logoutAdmin() {
     if (sb) await sb.auth.signOut();
   }
   state.adminAuthenticated = false;
-  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  clearAdminSession();
   await loadAdminState();
   syncAdminVisibility({ clearError: true });
   setAdminView("data");
@@ -1622,8 +1490,7 @@ function bindEvents() {
     if (event.target.closest("[data-reset-local]")) {
       if (!requireAdmin()) return;
       if (!confirm("Confermi il ripristino dei dati locali?")) return;
-      localStorage.clear();
-      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      clearLocalAppData();
       window.location.reload();
     }
     if (event.target.closest("[data-cut-reset]")) {

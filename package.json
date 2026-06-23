@@ -1,9 +1,10 @@
 {
   "private": true,
+  "type": "module",
   "scripts": {
     "format": "prettier . --write",
     "check:format": "prettier . --check",
-    "test": "node tests/security-smoke-tests.mjs"
+    "test": "node tests/security-smoke-tests.mjs && node tests/app-domain.test.mjs && node tests/app-storage.test.mjs"
   },
   "devDependencies": {
     "prettier": "^3.6.2"
