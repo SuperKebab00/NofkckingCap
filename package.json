@@ -4,7 +4,7 @@
   "scripts": {
     "format": "prettier . --write",
     "check:format": "prettier . --check",
-    "test": "node tests/security-smoke-tests.mjs && node tests/app-domain.test.mjs && node tests/app-storage.test.mjs && node tests/checkout-domain.test.mjs"
+    "test": "node tests/security-smoke-tests.mjs && node tests/app-domain.test.mjs && node tests/app-storage.test.mjs && node tests/checkout-domain.test.mjs && node tests/backend-checkout.test.mjs"
   },
   "devDependencies": {
     "prettier": "^3.6.2"

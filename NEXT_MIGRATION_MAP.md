@@ -33,6 +33,7 @@ Preserve these parts as hard compatibility targets:
 - Current `Img/` assets and their paths or an explicit path compatibility layer.
 - Existing order statuses, including `prenotato`, `pending-payment`, `pagato`, `in-lavorazione`, `spedito`, `completato`, and `annullato`.
 - Existing payment modes, including `in-shop`, `paypal`, and `stripe`.
+- Current production priority: `in-shop`. PayPal and Stripe should remain optional/future until provider env, sandbox tests, idempotency, and stock behavior are verified.
 - Current user-facing UX, content, legal pages, local business information, product presentation, and admin workflows.
 
 ## 3. Mappatura file attuali -> Next.js
@@ -93,6 +94,7 @@ Project-specific risks:
 
 - Existing `functions/api` behavior may need endpoint-by-endpoint compatibility work.
 - Stripe webhook raw body handling must be verified carefully.
+- If Stripe is enabled, `payment_events` or an equivalent idempotency store must exist in the target database/runtime.
 - CSP and `_headers` equivalent must be recreated without accidentally loosening payment/script restrictions.
 
 ### Opzione B: Next.js su Vercel
@@ -113,6 +115,7 @@ Project-specific risks:
 
 - API URLs and webhook endpoints must be reconfigured in Stripe, PayPal, and frontend config.
 - Supabase env var separation must be audited again.
+- Stock mutation/reservation behavior must be verified against the real Supabase DB before online payments go live.
 - Local business SEO and asset paths can regress if routes/assets move too quickly.
 
 ## 6. Rischi principali
@@ -126,6 +129,7 @@ Project-specific risks:
 - SEO/local business regressions from changed markup, metadata, headings, routes, or legal pages.
 - Stripe webhook signature verification breaking if raw request body handling changes.
 - PayPal capture flow becoming non-idempotent or browser-trust-based.
+- Assuming online payments are production-ready before PayPal/Stripe env, sandbox tests, idempotency storage, and stock reservation/trigger behavior are verified.
 
 ## 7. Piano migrazione massimo 7 step
 
@@ -153,6 +157,7 @@ Each step should be small, testable, and reversible.
 
 - The main need is only small content, styling, security, or checkout hardening changes.
 - Payment, stock, RLS, or webhook behavior is not yet confidently verified.
+- PayPal/Stripe are still unconfigured or stock reservation trigger behavior is not documented.
 - The team is not ready to own Next.js hosting/runtime differences.
 - There is no test coverage for the flows most likely to regress.
 - A migration would delay urgent go-live/security work.

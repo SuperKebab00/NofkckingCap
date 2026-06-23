@@ -246,6 +246,8 @@ This is important for:
 - There is no documented `payment_events` or `webhook_events` table for payment/webhook idempotency.
 - There is no documented `stock_reservations` table for reservation-based checkout.
 - Current order stock safety depends on the existing `orders.inventory_reserved` model and related application/database behavior.
+- The backend checks product stock while building the canonical order, but stock mutation/reservation depends on the real Supabase database behavior and any triggers configured outside this document.
+- PayPal and Stripe support exists in code, but the real project should treat online payments as optional/future until provider env, webhook/capture idempotency, and stock behavior are verified.
 - Without versioned migrations, reproducing the exact DB from scratch may be error-prone.
 - Any future code that assumes future tables exist may break against the current real schema.
 
@@ -256,5 +258,6 @@ Recommended future improvements, not implemented here:
 - Replace hardcoded admin UID checks with an `admin_users` table.
 - Add `payment_events` or `webhook_events` for Stripe/PayPal idempotency.
 - Evaluate a `stock_reservations` table for safer online checkout stock handling.
+- Before enabling immediate online payment, verify stock triggers or document an equivalent reservation strategy in the real Supabase project.
 - Add versioned migrations only after the real DB shape is stabilized and verified.
 - Document constraints, indexes, triggers, and storage policies once they are confirmed from the live database.

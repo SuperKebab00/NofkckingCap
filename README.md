@@ -1,6 +1,6 @@
 # No Cap Barber Shop
 
-Frontend statico ecommerce per barber shop con Supabase, Cloudflare Pages Functions, PayPal e Stripe opzionali.
+Frontend statico ecommerce per barber shop con Supabase e Cloudflare Pages Functions. Il flusso prioritario attuale e' `in-shop`; PayPal e Stripe sono presenti nel codice come supporti opzionali/futuri, ma non vanno considerati attivi o production-ready finche' provider ed env non sono configurati.
 
 ## Avvio locale
 
@@ -67,18 +67,29 @@ Eventuali miglioramenti futuri, come `admin_users`, eventi webhook/idempotenza o
 
 ## Pagamenti
 
+Stato attuale: `in-shop` e' il flusso principale. PayPal e Stripe richiedono configurazione provider, env server-side e test sandbox prima dell'attivazione reale.
+
 Stripe:
 
 - configura il webhook verso `/api/stripe/webhook`;
 - usa `STRIPE_WEBHOOK_SECRET`;
 - considera il webhook firmato fonte primaria dello stato pagamento;
 - la verify client-side serve solo a riconciliare UX dopo il redirect.
+- il codice webhook puo' usare `payment_events` per idempotenza, ma questa tabella non fa parte dello schema reale documentato in `DATABASE.md`.
 
 PayPal:
 
 - la capture avviene server-side;
 - `PayPal-Request-Id` usa l'order id PayPal per ridurre duplicati;
 - per produzione aggiungi webhook PayPal o riconciliazione operativa giornaliera.
+
+Prima di vendere online con pagamento immediato, verifica in sandbox provider, idempotenza webhook/capture e comportamento stock sul progetto Supabase reale.
+
+## Stock e reservation
+
+Il backend verifica stock durante la canonicalizzazione ordine e ricalcola prezzi, subtotal, shipping, total e status lato server.
+
+La mutazione o reservation stock dipende dal comportamento reale del database Supabase, inclusi eventuali trigger collegati a `orders.inventory_reserved`. Questa logica non e' completamente descritta nel repo attuale. Prima di abilitare pagamenti online immediati, verifica e documenta i trigger stock o una strategia equivalente di reservation.
 
 ## Delivery zip pulito
 
@@ -115,8 +126,10 @@ Esegui questa checklist se un secret è stato esposto o copiato in un file pubbl
 - `.dev.vars`, `.env`, `.wrangler`, `.git`, log e zip non sono nel pacchetto.
 - Cloudflare env contiene solo secret server-side.
 - `APP_ENV=production` è impostato in Cloudflare.
-- Stripe webhook firma correttamente e riceve `checkout.session.completed`.
-- PayPal è in `live` solo dopo test sandbox.
+- PayPal/Stripe sono abilitati solo dopo env provider, sandbox test e idempotenza verificata.
+- Stripe webhook firma correttamente e riceve `checkout.session.completed`, con tabella/event store idempotenza verificato se usato.
+- PayPal e' in `live` solo dopo test sandbox e procedura webhook/riconciliazione.
+- Trigger/reservation stock sono verificati sul DB reale prima di accettare pagamenti online immediati.
 - Turnstile è configurato per contact e checkout, oppure il rischio spam è accettato.
 - Lo schema e le RLS corrispondono a quanto documentato in `DATABASE.md`.
 - Le policy admin/storage sono verificate sul progetto Supabase reale.
