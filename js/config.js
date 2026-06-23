@@ -11,7 +11,7 @@ export const CONFIG = {
   API_BASE_URL: "",
   CONTACT_ENDPOINT: "",
 
-  ENABLED_PAYMENT_METHODS: ["in-shop", "paypal"],
+  ENABLED_PAYMENT_METHODS: ["in-shop"],
   ADMIN_MODE: "supabase-auth",
 
   LOCAL_ADMIN_PASSWORD: "",
