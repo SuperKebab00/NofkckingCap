@@ -296,3 +296,51 @@ Recommended future improvements, not implemented here:
 - Add versioned migrations only after the real DB shape is stabilized and verified.
 - Document constraints, indexes, triggers, and storage policies once they are confirmed from the live database.
 - If the product should ever move to a soft-delete model, treat that as a separate explicit product/task decision rather than an implicit reinterpretation of current admin delete semantics.
+## Proposed admin auth table
+
+To replace the brittle hardcoded admin UID direction, the recommended next step
+is a dedicated server-side table:
+
+```sql
+create table if not exists public.admin_users (
+  user_id uuid primary key,
+  is_admin boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+Recommended migration file in this repository:
+
+- [sql/admin_users_proposed.sql](C:/Users/Jadir/Desktop/NO%20CAP/sql/admin_users_proposed.sql)
+
+This SQL is proposed only. Do not apply it automatically from this repository.
+Apply it manually in Supabase only when the project is ready to activate real
+admin auth.
+
+Recommended DB details for the manual migration:
+
+- `user_id uuid primary key references auth.users(id) on delete cascade`
+- dedicated trigger/function to keep `updated_at` aligned on update
+- `alter table public.admin_users enable row level security`
+- no permissive client-side policies by default
+- manual seed only with placeholder UUID, never with a real UUID committed here
+
+Intended future flow:
+
+1. The frontend signs in with Supabase Auth and obtains a JWT.
+2. The frontend sends `Authorization: Bearer <jwt>` to a Cloudflare admin
+   endpoint.
+3. Cloudflare verifies the Supabase JWT server-side.
+4. Cloudflare extracts `sub` / `user.id` from the verified JWT.
+5. Cloudflare checks `public.admin_users.user_id = sub and is_admin = true`.
+6. If the row is missing or not admin, the endpoint returns `403`.
+7. Only then may future admin write endpoints proceed.
+
+Important constraints:
+
+- `admin_users` must not be used as a browser-side source of truth.
+- The browser must never be trusted for values such as `is_admin=true`.
+- A hardcoded admin UID is not an acceptable final authorization model.
+- Final admin authorization must stay DB-backed and server-side only.
+- Client-side reads of `admin_users` should stay blocked by default.

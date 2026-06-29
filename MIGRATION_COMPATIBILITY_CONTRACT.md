@@ -211,3 +211,57 @@ No-go:
 - env private/server non sono separate chiaramente da config pubblica;
 - asset path `Img/` non hanno una strategia di compatibilita;
 - checkout/admin non hanno criteri manuali di regressione.
+## Current Public Next Compatibility Snapshot
+
+This snapshot records the current compatible public perimeter already active in
+`next-app/`. It is intentionally narrower than the full vanilla production
+surface.
+
+### Public routes currently active in `next-app/`
+
+- `/`
+- `/shop`
+- `/contact`
+- `/privacy`
+- `/cookie`
+
+### Placeholder routes intentionally not promoted in public nav
+
+- `/checkout`
+- `/admin`
+
+These routes may exist in Next for shell continuity, but they are placeholders
+only and must not be treated as migrated real flows.
+
+### Current compatibility guarantees
+
+- Public navigation in Next only exposes `Home`, `Shop`, and `Contatti`.
+- Legal/support links are available through the global footer and static legal
+  routes.
+- `/shop` remains read-only from the Next side and uses only public Supabase
+  configuration.
+- `/shop` can expose read-only products, categories, and editorial sections,
+  with local search, sort, and category filtering only.
+- No Next API routes are introduced for this public shell stage.
+- No service-role key is used or exposed in the Next client.
+
+### Contact form constraint still in force
+
+- The real Next contact form must stay compatible with the existing Cloudflare
+  backend endpoint `POST /api/contact/create`.
+- This keeps contact tied to same-origin backend availability for now.
+- No rewrite or proxy strategy is defined yet for detached preview domains.
+- Detached preview domains must use
+  `NEXT_PUBLIC_CONTACT_FORM_MODE=preview`, which keeps the form visible but
+  disables submit.
+- Same-origin local/live environments may use
+  `NEXT_PUBLIC_CONTACT_FORM_MODE=live`.
+- `NEXT_PUBLIC_CONTACT_FORM_MODE=disabled` remains the manual fallback mode if
+  the form must stay visible but fully blocked.
+
+### Open compatibility gaps still accepted for now
+
+- Asset parity with the vanilla public site is incomplete.
+- Some public editorial/showcase areas are still simplified in Next.
+- Real checkout and real admin flows remain outside the Next migration scope at
+  this stage.

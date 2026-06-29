@@ -1,56 +1,87 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { AdminFutureActions } from "../../components/admin-future-actions";
+import { AdminMigrationPanel } from "../../components/admin-migration-panel";
+import { AdminProductsSummaryPanel } from "../../components/admin-products-summary-panel";
+import { AdminReadonlyDashboard } from "../../components/admin-readonly-dashboard";
 import { SiteHeader } from "../../components/site-header";
-import { adminPageContent } from "../../lib/static-content";
+import { getAdminProductsSummary } from "../../lib/admin-products-summary";
+import { getAdminStatus } from "../../lib/admin-status";
+import {
+  getPublicProducts,
+  getPublicShopCategories,
+} from "../../lib/supabase-public";
 
-export default function AdminPage() {
+export const metadata: Metadata = {
+  title: "Admin Overview | No Cap Barbershop",
+  description:
+    "Area gestione Next in sola lettura, collegata in modo sicuro allo stato admin backend quando configurato.",
+};
+
+export default async function AdminPage() {
+  const [productsResult, categoriesResult, adminStatus, adminProductsSummary] =
+    await Promise.all([
+      getPublicProducts(),
+      getPublicShopCategories(),
+      getAdminStatus(),
+      getAdminProductsSummary(),
+    ]);
+
+  const productsCount =
+    adminStatus.productsCount ?? productsResult.products.length ?? 0;
+  const categoriesCount = adminStatus.categoriesCount ?? categoriesResult.length ?? 0;
+  const usesLiveReadOnlyData =
+    adminStatus.source === "endpoint" ||
+    productsResult.products.length > 0 ||
+    categoriesResult.length > 0;
+
   return (
     <>
       <SiteHeader />
-      <main>
-        <section className="section admin-page">
-          <div className="admin-page__intro">
-            <p className="eyebrow">{adminPageContent.eyebrow}</p>
-            <h1>{adminPageContent.title}</h1>
-            <p>{adminPageContent.description}</p>
-            <strong className="status-badge">{adminPageContent.notice}</strong>
-          </div>
-
-          <div className="checkout-panels">
-            <section className="missing-panel" aria-labelledby="admin-status">
-              <p className="eyebrow">Current state</p>
-              <h2 id="admin-status">{adminPageContent.currentStatusTitle}</h2>
-              <ul>
-                {adminPageContent.currentStatusItems.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="missing-panel" aria-labelledby="admin-go-no-go">
-              <p className="eyebrow">Migration gate</p>
-              <h2 id="admin-go-no-go">{adminPageContent.goNoGoTitle}</h2>
-              <ul>
-                {adminPageContent.goNoGoItems.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
-          </div>
-
-          <div className="hero__actions">
-            <a
-              className="primary-button"
-              href={adminPageContent.homeAction.href}
-            >
-              {adminPageContent.homeAction.label}
-            </a>
-            <a
-              className="outline-button"
-              href={adminPageContent.shopAction.href}
-            >
-              {adminPageContent.shopAction.label}
-            </a>
+      <main className="page-shell">
+        <section className="hero-panel">
+          <span className="eyebrow">Admin Next read-only</span>
+          <h1>Panoramica gestione in migrazione</h1>
+          <p>
+            La shell Next resta non operativa per CRUD e auth admin. Quando la
+            configurazione server-side e pronta, questa pagina legge in modo
+            sicuro lo stato dell&apos;endpoint Cloudflare protetto senza esporre
+            token al browser.
+          </p>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.75rem",
+              marginTop: "1rem",
+            }}
+          >
+            <Link className="ghost-button" href="/shop">
+              Vai allo shop pubblico
+            </Link>
+            <Link className="ghost-button" href="/contact">
+              Contatti
+            </Link>
           </div>
         </section>
+
+        <AdminReadonlyDashboard
+          adminApiMessage={adminStatus.message}
+          adminApiState={adminStatus.apiState}
+          adminCategoriesCount={adminStatus.categoriesCount}
+          adminMode={adminStatus.mode}
+          adminProductsCount={adminStatus.productsCount}
+          adminSource={adminStatus.source}
+          adminWrites={adminStatus.writes}
+          categoriesCount={categoriesCount}
+          productsCount={productsCount}
+          showStock={productsResult.showStock}
+          usesLiveReadOnlyData={usesLiveReadOnlyData}
+        />
+
+        <AdminProductsSummaryPanel summary={adminProductsSummary} />
+        <AdminMigrationPanel />
+        <AdminFutureActions />
       </main>
     </>
   );

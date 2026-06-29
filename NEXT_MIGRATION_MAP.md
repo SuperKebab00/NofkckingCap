@@ -188,3 +188,64 @@ Treat all fields as optional plain strings. Avoid HTML as content markup, use on
 Prepare first. Do not migrate immediately.
 
 The current project would benefit from modularizing the vanilla app before introducing Next.js. Start with data layer, checkout boundaries, and tests. After that, a Next.js migration can be safer, smaller, and less likely to disturb checkout, Supabase, Cloudflare behavior, or the existing UX.
+## Current Next Public Status Snapshot
+
+This section records the real public migration state currently reached in
+`next-app/`. It is an additive operational snapshot and does not replace the
+broader migration planning already present in this document.
+
+### Implemented public routes in `next-app/`
+
+- `/`: public home route active
+- `/shop`: public shop route active
+- `/contact`: real Next contact form active
+- `/privacy`: static legal route active
+- `/cookie`: static legal route active
+- `/checkout`: placeholder only
+- `/admin`: placeholder only
+
+### Current public shell status
+
+- Public navbar exposes only `Home`, `Shop`, and `Contatti`.
+- A global footer is present and links to `/`, `/contact`, `/privacy`, and
+  `/cookie`.
+- Home no longer renders explicit migration-only blocks such as
+  `MigrationPlaceholders` or `MigrationStatus`.
+- Home now includes public-safe highlights and read-only editorial content.
+
+### Current functional status
+
+- `/shop` uses Supabase in read-only mode only.
+- Current read-only public data already wired in Next includes `products`,
+  `shop_categories`, `shop_sections`, and `shop_section_items`.
+- `/shop` includes local public UX improvements without backend mutations:
+  search, sort, and category filtering.
+- `/contact` is a real form in Next, but still depends on same-origin
+  `POST /api/contact/create` served by the existing Cloudflare backend.
+- No Next API routes are part of the current migration scope.
+- No `SUPABASE_SERVICE_ROLE_KEY` is exposed or used in the client.
+- Deploy preview work is intentionally deferred for now.
+
+### Open gaps still intentionally deferred
+
+- Public asset parity is incomplete and remains a separate operational task.
+- "Fresh cut" and "showcase" are present only in simplified public form and are
+  not yet fully aligned to the vanilla experience.
+- Contact preview-domain strategy is now stabilized at config level through
+  `NEXT_PUBLIC_CONTACT_FORM_MODE=preview`: the form stays visible in detached
+  preview domains, but submit is disabled because the current backend remains
+  tied to same-origin `/api/contact/create`.
+- Real checkout remains in vanilla and is not migrated in Next.
+- Real admin remains in vanilla and is not migrated in Next.
+- The Next footer is intentionally minimal and not yet a full vanilla replica.
+
+### Preview-ready env snapshot
+
+For preview preparation of `next-app/`, the current safe public env set is:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_CONTACT_FORM_MODE=preview`
+
+For local or same-origin live setups, `NEXT_PUBLIC_CONTACT_FORM_MODE=live` can
+be used. `disabled` remains the manual fallback mode.

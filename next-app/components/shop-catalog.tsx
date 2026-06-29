@@ -5,13 +5,13 @@ import type { PublicShopCategory } from "../lib/supabase-public";
 import type { ShopProductCard } from "./shop-product-grid";
 import { ShopProductGrid } from "./shop-product-grid";
 
+type SortMode = "featured" | "name-asc" | "name-desc";
+
 type ShopCatalogProps = {
   categories: PublicShopCategory[];
   products: ShopProductCard[];
   showStock?: boolean;
 };
-
-type SortMode = "featured" | "name-asc" | "name-desc";
 
 export function ShopCatalog({
   categories,
@@ -19,16 +19,29 @@ export function ShopCatalog({
   showStock = false,
 }: ShopCatalogProps) {
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCategory, setActiveCategory] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("featured");
+
+  const availableCategories = useMemo(
+    () =>
+      categories.filter(
+        (category) =>
+          typeof category.value === "string" &&
+          category.value.trim().length > 0 &&
+          typeof category.label === "string" &&
+          category.label.trim().length > 0,
+      ),
+    [categories],
+  );
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const normalizedCategory = activeCategory.trim().toLowerCase();
 
-    const nextProducts = products.filter((product) => {
+    const results = products.filter((product) => {
       const matchesCategory =
-        activeCategory === "all" ||
-        (product.category || "").trim().toLowerCase() === activeCategory;
+        !normalizedCategory ||
+        (product.category || "").trim().toLowerCase() === normalizedCategory;
 
       const haystack = [
         product.name,
@@ -38,103 +51,174 @@ export function ShopCatalog({
         .join(" ")
         .toLowerCase();
 
-      const matchesQuery =
-        !normalizedQuery || haystack.includes(normalizedQuery);
+      const matchesQuery = !normalizedQuery || haystack.includes(normalizedQuery);
 
       return matchesCategory && matchesQuery;
     });
 
     if (sortMode === "name-asc") {
-      nextProducts.sort((a, b) => a.name.localeCompare(b.name, "it"));
-    } else if (sortMode === "name-desc") {
-      nextProducts.sort((a, b) => b.name.localeCompare(a.name, "it"));
+      return [...results].sort((left, right) => left.name.localeCompare(right.name));
     }
 
-    return nextProducts;
+    if (sortMode === "name-desc") {
+      return [...results].sort((left, right) => right.name.localeCompare(left.name));
+    }
+
+    return results;
   }, [activeCategory, products, query, sortMode]);
 
+  const hasProducts = products.length > 0;
+  const hasVisibleProducts = filteredProducts.length > 0;
+  const hasActiveFilters = query.trim().length > 0 || activeCategory.trim().length > 0;
+
   return (
-    <section className="panel" aria-labelledby="shop-products-title">
-      <div className="panel-heading">
-        <div>
-          <h2 id="shop-products-title">Prodotti</h2>
-          <p>Catalogo read-only durante la migrazione Next.</p>
-        </div>
-        <span className="status-badge">
-          {filteredProducts.length} risultati
-        </span>
+    <section className="section" aria-labelledby="shop-catalog-title">
+      <div className="section-heading">
+        <p className="eyebrow">Catalogo pubblico</p>
+        <h2 id="shop-catalog-title">Prodotti consultabili in sola lettura</h2>
+        <p>
+          Cerca per nome, filtra per categoria e scorri il catalogo senza
+          attivare carrello o checkout.
+        </p>
       </div>
 
       <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          marginBottom: "1.25rem",
-        }}
+        className="spotlight-card"
+        style={{ display: "grid", gap: "1rem", marginBottom: "1.5rem" }}
       >
         <div
           style={{
             display: "grid",
-            gap: "1rem",
+            gap: "0.75rem",
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           }}
         >
-          <label>
-            Cerca
+          <label style={{ display: "grid", gap: "0.35rem" }}>
+            <span className="eyebrow" style={{ margin: 0 }}>
+              Cerca
+            </span>
             <input
+              aria-label="Cerca un prodotto"
+              className="contact-form__input"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Cerca prodotto..."
+              placeholder="Es. matte, pomade, shampoo"
               type="search"
               value={query}
             />
           </label>
 
-          <label>
-            Ordina
+          <label style={{ display: "grid", gap: "0.35rem" }}>
+            <span className="eyebrow" style={{ margin: 0 }}>
+              Ordina
+            </span>
             <select
+              aria-label="Ordina catalogo"
+              className="contact-form__input"
               onChange={(event) => setSortMode(event.target.value as SortMode)}
               value={sortMode}
             >
-              <option value="featured">Consigliati</option>
+              <option value="featured">In evidenza</option>
               <option value="name-asc">Nome A-Z</option>
               <option value="name-desc">Nome Z-A</option>
             </select>
           </label>
         </div>
 
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+          <button
+            className={activeCategory ? "ghost-button" : "status-badge"}
+            onClick={() => setActiveCategory("")}
+            type="button"
+          >
+            Tutte le categorie
+          </button>
+          {availableCategories.map((category) => {
+            const isActive = activeCategory === category.value;
+
+            return (
+              <button
+                className={isActive ? "status-badge" : "ghost-button"}
+                key={category.value}
+                onClick={() => setActiveCategory(isActive ? "" : category.value)}
+                type="button"
+              >
+                {category.label}
+              </button>
+            );
+          })}
+        </div>
+
         <div
-          aria-label="Categorie prodotti"
           style={{
             display: "flex",
             flexWrap: "wrap",
             gap: "0.75rem",
+            justifyContent: "space-between",
           }}
         >
-          <button
-            className={activeCategory === "all" ? "primary-button" : "ghost-button"}
-            onClick={() => setActiveCategory("all")}
-            type="button"
-          >
-            Tutti
-          </button>
-          {categories.map((category) => (
-            <button
-              className={
-                activeCategory === category.value
-                  ? "primary-button"
-                  : "ghost-button"
-              }
-              key={category.value}
-              onClick={() => setActiveCategory(category.value)}
-              type="button"
-            >
-              {category.label}
-            </button>
-          ))}
+          <p style={{ margin: 0 }}>
+            {hasProducts
+              ? `${filteredProducts.length} prodotti visibili su ${products.length}.`
+              : "Catalogo pubblico in aggiornamento."}
+          </p>
+          {!availableCategories.length ? (
+            <span className="admin-inline-note">
+              Categorie live non disponibili: fallback pubblico attivo.
+            </span>
+          ) : null}
         </div>
       </div>
 
-      <ShopProductGrid products={filteredProducts} showStock={showStock} />
+      {!hasProducts ? (
+        <div className="spotlight-card">
+          <p className="eyebrow">Catalogo</p>
+          <h3 style={{ marginTop: 0 }}>Prodotti non disponibili al momento</h3>
+          <p>
+            Il catalogo pubblico non ha ancora restituito elementi. Puoi
+            continuare a esplorare lo shop piu tardi oppure scriverci per una
+            richiesta diretta.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+            <a href="/contact">Contattaci</a>
+            <a className="ghost-button" href="/">
+              Torna alla home
+            </a>
+          </div>
+        </div>
+      ) : hasVisibleProducts ? (
+        <ShopProductGrid products={filteredProducts} showStock={showStock} />
+      ) : (
+        <div className="spotlight-card">
+          <p className="eyebrow">Nessun risultato</p>
+          <h3 style={{ marginTop: 0 }}>Nessun prodotto corrisponde ai filtri attivi</h3>
+          <p>
+            Prova a cambiare categoria oppure semplifica la ricerca per tornare
+            ai prodotti disponibili nello shop pubblico.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+            <button className="ghost-button" onClick={() => setQuery("")} type="button">
+              Azzera ricerca
+            </button>
+            <button
+              className="ghost-button"
+              onClick={() => {
+                setActiveCategory("");
+                setQuery("");
+                setSortMode("featured");
+              }}
+              type="button"
+            >
+              Reset completo
+            </button>
+          </div>
+          {hasActiveFilters ? (
+            <p className="admin-inline-note" style={{ marginTop: "0.75rem" }}>
+              Nessun errore tecnico: il catalogo e attivo, ma i filtri correnti non
+              restituiscono match.
+            </p>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }

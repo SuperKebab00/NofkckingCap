@@ -1,16 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   buildContactPayload,
   validateContactFormData,
-  type ContactFieldErrors,
   type ContactFormValues,
 } from "../lib/contact-form";
+import {
+  buildContactInitialValues,
+  CONTACT_FLOW_COPY,
+  CONTACT_FORM_ENDPOINT,
+  getContactFormMode,
+  getContactFormModeMessage,
+  isContactFormSubmissionEnabled,
+  type ContactInitialContext,
+} from "../lib/public-flow";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
 
-const initialValues: ContactFormValues = {
+type ContactFormProps = {
+  initialContext?: ContactInitialContext;
+};
+
+const baseInitialValues: ContactFormValues = {
   email: "",
   message: "",
   phone: "",
@@ -19,29 +31,48 @@ const initialValues: ContactFormValues = {
   website: "",
 };
 
+const contactFormMode = getContactFormMode(
+  process.env.NEXT_PUBLIC_CONTACT_FORM_MODE,
+);
+
 function readFormValues(formData: FormData): ContactFormValues {
   return {
-    email: String(formData.get("email") || ""),
-    message: String(formData.get("message") || ""),
-    phone: String(formData.get("phone") || ""),
+    email: String(formData.get("email") || "").trim(),
+    message: String(formData.get("message") || "").trim(),
+    phone: String(formData.get("phone") || "").trim(),
     privacy: formData.get("privacy") === "on",
-    subject: String(formData.get("subject") || ""),
-    website: String(formData.get("website") || ""),
+    subject: String(formData.get("subject") || "").trim(),
+    website: String(formData.get("website") || "").trim(),
   };
 }
 
-export function ContactForm() {
-  const [submitState, setSubmitState] = useState<SubmitState>("idle");
-  const [fieldErrors, setFieldErrors] = useState<ContactFieldErrors>({});
+export function ContactForm({ initialContext }: ContactFormProps) {
+  const initialValues = useMemo(
+    () => ({
+      ...baseInitialValues,
+      ...buildContactInitialValues(initialContext),
+    }),
+    [initialContext],
+  );
+  const [values, setValues] = useState<ContactFormValues>(initialValues);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formMessage, setFormMessage] = useState("");
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+
+  useEffect(() => {
+    setValues(initialValues);
+    setFieldErrors({});
+    setFormMessage("");
+    setSubmitState("idle");
+  }, [initialValues]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const nextValues = readFormValues(formData);
+    const errors = validateContactFormData(nextValues);
 
-    const form = event.currentTarget;
-    const values = readFormValues(new FormData(form));
-    const errors = validateContactFormData(values);
-
+    setValues(nextValues);
     setFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) {
@@ -50,15 +81,19 @@ export function ContactForm() {
       return;
     }
 
+    if (!isContactFormSubmissionEnabled(contactFormMode)) {
+      setSubmitState("idle");
+      setFormMessage(getContactFormModeMessage(contactFormMode));
+      return;
+    }
+
     setSubmitState("submitting");
     setFormMessage("");
 
     try {
-      const response = await fetch("/api/contact/create", {
-        body: JSON.stringify(buildContactPayload(values)),
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch(CONTACT_FORM_ENDPOINT, {
+        body: JSON.stringify(buildContactPayload(nextValues)),
+        headers: { "Content-Type": "application/json" },
         method: "POST",
       });
 
@@ -72,10 +107,10 @@ export function ContactForm() {
         );
       }
 
-      form.reset();
       setFieldErrors({});
       setSubmitState("success");
       setFormMessage("Richiesta inviata. Ti ricontatteremo il prima possibile.");
+      setValues(initialValues);
     } catch (error) {
       setSubmitState("error");
       setFormMessage(
@@ -87,97 +122,141 @@ export function ContactForm() {
   }
 
   return (
-    <form className="panel" noValidate onSubmit={handleSubmit}>
+    <form className="spotlight-card" noValidate onSubmit={handleSubmit}>
       <input
-        aria-hidden="true"
         autoComplete="off"
-        hidden
         name="website"
+        onChange={(event) =>
+          setValues((current) => ({ ...current, website: event.target.value }))
+        }
+        style={{ left: "-9999px", position: "absolute" }}
         tabIndex={-1}
         type="text"
+        value={values.website}
       />
 
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Contattaci</p>
-          <h2>Scrivici</h2>
-        </div>
-        <p>
-          Lascia i tuoi dati e il messaggio: il backend Cloudflare resta la
-          fonte di verita per validazione, rate limit e scrittura leads.
+      {contactFormMode !== "live" ? (
+        <p className="admin-inline-note" style={{ marginTop: 0 }}>
+          {getContactFormModeMessage(contactFormMode)}
         </p>
-      </div>
+      ) : null}
+
+      {initialContext?.product ? (
+        <div
+          className="spotlight-card"
+          style={{ marginBottom: "1rem", padding: "1rem" }}
+        >
+          <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>
+            {CONTACT_FLOW_COPY.contextualBoxLabel}
+          </p>
+          <h3 style={{ marginTop: 0 }}>{initialContext.product}</h3>
+          <p style={{ marginBottom: 0 }}>{CONTACT_FLOW_COPY.contextualBoxBody}</p>
+        </div>
+      ) : (
+        <p className="admin-inline-note" style={{ marginTop: 0 }}>
+          {CONTACT_FLOW_COPY.genericHelper}
+        </p>
+      )}
 
       <div
         style={{
           display: "grid",
           gap: "1rem",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         }}
       >
-        <label>
-          Email
+        <label style={{ display: "grid", gap: "0.35rem" }}>
+          <span>Email per la risposta</span>
           <input
-            autoComplete="email"
+            className="contact-form__input"
             name="email"
+            onChange={(event) =>
+              setValues((current) => ({ ...current, email: event.target.value }))
+            }
             placeholder="nome@email.com"
             type="email"
+            value={values.email}
           />
+          {fieldErrors.email ? (
+            <span className="admin-inline-note">{fieldErrors.email}</span>
+          ) : null}
         </label>
-        {fieldErrors.email ? (
-          <span className="admin-inline-note">{fieldErrors.email}</span>
-        ) : null}
 
-        <label>
-          Numero di telefono
+        <label style={{ display: "grid", gap: "0.35rem" }}>
+          <span>Telefono per disponibilita o ritiro</span>
           <input
-            autoComplete="tel"
+            className="contact-form__input"
             name="phone"
+            onChange={(event) =>
+              setValues((current) => ({ ...current, phone: event.target.value }))
+            }
             placeholder="+39 320 000 0000"
-            type="tel"
-          />
-        </label>
-        {fieldErrors.phone ? (
-          <span className="admin-inline-note">{fieldErrors.phone}</span>
-        ) : null}
-
-        <label>
-          Oggetto
-          <input
-            name="subject"
-            placeholder="Prenotazione, prodotti, informazioni"
             type="text"
+            value={values.phone}
           />
+          {fieldErrors.phone ? (
+            <span className="admin-inline-note">{fieldErrors.phone}</span>
+          ) : null}
         </label>
+      </div>
+
+      <label style={{ display: "grid", gap: "0.35rem", marginTop: "1rem" }}>
+        <span>Oggetto della richiesta</span>
+        <input
+          className="contact-form__input"
+          name="subject"
+          onChange={(event) =>
+            setValues((current) => ({ ...current, subject: event.target.value }))
+          }
+          placeholder="Disponibilita, ritiro in shop o richiesta generale"
+          type="text"
+          value={values.subject}
+        />
         {fieldErrors.subject ? (
           <span className="admin-inline-note">{fieldErrors.subject}</span>
         ) : null}
+      </label>
 
-        <label>
-          Messaggio
-          <textarea
-            name="message"
-            placeholder="Scrivi qui il tuo messaggio..."
-            rows={5}
-          />
-        </label>
+      <label style={{ display: "grid", gap: "0.35rem", marginTop: "1rem" }}>
+        <span>Messaggio</span>
+        <textarea
+          className="contact-form__input"
+          name="message"
+          onChange={(event) =>
+            setValues((current) => ({ ...current, message: event.target.value }))
+          }
+          placeholder="Scrivi se vuoi chiedere disponibilita, passare in negozio o fare una domanda generale."
+          rows={5}
+          value={values.message}
+        />
         {fieldErrors.message ? (
           <span className="admin-inline-note">{fieldErrors.message}</span>
         ) : null}
+      </label>
 
-        <label className="checkout-radio checkout-option">
-          <input name="privacy" type="checkbox" />
-          <span className="checkout-option__body">
-            <strong>Privacy Policy</strong>
-            <small>
-              Accetto il trattamento dati per essere ricontattato come da{" "}
-              <a href="/privacy">Privacy Policy</a>.
-            </small>
-          </span>
-        </label>
-        {fieldErrors.privacy ? (
-          <span className="admin-inline-note">{fieldErrors.privacy}</span>
-        ) : null}
-      </div>
+      <p className="admin-inline-note" style={{ marginTop: "1rem" }}>
+        {CONTACT_FLOW_COPY.noAutomaticOrderNote}
+      </p>
+
+      <label
+        className="checkout-radio checkout-option contact-consent"
+        style={{ marginTop: "1rem" }}
+      >
+        <input
+          checked={values.privacy}
+          name="privacy"
+          onChange={(event) =>
+            setValues((current) => ({ ...current, privacy: event.target.checked }))
+          }
+          type="checkbox"
+        />
+        <span className="checkout-option__body">
+          Accetto la <a href="/privacy">Privacy Policy</a>.
+        </span>
+      </label>
+      {fieldErrors.privacy ? (
+        <span className="admin-inline-note">{fieldErrors.privacy}</span>
+      ) : null}
 
       <div
         style={{
@@ -188,21 +267,27 @@ export function ContactForm() {
           marginTop: "1rem",
         }}
       >
+        <button
+          disabled={
+            submitState === "submitting" ||
+            !isContactFormSubmissionEnabled(contactFormMode)
+          }
+          type="submit"
+        >
+          {submitState === "submitting"
+            ? "Invio..."
+            : contactFormMode === "live"
+              ? "Invia richiesta"
+              : "Invio disabilitato"}
+        </button>
         <a
           className="ghost-button"
           href="https://wa.me/393208839692"
           rel="noreferrer"
           target="_blank"
         >
-          Scrivici su WhatsApp
+          Scrivi su WhatsApp
         </a>
-        <button
-          className="primary-button"
-          disabled={submitState === "submitting"}
-          type="submit"
-        >
-          {submitState === "submitting" ? "Invio in corso..." : "Invia richiesta"}
-        </button>
       </div>
 
       {formMessage ? (

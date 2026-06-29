@@ -88,3 +88,85 @@ Go for test deploy when:
 - PayPal and Stripe remain disabled on the frontend unless fully configured.
 
 Do not treat the deployment as production-ready for online payments until PayPal/Stripe provider setup, idempotency, webhooks, and stock reservation behavior are verified in a sandbox or equivalent test environment.
+## Next App Preview
+
+The parallel `next-app/` can now be prepared for preview without changing the
+vanilla production backend.
+
+Recommended public env vars for detached preview:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_CONTACT_FORM_MODE=preview
+```
+
+Mode guidance:
+
+- `live`: use only when `next-app` is same-origin with the existing Cloudflare
+  backend and `POST /api/contact/create` is reachable as-is.
+- `preview`: use for detached preview domains. The contact form remains visible
+  and contextual, but submit is intentionally disabled.
+- `disabled`: manual fallback if the form must stay visible but fully blocked.
+
+Preview-safe expectations:
+
+- read-only Supabase public routes can work with public env vars only;
+- checkout remains `in-shop` UI/client only;
+- admin remains read-only/non-operational;
+- no Next API routes, proxy, or rewrite are required for this preview mode.
+## Admin API env split
+
+Protected admin status currently uses a split env model:
+
+- Cloudflare/root server env:
+  - `ADMIN_API_TOKEN`
+- `next-app` server-only env:
+  - `ADMIN_API_BASE_URL`
+  - `ADMIN_API_TOKEN`
+- `next-app` public env:
+  - no admin token is allowed
+
+Do not expose:
+
+- `NEXT_PUBLIC_ADMIN_API_TOKEN`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- any server bearer token in browser-facing config
+
+Current contract:
+
+- `GET /api/admin/status`
+- `GET /api/admin/products/summary`
+- header: `Authorization: Bearer <ADMIN_API_TOKEN>`
+- read-only only
+- no CRUD endpoints enabled in deploy yet
+
+Auth strategy note:
+
+- `ADMIN_API_TOKEN` is acceptable for server-to-server read-only admin endpoints
+- it is not sufficient as the final auth model for admin writes
+- future admin writes must move to verified admin user auth, with Supabase Auth/JWT checked server-side before enabling `POST` / `PATCH` / `DELETE`
+
+Current admin JWT verification status:
+
+- no production-ready Cloudflare admin JWT verification is enabled yet
+- before enabling it, deploy docs must define:
+  - server-only JWT verification input, for example `SUPABASE_JWT_SECRET` or equivalent
+  - the server-side admin claim contract
+  - the rule that maps a verified user to admin privileges
+
+Recommended server-side admin privilege source:
+
+- `public.admin_users`
+- checked only after JWT verification
+- expected rule: `admin_users.user_id = sub and is_admin = true`
+- never trust browser-provided `is_admin` flags
+- do not use a hardcoded admin UID as the final authorization model
+
+Recommended migration posture for `public.admin_users`:
+
+- keep the SQL migration manual only
+- prefer FK `public.admin_users.user_id -> auth.users.id` with `on delete cascade`
+- use a dedicated `updated_at` trigger
+- enable RLS
+- do not add permissive browser-facing policies until the admin auth flow is fully reviewed
