@@ -35,6 +35,8 @@ Preserve these parts as hard compatibility targets:
 - Existing payment modes, including `in-shop`, `paypal`, and `stripe`.
 - Current production priority: `in-shop`. PayPal and Stripe should remain optional/future until provider env, sandbox tests, idempotency, and stock behavior are verified.
 - Current user-facing UX, content, legal pages, local business information, product presentation, and admin workflows.
+- Current admin product removal semantics: "remove/delete product" means real deletion of the `products` row, not automatic soft-delete via `is_active = false`.
+- Current read-only shop section editorial convention: `shop_section_items.content` should prefer a small string-based shape (`title`, `subtitle`, `description`, `label`, `imageUrl`, `href`) for predictable rendering in Next.js.
 
 ## 3. Mappatura file attuali -> Next.js
 
@@ -71,6 +73,8 @@ Recommended order:
 4. Migrate cart and checkout UI with compatibility tests.
 5. Migrate admin last, because it combines auth, privileged workflows, Supabase writes, and operational risk.
 6. Evaluate API migration only after hosting is decided and endpoint parity is testable.
+
+During the admin migration, preserve the existing delete semantics for product removal, add an explicit confirmation UI before destructive delete, keep privileged credentials server-side only, and continue enforcing admin access through Supabase RLS/policies.
 
 The safest path is to make the current vanilla app more modular before introducing Next.js.
 
@@ -125,6 +129,8 @@ Project-specific risks:
 - CSP becoming too permissive, weakening security, or too restrictive, breaking Stripe, PayPal, Supabase, or Turnstile.
 - Supabase service role accidentally imported into client-side code.
 - Admin UI being mistaken for real authorization instead of RLS/backend enforcement.
+- Product deletion semantics drifting from real delete to `is_active = false` without an explicit product decision.
+- `shop_section_items.content` drifting toward arbitrary nested/HTML-heavy payloads that the read-only Next.js UI will ignore or render only partially.
 - Broken `Img/` asset paths after moving files into a Next public/static model.
 - SEO/local business regressions from changed markup, metadata, headings, routes, or legal pages.
 - Stripe webhook signature verification breaking if raw request body handling changes.
@@ -138,10 +144,25 @@ Project-specific risks:
 3. Add focused tests for checkout validation, payment returns, webhook idempotency expectations, and Supabase client/server separation.
 4. Scaffold Next.js in a separate branch only after the current app is modular enough to compare behavior.
 5. Port static pages and global styles first, preserving visible content and `Img/` behavior.
-6. Port cart, checkout, and admin in separate small steps, verifying each with smoke tests and manual checkout flows.
+6. Port cart, checkout, and admin in separate small steps, verifying each with smoke tests and manual checkout flows. Preserve that admin product removal performs a real delete, add delete confirmation UI, and do not move privileged Supabase access into the client.
 7. Decide whether to keep Cloudflare Functions or move to Next route handlers, then migrate one endpoint at a time with compatibility checks.
 
 Each step should be small, testable, and reversible.
+
+For shop/home dynamic sections, prefer an editorial convention over a hard schema at this stage:
+
+```json
+{
+  "title": "string",
+  "subtitle": "string",
+  "description": "string",
+  "label": "string",
+  "imageUrl": "/Img/example.webp",
+  "href": "/shop"
+}
+```
+
+Treat all fields as optional plain strings. Avoid HTML as content markup, use only safe relative paths or `http/https` URLs for `href` and `imageUrl`, and assume nested objects/arrays/numbers may be ignored by the current Next.js read-only rendering path.
 
 ## 8. Criteri go/no-go
 

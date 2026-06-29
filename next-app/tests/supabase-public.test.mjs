@@ -5,15 +5,17 @@ import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
 const sourceFile = resolve("lib/supabase-public.ts");
+const shopContentSourceFile = resolve("lib/shop-content.ts");
 const tmpDir = resolve("tests/.tmp");
 const compiledFile = resolve(tmpDir, "supabase-public.mjs");
+const compiledShopContentFile = resolve(tmpDir, "shop-content.mjs");
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
 
-function compileModule() {
-  mkdirSync(dirname(compiledFile), { recursive: true });
+function compileModule(inputFile, outputFile) {
+  mkdirSync(dirname(outputFile), { recursive: true });
 
-  const source = readFileSync(sourceFile, "utf8");
+  const source = readFileSync(inputFile, "utf8");
   const compiled = ts.transpileModule(source, {
     compilerOptions: {
       module: ts.ModuleKind.ES2022,
@@ -21,7 +23,7 @@ function compileModule() {
     },
   }).outputText;
 
-  writeFileSync(compiledFile, compiled);
+  writeFileSync(outputFile, compiled);
 }
 
 function restoreEnv() {
@@ -42,9 +44,13 @@ function restoreEnv() {
 }
 
 try {
-  compileModule();
+  compileModule(sourceFile, compiledFile);
+  compileModule(shopContentSourceFile, compiledShopContentFile);
 
   const mod = await import(`${pathToFileURL(compiledFile).href}?t=${Date.now()}`);
+  const shopContentMod = await import(
+    `${pathToFileURL(compiledShopContentFile).href}?t=${Date.now()}`
+  );
 
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -63,6 +69,13 @@ try {
 
   const missingCategories = await mod.getPublicShopCategories();
   assert.deepEqual(missingCategories, []);
+
+  const missingSections = await mod.getPublicShopSections();
+  assert.deepEqual(missingSections, []);
+
+  const missingSectionItems = await mod.getPublicShopSectionItems();
+  assert.deepEqual(missingSectionItems, []);
+
   assert.equal(fetchCalls, 0);
 
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
@@ -169,11 +182,7 @@ try {
     },
   ]);
   assert.ok(capturedCategoriesUrl.includes("/rest/v1/shop_categories?"));
-  assert.ok(
-    capturedCategoriesUrl.includes(
-      "select=value%2Clabel%2Csort_order",
-    ),
-  );
+  assert.ok(capturedCategoriesUrl.includes("select=value%2Clabel%2Csort_order"));
   assert.ok(capturedCategoriesUrl.includes("is_active=eq.true"));
   assert.ok(capturedCategoriesUrl.includes("order=sort_order.asc"));
   assert.equal(capturedCategoriesInit?.headers?.apikey, "anon-key");
@@ -182,15 +191,113 @@ try {
     "Bearer anon-key",
   );
 
+  let capturedSectionsUrl = null;
+  let capturedSectionsInit = null;
+  globalThis.fetch = async (url, init) => {
+    capturedSectionsUrl = String(url);
+    capturedSectionsInit = init;
+
+    return {
+      ok: true,
+      async json() {
+        return [
+          {
+            key: "featured",
+            title: "Featured products",
+            subtitle: "Shop spotlight",
+            settings: { theme: "light" },
+            sort_order: 1,
+          },
+        ];
+      },
+    };
+  };
+
+  const publicSections = await mod.getPublicShopSections();
+  assert.deepEqual(publicSections, [
+    {
+      key: "featured",
+      settings: { theme: "light" },
+      sort_order: 1,
+      subtitle: "Shop spotlight",
+      title: "Featured products",
+    },
+  ]);
+  assert.ok(capturedSectionsUrl.includes("/rest/v1/shop_sections?"));
+  assert.ok(
+    capturedSectionsUrl.includes(
+      "select=key%2Ctitle%2Csubtitle%2Csettings%2Csort_order",
+    ),
+  );
+  assert.ok(capturedSectionsUrl.includes("is_active=eq.true"));
+  assert.ok(capturedSectionsUrl.includes("order=sort_order.asc"));
+  assert.equal(capturedSectionsInit?.headers?.apikey, "anon-key");
+  assert.equal(
+    capturedSectionsInit?.headers?.Authorization,
+    "Bearer anon-key",
+  );
+
+  let capturedSectionItemsUrl = null;
+  let capturedSectionItemsInit = null;
+  globalThis.fetch = async (url, init) => {
+    capturedSectionItemsUrl = String(url);
+    capturedSectionItemsInit = init;
+
+    return {
+      ok: true,
+      async json() {
+        return [
+          {
+            section_key: "featured",
+            item_key: "wax-1",
+            content: { badge: "Top pick" },
+            sort_order: 1,
+          },
+        ];
+      },
+    };
+  };
+
+  const publicSectionItems = await mod.getPublicShopSectionItems();
+  assert.deepEqual(publicSectionItems, [
+    {
+      content: { badge: "Top pick" },
+      item_key: "wax-1",
+      section_key: "featured",
+      sort_order: 1,
+    },
+  ]);
+  assert.ok(
+    capturedSectionItemsUrl.includes("/rest/v1/shop_section_items?"),
+  );
+  assert.ok(
+    capturedSectionItemsUrl.includes(
+      "select=section_key%2Citem_key%2Ccontent%2Csort_order",
+    ),
+  );
+  assert.ok(capturedSectionItemsUrl.includes("is_active=eq.true"));
+  assert.ok(capturedSectionItemsUrl.includes("order=sort_order.asc"));
+  assert.equal(capturedSectionItemsInit?.headers?.apikey, "anon-key");
+  assert.equal(
+    capturedSectionItemsInit?.headers?.Authorization,
+    "Bearer anon-key",
+  );
+
   globalThis.fetch = async () => ({
     ok: false,
     async json() {
-      throw new Error("json should not run for failed category responses");
+      throw new Error("json should not run for failed responses");
     },
   });
 
   const failedCategories = await mod.getPublicShopCategories();
   assert.deepEqual(failedCategories, []);
+
+  const failedSections = await mod.getPublicShopSections();
+  assert.deepEqual(failedSections, []);
+
+  const failedSectionItems = await mod.getPublicShopSectionItems();
+  assert.deepEqual(failedSectionItems, []);
 
   globalThis.fetch = async () => {
     throw new Error("network failure");
@@ -198,6 +305,92 @@ try {
 
   const thrownCategories = await mod.getPublicShopCategories();
   assert.deepEqual(thrownCategories, []);
+
+  const thrownSections = await mod.getPublicShopSections();
+  assert.deepEqual(thrownSections, []);
+
+  const thrownSectionItems = await mod.getPublicShopSectionItems();
+  assert.deepEqual(thrownSectionItems, []);
+
+  assert.deepEqual(
+    shopContentMod.normalizeShopSectionContent({
+      description: "  Strong hold for daily styling.  ",
+      href: "/shop/black-wax",
+      imageUrl: "https://cdn.example/black-wax.webp",
+      label: "  Best seller ",
+      subtitle: "  Matte finish ",
+      title: "  Black wax  ",
+    }),
+    {
+      description: "Strong hold for daily styling.",
+      hasContent: true,
+      href: "/shop/black-wax",
+      imageUrl: "https://cdn.example/black-wax.webp",
+      label: "Best seller",
+      subtitle: "Matte finish",
+      title: "Black wax",
+    },
+  );
+
+  assert.deepEqual(
+    shopContentMod.normalizeShopSectionContent({
+      count: 3,
+      description: { text: "ignored" },
+      href: ["ignored"],
+      imageUrl: { src: "/unsafe" },
+      label: "  Visible label  ",
+      subtitle: 42,
+      title: ["ignored"],
+    }),
+    {
+      hasContent: true,
+      label: "Visible label",
+    },
+  );
+
+  assert.deepEqual(
+    shopContentMod.normalizeShopSectionContent({
+      description: " <strong>Styled</strong> text ",
+      title: " <em>Hero</em> ",
+    }),
+    {
+      description: "<strong>Styled</strong> text",
+      hasContent: true,
+      title: "<em>Hero</em>",
+    },
+  );
+
+  assert.deepEqual(
+    shopContentMod.normalizeShopSectionContent({
+      href: "javascript:alert(1)",
+      imageUrl: "data:text/html;base64,abc",
+      title: "Safe title",
+    }),
+    {
+      hasContent: true,
+      title: "Safe title",
+    },
+  );
+
+  assert.deepEqual(
+    shopContentMod.normalizeShopSectionContent({
+      href: "https://example.com/shop",
+      imageUrl: "/Img/products/black-wax-packshot-opt.webp",
+    }),
+    {
+      hasContent: true,
+      href: "https://example.com/shop",
+      imageUrl: "/Img/products/black-wax-packshot-opt.webp",
+    },
+  );
+
+  assert.deepEqual(shopContentMod.normalizeShopSectionContent({}), {
+    hasContent: false,
+  });
+
+  assert.deepEqual(shopContentMod.normalizeShopSectionContent([]), {
+    hasContent: false,
+  });
 
   console.log("Supabase public tests passed.");
 } finally {

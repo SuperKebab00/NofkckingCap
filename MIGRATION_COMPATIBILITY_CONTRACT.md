@@ -125,6 +125,44 @@ Il progetto attuale usa hash routing e sezioni/pagine nello stesso documento HTM
 
 Admin deve essere migrato tardi, dopo aver stabilizzato layout pubblico, catalogo e checkout. Admin contiene auth, Supabase, storage, mutazioni e workflow operativi piu rischiosi.
 
+## 8.1. Admin Product Removal Semantics
+
+Hard rule to preserve during admin migration:
+
+- In admin, "remove product" / "delete product" must execute a real delete of the `products` record.
+- Do not automatically transform this action into soft-delete with `is_active = false`.
+- `is_active = false` may still be used for publication/filtering, but it is not a substitute for an explicit admin delete/remove action.
+- If the UI exposes a destructive product delete, it must include a confirmation step before the delete is executed.
+- The migrated admin must not expose `SUPABASE_SERVICE_ROLE_KEY` or any equivalent privileged secret to the client bundle.
+- The migrated admin must continue to respect Supabase RLS/admin policy instead of treating frontend visibility as authorization.
+- If a future product decision wants soft-delete semantics, that must be introduced by an explicit separate task.
+
+## 8.2. Shop Section Content Editorial Contract
+
+For `shop_section_items.content`, preserve a minimal editorial compatibility contract during migration:
+
+```json
+{
+  "title": "string",
+  "subtitle": "string",
+  "description": "string",
+  "label": "string",
+  "imageUrl": "/Img/example.webp",
+  "href": "/shop"
+}
+```
+
+Rules:
+
+- All fields are optional.
+- Values should be plain strings only.
+- Do not rely on HTML fragments as a rendering contract.
+- `href` must be a safe relative path or an `http/https` URL.
+- `imageUrl` must be a safe relative path or an `http/https` URL.
+- Nested objects, arrays, numbers, and other non-string values may be ignored by the current Next.js read-only UI.
+- Future admin/editor tooling should save content compatible with this shape when predictable Next.js rendering is desired.
+- This is an editorial convention, not yet a strict DB schema migration.
+
 ## 9. CSS/CSP/Headers
 
 Preservare `_headers` o un equivalente del target hosting:

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { SiteFooter } from "../components/site-footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "No Cap Next Migration Shell",
-  description: "Parallel Next.js shell for the No Cap migration.",
+  title: "No Cap Barbershop",
+  description:
+    "No Cap Barbershop: home, shop read-only, contatti e pagine informative della shell pubblica Next.",
 };
 
 export default function RootLayout({
@@ -13,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it">
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteFooter />
+      </body>
     </html>
   );
 }

@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
+import { LiveShopSections } from "../../components/live-shop-sections";
 import { SiteHeader } from "../../components/site-header";
+import { ShopCatalog } from "../../components/shop-catalog";
 import type { ShopProductCard } from "../../components/shop-product-grid";
-import { ShopProductGrid } from "../../components/shop-product-grid";
 import {
   getPublicProducts,
   getPublicShopCategories,
@@ -8,6 +10,12 @@ import {
   type PublicShopCategory,
 } from "../../lib/supabase-public";
 import { productTeasers, shopPageContent } from "../../lib/static-content";
+
+export const metadata: Metadata = {
+  title: "Shop | No Cap Barbershop",
+  description:
+    "Catalogo read-only Next di No Cap Barbershop con prodotti, categorie e sezioni editoriali pubbliche.",
+};
 
 function mapPublicProductToCard(product: PublicProduct): ShopProductCard {
   return {
@@ -101,7 +109,10 @@ export default async function ShopPage() {
         <section className="panel" aria-labelledby="shop-categories-title">
           <div className="panel-heading">
             <h2 id="shop-categories-title">Categorie</h2>
-            <p>Read-only. Nessun filtro client-side, carrello o checkout.</p>
+            <p>
+              Read-only. Le categorie restano informative e guidano il filtro
+              locale del catalogo.
+            </p>
           </div>
           {categories.length > 0 ? (
             <ul
@@ -125,16 +136,13 @@ export default async function ShopPage() {
           )}
         </section>
 
-        <section className="panel" aria-labelledby="shop-products-title">
-          <div className="panel-heading">
-            <h2 id="shop-products-title">Prodotti</h2>
-            <p>Catalogo read-only durante la migrazione Next.</p>
-          </div>
-          <ShopProductGrid
-            products={products}
-            showStock={shopProducts.showStock}
-          />
-        </section>
+        <ShopCatalog
+          categories={categories}
+          products={products}
+          showStock={shopProducts.showStock}
+        />
+
+        <LiveShopSections />
 
         <section className="panel">
           <div className="panel-heading">

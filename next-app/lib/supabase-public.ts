@@ -24,6 +24,23 @@ type SupabaseShopCategoryRow = {
   value: string | null;
 };
 
+type SupabaseShopSectionRow = {
+  is_active?: boolean | null;
+  key: string | null;
+  settings: unknown;
+  sort_order: number | null;
+  subtitle: string | null;
+  title: string | null;
+};
+
+type SupabaseShopSectionItemRow = {
+  content: unknown;
+  is_active?: boolean | null;
+  item_key: string | null;
+  section_key: string | null;
+  sort_order: number | null;
+};
+
 export type PublicProduct = {
   badge: string | null;
   category: string | null;
@@ -48,6 +65,21 @@ export type PublicShopCategory = {
   label: string;
   sort_order: number | null;
   value: string;
+};
+
+export type PublicShopSection = {
+  key: string;
+  settings: unknown;
+  sort_order: number | null;
+  subtitle: string | null;
+  title: string | null;
+};
+
+export type PublicShopSectionItem = {
+  content: unknown;
+  item_key: string;
+  section_key: string;
+  sort_order: number | null;
 };
 
 function getSupabasePublicConfig(): SupabasePublicConfig {
@@ -111,82 +143,50 @@ function mapShopCategoryRow(
   };
 }
 
-export async function getPublicProducts(): Promise<PublicProductsResult> {
-  const config = getSupabasePublicConfig();
-
-  if (!config.url || !config.anonKey) {
-    return {
-      products: [],
-      showStock: false,
-    };
+function mapShopSectionRow(
+  row: SupabaseShopSectionRow,
+): PublicShopSection | null {
+  if (!row.key) {
+    return null;
   }
 
-  const searchParams = new URLSearchParams({
-    is_active: "eq.true",
-    select: [
-      "id",
-      "name",
-      "category",
-      "label",
-      "description",
-      "price",
-      "stock",
-      "packshot_url",
-      "lifestyle_url",
-      "colors",
-      "shape",
-      "badge",
-    ].join(","),
-  });
-
-  try {
-    const response = await fetch(
-      buildSupabaseRestUrl(config.url, "products", searchParams),
-      {
-        headers: createSupabaseHeaders(config.anonKey),
-      },
-    );
-
-    if (!response.ok) {
-      return {
-        products: [],
-        showStock: false,
-      };
-    }
-
-    const rows = (await response.json()) as SupabaseProductRow[];
-    const products = rows
-      .map(mapProductRow)
-      .filter((product): product is PublicProduct => Boolean(product));
-
-    return {
-      products,
-      showStock: false,
-    };
-  } catch {
-    return {
-      products: [],
-      showStock: false,
-    };
-  }
+  return {
+    key: row.key,
+    settings: row.settings,
+    sort_order: row.sort_order,
+    subtitle: row.subtitle,
+    title: row.title,
+  };
 }
 
-export async function getPublicShopCategories(): Promise<PublicShopCategory[]> {
+function mapShopSectionItemRow(
+  row: SupabaseShopSectionItemRow,
+): PublicShopSectionItem | null {
+  if (!row.section_key || !row.item_key) {
+    return null;
+  }
+
+  return {
+    content: row.content,
+    item_key: row.item_key,
+    section_key: row.section_key,
+    sort_order: row.sort_order,
+  };
+}
+
+async function fetchSupabaseRows<T>(
+  table: string,
+  searchParams: URLSearchParams,
+): Promise<T[]> {
   const config = getSupabasePublicConfig();
 
   if (!config.url || !config.anonKey) {
     return [];
   }
 
-  const searchParams = new URLSearchParams({
-    is_active: "eq.true",
-    order: "sort_order.asc",
-    select: ["value", "label", "sort_order"].join(","),
-  });
-
   try {
     const response = await fetch(
-      buildSupabaseRestUrl(config.url, "shop_categories", searchParams),
+      buildSupabaseRestUrl(config.url, table, searchParams),
       {
         headers: createSupabaseHeaders(config.anonKey),
       },
@@ -196,12 +196,85 @@ export async function getPublicShopCategories(): Promise<PublicShopCategory[]> {
       return [];
     }
 
-    const rows = (await response.json()) as SupabaseShopCategoryRow[];
-
-    return rows
-      .map(mapShopCategoryRow)
-      .filter((category): category is PublicShopCategory => Boolean(category));
+    return (await response.json()) as T[];
   } catch {
     return [];
   }
+}
+
+export async function getPublicProducts(): Promise<PublicProductsResult> {
+  const rows = await fetchSupabaseRows<SupabaseProductRow>(
+    "products",
+    new URLSearchParams({
+      is_active: "eq.true",
+      select: [
+        "id",
+        "name",
+        "category",
+        "label",
+        "description",
+        "price",
+        "stock",
+        "packshot_url",
+        "lifestyle_url",
+        "colors",
+        "shape",
+        "badge",
+      ].join(","),
+    }),
+  );
+
+  return {
+    products: rows
+      .map(mapProductRow)
+      .filter((product): product is PublicProduct => Boolean(product)),
+    showStock: false,
+  };
+}
+
+export async function getPublicShopCategories(): Promise<PublicShopCategory[]> {
+  const rows = await fetchSupabaseRows<SupabaseShopCategoryRow>(
+    "shop_categories",
+    new URLSearchParams({
+      is_active: "eq.true",
+      order: "sort_order.asc",
+      select: ["value", "label", "sort_order"].join(","),
+    }),
+  );
+
+  return rows
+    .map(mapShopCategoryRow)
+    .filter((category): category is PublicShopCategory => Boolean(category));
+}
+
+export async function getPublicShopSections(): Promise<PublicShopSection[]> {
+  const rows = await fetchSupabaseRows<SupabaseShopSectionRow>(
+    "shop_sections",
+    new URLSearchParams({
+      is_active: "eq.true",
+      order: "sort_order.asc",
+      select: ["key", "title", "subtitle", "settings", "sort_order"].join(","),
+    }),
+  );
+
+  return rows
+    .map(mapShopSectionRow)
+    .filter((section): section is PublicShopSection => Boolean(section));
+}
+
+export async function getPublicShopSectionItems(): Promise<
+  PublicShopSectionItem[]
+> {
+  const rows = await fetchSupabaseRows<SupabaseShopSectionItemRow>(
+    "shop_section_items",
+    new URLSearchParams({
+      is_active: "eq.true",
+      order: "sort_order.asc",
+      select: ["section_key", "item_key", "content", "sort_order"].join(","),
+    }),
+  );
+
+  return rows
+    .map(mapShopSectionItemRow)
+    .filter((item): item is PublicShopSectionItem => Boolean(item));
 }

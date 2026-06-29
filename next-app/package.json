@@ -4,7 +4,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node tests/supabase-public.test.mjs",
+    "test": "node tests/supabase-public.test.mjs && node tests/contact-form.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

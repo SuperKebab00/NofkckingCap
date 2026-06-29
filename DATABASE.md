@@ -46,6 +46,12 @@ Columns:
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
+Admin product removal policy:
+
+- In admin, "remove product" means a real delete of the row from `products`.
+- Do not reinterpret admin remove/delete actions as soft-delete via `is_active = false` unless a future task explicitly changes the product behavior.
+- `is_active = false` can still be used for publication/filtering state, but it does not replace an admin delete/remove action.
+
 ### `orders`
 
 Order header table.
@@ -157,6 +163,30 @@ Columns:
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
+Editorial content convention for `shop_section_items.content`:
+
+- `content` is currently stored as `jsonb`.
+- Recommended minimal editorial shape:
+
+```json
+{
+  "title": "string",
+  "subtitle": "string",
+  "description": "string",
+  "label": "string",
+  "imageUrl": "/Img/example.webp",
+  "href": "/shop"
+}
+```
+
+- All fields are optional.
+- Values should be plain strings.
+- HTML should not be stored as a rendering contract.
+- `href` should be a safe relative path or an `http/https` URL.
+- `imageUrl` should be a safe relative path or an `http/https` URL.
+- Nested objects, arrays, numbers, and other non-string values may be ignored by the current Next.js read-only UI.
+- This is an editorial compatibility convention for predictable rendering, not a rigid DB migration or enforced schema at the database level.
+
 ## 3. Tabelle non presenti ma citate/possibili future
 
 The following tables are not part of the current real schema described here, but may be useful in future iterations:
@@ -205,6 +235,8 @@ Tables using admin write policies based on this UID:
 
 This model works for a single known admin user, but it is brittle if admins change or multiple admin roles are needed.
 
+Admin product deletion must continue to respect Supabase RLS/admin policies. Any admin UI or future migration must preserve privileged enforcement on the server/RLS side and must not rely on client-only authorization.
+
 ## 6. Public read model
 
 The public/frontend client can read only public-facing data.
@@ -218,6 +250,8 @@ Publicly readable tables:
 - `shop_sections`
 
 Public product/category/section reads are filtered by `is_active = true` where applicable.
+
+For `shop_section_items.content`, the current Next.js read-only rendering path is intentionally conservative and expects only a small safe string-based subset for predictable display.
 
 The public client should not rely on hidden/inactive rows being available.
 
@@ -261,3 +295,4 @@ Recommended future improvements, not implemented here:
 - Before enabling immediate online payment, verify stock triggers or document an equivalent reservation strategy in the real Supabase project.
 - Add versioned migrations only after the real DB shape is stabilized and verified.
 - Document constraints, indexes, triggers, and storage policies once they are confirmed from the live database.
+- If the product should ever move to a soft-delete model, treat that as a separate explicit product/task decision rather than an implicit reinterpretation of current admin delete semantics.

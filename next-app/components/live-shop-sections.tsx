@@ -3,97 +3,29 @@ import {
   getPublicShopSections,
   type PublicShopSectionItem,
 } from "../lib/supabase-public";
+import { normalizeShopSectionContent } from "../lib/shop-content";
 
 type SectionPreview = {
+  description?: string;
+  href?: string;
+  imageUrl?: string;
   item_key: string;
-  previews: string[];
+  label?: string;
+  subtitle?: string;
+  title?: string;
 };
 
-function normalizePreviewString(value: string): string | null {
-  const normalized = value.replace(/\s+/g, " ").trim();
-
-  if (!normalized) {
-    return null;
-  }
-
-  return normalized.length > 120
-    ? `${normalized.slice(0, 117).trimEnd()}...`
-    : normalized;
-}
-
-function collectPreviewStrings(
-  value: unknown,
-  bucket: string[],
-  maxItems = 3,
-): void {
-  if (bucket.length >= maxItems || value == null) {
-    return;
-  }
-
-  if (typeof value === "string") {
-    const normalized = normalizePreviewString(value);
-
-    if (normalized) {
-      bucket.push(normalized);
-    }
-
-    return;
-  }
-
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      if (bucket.length >= maxItems) {
-        break;
-      }
-
-      collectPreviewStrings(entry, bucket, maxItems);
-    }
-
-    return;
-  }
-
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const preferredKeys = [
-      "title",
-      "subtitle",
-      "label",
-      "name",
-      "text",
-      "description",
-    ];
-
-    for (const key of preferredKeys) {
-      if (bucket.length >= maxItems) {
-        break;
-      }
-
-      if (key in record) {
-        collectPreviewStrings(record[key], bucket, maxItems);
-      }
-    }
-
-    if (bucket.length >= maxItems) {
-      return;
-    }
-
-    for (const entry of Object.values(record)) {
-      if (bucket.length >= maxItems) {
-        break;
-      }
-
-      collectPreviewStrings(entry, bucket, maxItems);
-    }
-  }
-}
-
 function buildSectionPreview(item: PublicShopSectionItem): SectionPreview {
-  const previews: string[] = [];
-  collectPreviewStrings(item.content, previews);
+  const normalized = normalizeShopSectionContent(item.content);
 
   return {
+    description: normalized.description,
+    href: normalized.href,
+    imageUrl: normalized.imageUrl,
     item_key: item.item_key,
-    previews,
+    label: normalized.label,
+    subtitle: normalized.subtitle,
+    title: normalized.title,
   };
 }
 
@@ -189,9 +121,11 @@ export async function LiveShopSections() {
                   <ul style={{ marginBottom: 0, marginTop: "0.85rem" }}>
                     {previews.map((item) => (
                       <li key={item.item_key}>
-                        {item.previews.length > 0
-                          ? item.previews.join(" • ")
-                          : "Contenuto live disponibile"}
+                        {item.title || item.label || "Contenuto live disponibile"}
+                        {item.subtitle ? ` • ${item.subtitle}` : ""}
+                        {item.description ? ` • ${item.description}` : ""}
+                        {item.href ? ` • ${item.href}` : ""}
+                        {item.imageUrl ? ` • ${item.imageUrl}` : ""}
                       </li>
                     ))}
                   </ul>
