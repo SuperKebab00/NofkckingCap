@@ -1,13 +1,7 @@
-type SupabasePublicConfig =
-  | {
-      configured: true;
-      anonKey: string;
-      url: string;
-    }
-  | {
-      configured: false;
-      reason: string;
-    };
+type SupabasePublicConfig = {
+  anonKey: string | null;
+  url: string | null;
+};
 
 type SupabaseProductRow = {
   badge: string | null;
@@ -24,6 +18,12 @@ type SupabaseProductRow = {
   stock: number | null;
 };
 
+type SupabaseShopCategoryRow = {
+  label: string | null;
+  sort_order: number | null;
+  value: string | null;
+};
+
 export type PublicProduct = {
   badge: string | null;
   category: string | null;
@@ -34,53 +34,53 @@ export type PublicProduct = {
   lifestyleUrl: string | null;
   name: string;
   packshotUrl: string | null;
-  price: number | null;
+  price: number | string | null;
   shape: string | null;
   stock: number | null;
 };
 
-export type PublicProductsResult =
-  | {
-      configured: true;
-      products: PublicProduct[];
-    }
-  | {
-      configured: false;
-      products: [];
-      reason: string;
-    };
+export type PublicProductsResult = {
+  products: PublicProduct[];
+  showStock: boolean;
+};
 
-const PRODUCT_COLUMNS = [
-  "id",
-  "name",
-  "category",
-  "label",
-  "description",
-  "price",
-  "stock",
-  "packshot_url",
-  "lifestyle_url",
-  "colors",
-  "shape",
-  "badge",
-].join(",");
+export type PublicShopCategory = {
+  label: string;
+  sort_order: number | null;
+  value: string;
+};
 
 function getSupabasePublicConfig(): SupabasePublicConfig {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || null;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || null;
 
-  if (!url || !anonKey) {
-    return {
-      configured: false,
-      reason:
-        "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    };
-  }
-
-  return { configured: true, anonKey, url: url.replace(/\/+$/, "") };
+  return {
+    anonKey,
+    url,
+  };
 }
 
-function mapProductRow(row: SupabaseProductRow): PublicProduct {
+function buildSupabaseRestUrl(
+  baseUrl: string,
+  table: string,
+  searchParams: URLSearchParams,
+): string {
+  return `${baseUrl.replace(/\/+$/, "")}/rest/v1/${table}?${searchParams.toString()}`;
+}
+
+function createSupabaseHeaders(anonKey: string): Record<string, string> {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${anonKey}`,
+    apikey: anonKey,
+  };
+}
+
+function mapProductRow(row: SupabaseProductRow): PublicProduct | null {
+  if (!row.id || !row.name) {
+    return null;
+  }
+
   return {
     badge: row.badge,
     category: row.category,
@@ -89,56 +89,119 @@ function mapProductRow(row: SupabaseProductRow): PublicProduct {
     id: row.id,
     label: row.label,
     lifestyleUrl: row.lifestyle_url,
-    name: row.name || "Prodotto",
+    name: row.name,
     packshotUrl: row.packshot_url,
-    price:
-      typeof row.price === "number"
-        ? row.price
-        : row.price
-          ? Number(row.price)
-          : null,
+    price: row.price,
     shape: row.shape,
     stock: row.stock,
+  };
+}
+
+function mapShopCategoryRow(
+  row: SupabaseShopCategoryRow,
+): PublicShopCategory | null {
+  if (!row.value || !row.label) {
+    return null;
+  }
+
+  return {
+    label: row.label,
+    sort_order: row.sort_order,
+    value: row.value,
   };
 }
 
 export async function getPublicProducts(): Promise<PublicProductsResult> {
   const config = getSupabasePublicConfig();
 
-  if (!config.configured) {
+  if (!config.url || !config.anonKey) {
     return {
-      configured: false,
       products: [],
-      reason: config.reason,
+      showStock: false,
     };
   }
 
   const searchParams = new URLSearchParams({
     is_active: "eq.true",
-    order: "created_at.desc",
-    select: PRODUCT_COLUMNS,
+    select: [
+      "id",
+      "name",
+      "category",
+      "label",
+      "description",
+      "price",
+      "stock",
+      "packshot_url",
+      "lifestyle_url",
+      "colors",
+      "shape",
+      "badge",
+    ].join(","),
   });
 
-  const response = await fetch(
-    `${config.url}/rest/v1/products?${searchParams.toString()}`,
-    {
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`,
+  try {
+    const response = await fetch(
+      buildSupabaseRestUrl(config.url, "products", searchParams),
+      {
+        headers: createSupabaseHeaders(config.anonKey),
       },
-      // Future step: decide no-store vs revalidate once /shop uses live data.
-      cache: "no-store",
-    },
-  );
+    );
 
-  if (!response.ok) {
-    throw new Error(`Supabase public products read failed: ${response.status}`);
+    if (!response.ok) {
+      return {
+        products: [],
+        showStock: false,
+      };
+    }
+
+    const rows = (await response.json()) as SupabaseProductRow[];
+    const products = rows
+      .map(mapProductRow)
+      .filter((product): product is PublicProduct => Boolean(product));
+
+    return {
+      products,
+      showStock: false,
+    };
+  } catch {
+    return {
+      products: [],
+      showStock: false,
+    };
+  }
+}
+
+export async function getPublicShopCategories(): Promise<PublicShopCategory[]> {
+  const config = getSupabasePublicConfig();
+
+  if (!config.url || !config.anonKey) {
+    return [];
   }
 
-  const rows = (await response.json()) as SupabaseProductRow[];
+  const searchParams = new URLSearchParams({
+    is_active: "eq.true",
+    order: "sort_order.asc",
+    select: ["value", "label", "sort_order"].join(","),
+  });
 
-  return {
-    configured: true,
-    products: rows.map(mapProductRow),
-  };
+  try {
+    const response = await fetch(
+      buildSupabaseRestUrl(config.url, "shop_categories", searchParams),
+      {
+        headers: createSupabaseHeaders(config.anonKey),
+      },
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const rows = (await response.json()) as SupabaseShopCategoryRow[];
+
+    return rows
+      .map(mapShopCategoryRow)
+      .filter((category): category is PublicShopCategory => Boolean(category));
+  } catch {
+    return [];
+  }
 }

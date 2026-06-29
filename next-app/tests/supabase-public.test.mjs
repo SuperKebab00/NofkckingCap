@@ -1,101 +1,207 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
-const tmpDir = mkdtempSync(join(tmpdir(), "next-supabase-public-"));
 const sourceFile = resolve("lib/supabase-public.ts");
-const compiledFile = join(tmpDir, "supabase-public.mjs");
-
+const tmpDir = resolve("tests/.tmp");
+const compiledFile = resolve(tmpDir, "supabase-public.mjs");
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
 
-try {
-  const compiled = ts.transpileModule(readFileSync(sourceFile, "utf8"), {
+function compileModule() {
+  mkdirSync(dirname(compiledFile), { recursive: true });
+
+  const source = readFileSync(sourceFile, "utf8");
+  const compiled = ts.transpileModule(source, {
     compilerOptions: {
       module: ts.ModuleKind.ES2022,
       target: ts.ScriptTarget.ES2022,
     },
-  });
-  writeFileSync(compiledFile, compiled.outputText);
+  }).outputText;
 
-  const mod = await import(
-    `${pathToFileURL(compiledFile).href}?t=${Date.now()}`
-  );
+  writeFileSync(compiledFile, compiled);
+}
+
+function restoreEnv() {
+  for (const key of Object.keys(process.env)) {
+    if (!(key in originalEnv)) {
+      delete process.env[key];
+    }
+  }
+
+  for (const [key, value] of Object.entries(originalEnv)) {
+    if (value === undefined) {
+      delete process.env[key];
+      continue;
+    }
+
+    process.env[key] = value;
+  }
+}
+
+try {
+  compileModule();
+
+  const mod = await import(`${pathToFileURL(compiledFile).href}?t=${Date.now()}`);
 
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  let fetchCalls = 0;
   globalThis.fetch = async () => {
-    throw new Error("fetch should not run without env");
+    fetchCalls += 1;
+    throw new Error("fetch should not run without public env");
   };
 
-  const missing = await mod.getPublicProducts();
-  assert.equal(missing.configured, false);
-  assert.deepEqual(missing.products, []);
+  const missingProducts = await mod.getPublicProducts();
+  assert.deepEqual(missingProducts, {
+    products: [],
+    showStock: false,
+  });
 
-  const calls = [];
-  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co/";
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+  const missingCategories = await mod.getPublicShopCategories();
+  assert.deepEqual(missingCategories, []);
+  assert.equal(fetchCalls, 0);
+
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+
+  let capturedProductsUrl = null;
+  let capturedProductsInit = null;
   globalThis.fetch = async (url, init) => {
-    calls.push({ init, url: String(url) });
+    capturedProductsUrl = String(url);
+    capturedProductsInit = init;
 
     return {
       ok: true,
-      json: async () => [
-        {
-          badge: "New",
-          category: "styling",
-          colors: [{ value: "#000" }],
-          description: "Strong hold",
-          id: "black-wax",
-          label: "Wax",
-          lifestyle_url: "https://cdn.example/lifestyle.webp",
-          name: "Black wax",
-          packshot_url: "https://cdn.example/packshot.webp",
-          price: "12.50",
-          shape: "jar",
-          stock: 7,
-        },
-      ],
+      async json() {
+        return [
+          {
+            badge: "Strong",
+            category: "Styling",
+            colors: [{ name: "Black", hex: "#000" }],
+            description: "Hold and texture",
+            id: "wax-1",
+            label: "Best seller",
+            lifestyle_url: "https://cdn.example/lifestyle.webp",
+            name: "Black wax",
+            packshot_url: "https://cdn.example/packshot.webp",
+            price: 19.9,
+            shape: "jar",
+            stock: 7,
+          },
+        ];
+      },
     };
   };
 
-  const success = await mod.getPublicProducts();
-  assert.equal(success.configured, true);
-  assert.equal(success.products.length, 1);
-  assert.equal(success.products[0].id, "black-wax");
-  assert.equal(success.products[0].name, "Black wax");
-  assert.equal(success.products[0].price, 12.5);
-  assert.equal(
-    success.products[0].packshotUrl,
-    "https://cdn.example/packshot.webp",
+  const publicProducts = await mod.getPublicProducts();
+  assert.deepEqual(publicProducts, {
+    products: [
+      {
+        badge: "Strong",
+        category: "Styling",
+        colors: [{ name: "Black", hex: "#000" }],
+        description: "Hold and texture",
+        id: "wax-1",
+        label: "Best seller",
+        lifestyleUrl: "https://cdn.example/lifestyle.webp",
+        name: "Black wax",
+        packshotUrl: "https://cdn.example/packshot.webp",
+        price: 19.9,
+        shape: "jar",
+        stock: 7,
+      },
+    ],
+    showStock: false,
+  });
+  assert.ok(capturedProductsUrl.includes("/rest/v1/products?"));
+  assert.ok(
+    capturedProductsUrl.includes(
+      "select=id%2Cname%2Ccategory%2Clabel%2Cdescription%2Cprice%2Cstock%2Cpackshot_url%2Clifestyle_url%2Ccolors%2Cshape%2Cbadge",
+    ),
   );
+  assert.ok(capturedProductsUrl.includes("is_active=eq.true"));
+  assert.equal(capturedProductsInit?.headers?.apikey, "anon-key");
   assert.equal(
-    success.products[0].lifestyleUrl,
-    "https://cdn.example/lifestyle.webp",
+    capturedProductsInit?.headers?.Authorization,
+    "Bearer anon-key",
   );
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /\/rest\/v1\/products\?/);
-  assert.match(calls[0].url, /is_active=eq\.true/);
-  assert.equal(calls[0].init.headers.apikey, "test-anon-key");
-  assert.equal(calls[0].init.headers.Authorization, "Bearer test-anon-key");
+
+  let capturedCategoriesUrl = null;
+  let capturedCategoriesInit = null;
+  globalThis.fetch = async (url, init) => {
+    capturedCategoriesUrl = String(url);
+    capturedCategoriesInit = init;
+
+    return {
+      ok: true,
+      async json() {
+        return [
+          {
+            label: "Styling",
+            sort_order: 1,
+            value: "styling",
+          },
+          {
+            label: "Shampoo",
+            sort_order: 2,
+            value: "shampoo",
+          },
+        ];
+      },
+    };
+  };
+
+  const publicCategories = await mod.getPublicShopCategories();
+  assert.deepEqual(publicCategories, [
+    {
+      label: "Styling",
+      sort_order: 1,
+      value: "styling",
+    },
+    {
+      label: "Shampoo",
+      sort_order: 2,
+      value: "shampoo",
+    },
+  ]);
+  assert.ok(capturedCategoriesUrl.includes("/rest/v1/shop_categories?"));
+  assert.ok(
+    capturedCategoriesUrl.includes(
+      "select=value%2Clabel%2Csort_order",
+    ),
+  );
+  assert.ok(capturedCategoriesUrl.includes("is_active=eq.true"));
+  assert.ok(capturedCategoriesUrl.includes("order=sort_order.asc"));
+  assert.equal(capturedCategoriesInit?.headers?.apikey, "anon-key");
+  assert.equal(
+    capturedCategoriesInit?.headers?.Authorization,
+    "Bearer anon-key",
+  );
 
   globalThis.fetch = async () => ({
     ok: false,
-    status: 500,
-    json: async () => ({}),
+    async json() {
+      throw new Error("json should not run for failed category responses");
+    },
   });
 
-  await assert.rejects(
-    () => mod.getPublicProducts(),
-    /Supabase public products read failed: 500/,
-  );
+  const failedCategories = await mod.getPublicShopCategories();
+  assert.deepEqual(failedCategories, []);
 
-  console.log("Supabase public helper tests passed.");
+  globalThis.fetch = async () => {
+    throw new Error("network failure");
+  };
+
+  const thrownCategories = await mod.getPublicShopCategories();
+  assert.deepEqual(thrownCategories, []);
+
+  console.log("Supabase public tests passed.");
 } finally {
-  process.env = originalEnv;
+  restoreEnv();
   globalThis.fetch = originalFetch;
   rmSync(tmpDir, { force: true, recursive: true });
 }
