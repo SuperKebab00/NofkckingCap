@@ -23,8 +23,9 @@ type AdminStatusConfig = {
 export function getAdminStatusConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AdminStatusConfig | null {
-  const supabaseUrl = env.SUPABASE_URL?.trim();
-  const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const serverEnv = getServerEnv(env);
+  const supabaseUrl = serverEnv.SUPABASE_URL?.trim();
+  const supabaseServiceRoleKey = serverEnv.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     return null;
@@ -77,6 +78,7 @@ export async function getAdminStatus(
   options: { env?: NodeJS.ProcessEnv } = {},
 ): Promise<AdminStatusSummary> {
   const env = options.env || process.env;
+  const serverEnv = getServerEnv(env);
 
   if (!getAdminStatusConfig(env)) {
     return createFallbackStatus(
@@ -86,7 +88,7 @@ export async function getAdminStatus(
   }
 
   try {
-    const payload = await readAdminStatus(getServerEnv(env));
+    const payload = await readAdminStatus(serverEnv);
     return normalizeAdminStatusPayload(payload);
   } catch (error) {
     return createFallbackStatus(

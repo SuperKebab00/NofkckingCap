@@ -33,9 +33,10 @@ type AdminAuthCheckConfig = {
 export function getAdminAuthCheckConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AdminAuthCheckConfig | null {
-  const supabaseJwksUrl = env.SUPABASE_JWKS_URL?.trim();
-  const supabaseUrl = env.SUPABASE_URL?.trim();
-  const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const serverEnv = getServerEnv(env);
+  const supabaseJwksUrl = serverEnv.SUPABASE_JWKS_URL?.trim();
+  const supabaseUrl = serverEnv.SUPABASE_URL?.trim();
+  const supabaseServiceRoleKey = serverEnv.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseJwksUrl || !supabaseUrl || !supabaseServiceRoleKey) {
     return null;
@@ -103,6 +104,7 @@ export async function getAdminAuthCheck(
   options: { accessToken?: string | null; env?: NodeJS.ProcessEnv } = {},
 ): Promise<AdminAuthCheckResult> {
   const env = options.env || process.env;
+  const serverEnv = getServerEnv(env);
   const accessToken = options.accessToken?.trim() || "";
 
   if (!getAdminAuthCheckConfig(env)) {
@@ -127,7 +129,7 @@ export async function getAdminAuthCheck(
       method: "GET",
     });
 
-    const result = await verifyAdminJwt(request, getServerEnv(env));
+    const result = await verifyAdminJwt(request, serverEnv);
     if (result.ok) {
       return {
         admin: true,
