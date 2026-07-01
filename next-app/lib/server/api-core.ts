@@ -1,7 +1,5 @@
 import "server-only";
 
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=UTF-8",
 };
@@ -19,49 +17,16 @@ export type ServerEnv = {
   TURNSTILE_SECRET_KEY?: string;
 };
 
-function readCloudflareRuntimeEnv(): Partial<ServerEnv> {
-  try {
-    const context = getCloudflareContext();
-    const env = (context?.env || {}) as Record<string, unknown>;
-
-    return {
-      ADMIN_API_TOKEN:
-        typeof env.ADMIN_API_TOKEN === "string" ? env.ADMIN_API_TOKEN : undefined,
-      APP_ENV: typeof env.APP_ENV === "string" ? env.APP_ENV : undefined,
-      SUPABASE_JWKS_URL:
-        typeof env.SUPABASE_JWKS_URL === "string"
-          ? env.SUPABASE_JWKS_URL
-          : undefined,
-      SUPABASE_SERVICE_ROLE_KEY:
-        typeof env.SUPABASE_SERVICE_ROLE_KEY === "string"
-          ? env.SUPABASE_SERVICE_ROLE_KEY
-          : undefined,
-      SUPABASE_URL:
-        typeof env.SUPABASE_URL === "string" ? env.SUPABASE_URL : undefined,
-      TURNSTILE_SECRET_KEY:
-        typeof env.TURNSTILE_SECRET_KEY === "string"
-          ? env.TURNSTILE_SECRET_KEY
-          : undefined,
-    };
-  } catch {
-    return {};
-  }
-}
-
 export function getServerEnv(
   source: NodeJS.ProcessEnv = process.env,
 ): ServerEnv {
-  const runtimeEnv = readCloudflareRuntimeEnv();
-
   return {
-    ADMIN_API_TOKEN: runtimeEnv.ADMIN_API_TOKEN || source.ADMIN_API_TOKEN,
-    APP_ENV: runtimeEnv.APP_ENV || source.APP_ENV,
-    SUPABASE_JWKS_URL: runtimeEnv.SUPABASE_JWKS_URL || source.SUPABASE_JWKS_URL,
-    SUPABASE_SERVICE_ROLE_KEY:
-      runtimeEnv.SUPABASE_SERVICE_ROLE_KEY || source.SUPABASE_SERVICE_ROLE_KEY,
-    SUPABASE_URL: runtimeEnv.SUPABASE_URL || source.SUPABASE_URL,
-    TURNSTILE_SECRET_KEY:
-      runtimeEnv.TURNSTILE_SECRET_KEY || source.TURNSTILE_SECRET_KEY,
+    ADMIN_API_TOKEN: source.ADMIN_API_TOKEN,
+    APP_ENV: source.APP_ENV,
+    SUPABASE_JWKS_URL: source.SUPABASE_JWKS_URL,
+    SUPABASE_SERVICE_ROLE_KEY: source.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_URL: source.SUPABASE_URL,
+    TURNSTILE_SECRET_KEY: source.TURNSTILE_SECRET_KEY,
   };
 }
 

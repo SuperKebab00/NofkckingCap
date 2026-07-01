@@ -33,9 +33,8 @@ type AdminProductsSummaryConfig = {
 export function getAdminProductsSummaryConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AdminProductsSummaryConfig | null {
-  const serverEnv = getServerEnv(env);
-  const supabaseUrl = serverEnv.SUPABASE_URL?.trim();
-  const supabaseServiceRoleKey = serverEnv.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const supabaseUrl = env.SUPABASE_URL?.trim();
+  const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     return null;
@@ -88,7 +87,6 @@ export async function getAdminProductsSummary(
   options: { env?: NodeJS.ProcessEnv } = {},
 ): Promise<AdminProductsSummaryResult> {
   const env = options.env || process.env;
-  const serverEnv = getServerEnv(env);
 
   if (!getAdminProductsSummaryConfig(env)) {
     return createFallbackResult(
@@ -98,7 +96,7 @@ export async function getAdminProductsSummary(
   }
 
   try {
-    const payload = await readAdminProductsSummary(serverEnv);
+    const payload = await readAdminProductsSummary(getServerEnv(env));
     return normalizeAdminProductsSummaryPayload(payload);
   } catch (error) {
     return createFallbackResult(
