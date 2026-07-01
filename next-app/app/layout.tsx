@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "No Cap Barbershop",
   description:
-    "No Cap Barbershop: home, shop read-only, contatti e pagine informative della shell pubblica Next.",
+    "No Cap Barber Shop: shop prodotti barber professionali, contatti, checkout in shop e area admin protetta.",
 };
 
 export default function RootLayout({

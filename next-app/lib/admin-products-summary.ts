@@ -56,8 +56,8 @@ export function normalizeAdminProductsSummaryPayload(
     adminApi: value.adminApi === "available" ? "available" : "unavailable",
     message:
       value.adminApi === "available"
-        ? "Prodotti admin read-only caricati da nocap-next."
-        : "Prodotti admin read-only non disponibili.",
+        ? "Prodotti admin caricati."
+        : "Prodotti admin non disponibili.",
     mode: value.mode === "read-only" ? "read-only" : "read-only",
     products,
     source: "endpoint",

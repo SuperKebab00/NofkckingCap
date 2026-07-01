@@ -1,37 +1,18 @@
-const spotlightLinks = [
-  { href: "#daily-cut", label: "Taglio del giorno" },
-  { href: "#monthly-showcase", label: "Questo mese" },
-  { href: "/shop", label: "Shop" },
-  { href: "/contact", label: "Contatti" },
-];
-
 const highlights = [
   {
-    id: "daily-cut",
-    eyebrow: "Daily cut",
-    title: "Taglio del giorno",
-    description:
-      "Una selezione rapida pensata per chi vuole tenere il look pulito e semplice, senza inseguire funzioni non ancora migrate.",
-    primaryAction: { href: "/shop", label: "Vai allo shop" },
-    secondaryAction: { href: "/contact", label: "Chiedi informazioni" },
+    eyebrow: "Shop",
+    title: "Prodotti, disponibilita e ultimo stock",
+    body: "Consulta il catalogo, filtra per categoria e prepara il prossimo passaggio in negozio con piu chiarezza.",
   },
   {
-    id: "monthly-showcase",
-    eyebrow: "Questo mese",
-    title: "Showcase pubblico",
-    description:
-      "Uno spazio editoriale leggero per mettere in evidenza prodotti, mood e novita del mese con contenuti read-only.",
-    primaryAction: { href: "/shop", label: "Guarda i prodotti" },
-    secondaryAction: { href: "#contact-cta", label: "Parla con noi" },
+    eyebrow: "Taglio fresco",
+    title: "Un riferimento visivo sempre in evidenza",
+    body: "La home riprende il ritmo del barber shop con una sezione dedicata al taglio del giorno e alle immagini di studio.",
   },
   {
-    id: "contact-cta",
-    eyebrow: "Public safe",
-    title: "Passa dallo shop o scrivici",
-    description:
-      "La shell Next resta focalizzata sul catalogo pubblico e sui contatti. Checkout e admin reali rimangono fuori dal perimetro di questo step.",
-    primaryAction: { href: "/contact", label: "Apri contatti" },
-    secondaryAction: { href: "/", label: "Torna alla home" },
+    eyebrow: "Contatti",
+    title: "Telefono, mappa e richiesta diretta",
+    body: "Per prodotti, prenotazioni o domande puoi passare dal form, da WhatsApp o dal contatto telefonico del barber shop.",
   },
 ];
 
@@ -39,54 +20,28 @@ export function HomePublicHighlights() {
   return (
     <section className="section">
       <div className="section-heading">
-        <p className="eyebrow">Daily in progress</p>
-        <h2>Blocchi pubblici rapidi per orientarsi nel catalogo</h2>
+        <div>
+          <p className="eyebrow">No Cap Barbershop</p>
+          <h2>Fresh gear, tagli e contatto diretto</h2>
+        </div>
         <p>
-          CTA semplici, contenuti leggibili e nessuna promessa su funzioni non
-          ancora migrate.
+          La versione Next resta autonoma e riallinea contenuti pubblici, asset,
+          CTA e ritmo visuale all&apos;identita del barber shop.
         </p>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.75rem",
-          marginBottom: "1.5rem",
-        }}
-      >
-        {spotlightLinks.map((link) => (
-          <a className="ghost-button" href={link.href} key={link.href}>
-            {link.label}
-          </a>
-        ))}
       </div>
 
       <div
         style={{
           display: "grid",
           gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         }}
       >
-        {highlights.map((highlight) => (
-          <article className="spotlight-card" id={highlight.id} key={highlight.id}>
-            <p className="eyebrow">{highlight.eyebrow}</p>
-            <h2>{highlight.title}</h2>
-            <p>{highlight.description}</p>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "0.75rem",
-                marginTop: "1rem",
-              }}
-            >
-              <a href={highlight.primaryAction.href}>{highlight.primaryAction.label}</a>
-              <a className="ghost-button" href={highlight.secondaryAction.href}>
-                {highlight.secondaryAction.label}
-              </a>
-            </div>
+        {highlights.map((item) => (
+          <article key={item.title} className="spotlight-card">
+            <p className="eyebrow">{item.eyebrow}</p>
+            <h3>{item.title}</h3>
+            <p style={{ marginTop: "0.75rem" }}>{item.body}</p>
           </article>
         ))}
       </div>

@@ -25,7 +25,7 @@ export const CHECKOUT_FLOW_COPY = {
   emptyStateBody:
     "Nessun prodotto selezionato. Parti dallo shop pubblico per scegliere cosa ritirare o acquistare in negozio, poi torna qui per un riepilogo piu mirato.",
   noAutomaticOrderNote:
-    "Nessuna conferma ordine automatica: la definizione finale avviene fuori dalla shell Next.",
+    "Nessuna conferma ordine automatica: definizione finale in negozio o tramite contatto diretto.",
 } as const;
 
 export const CONTACT_FLOW_COPY = {

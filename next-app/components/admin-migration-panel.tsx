@@ -1,27 +1,15 @@
-const migrationSections = [
+const adminSections = [
   {
-    description:
-      "Vista attuale della shell Next: metriche pubbliche, perimetro visibile e nessuna operativita interna.",
-    status: "Disponibile ora",
-    title: "Stato migrazione",
+    title: "Verifica admin",
+    body: "Controllo sessione e permessi con endpoint protetto same-origin.",
   },
   {
-    description:
-      "Conteggi e stato catalogo basati su dati pubblici read-only. Nessuna modifica prodotto e nessuna visione sensibile.",
-    status: "Read-only pubblico",
-    title: "Catalogo prodotti",
+    title: "Stato servizi",
+    body: "Panoramica sintetica di configurazione backend, Admin API e disponibilita delle integrazioni protette.",
   },
   {
-    description:
-      "Categorie pubbliche attive gia leggibili dal layer Next, ma senza gestione amministrativa o riordino operativo.",
-    status: "Read-only pubblico",
-    title: "Categorie",
-  },
-  {
-    description:
-      "Ordini e lead restano fuori dalla shell Next. Nessun accesso, nessuna lista e nessuna analisi operativa qui.",
-    status: "Non disponibile",
-    title: "Ordini / lead",
+    title: "Prodotti",
+    body: "Riepilogo dei prodotti pubblicati visibili alla dashboard senza operazioni di scrittura.",
   },
 ];
 
@@ -29,11 +17,13 @@ export function AdminMigrationPanel() {
   return (
     <section className="section">
       <div className="section-heading">
-        <p className="eyebrow">Struttura futura</p>
-        <h2>Sezioni admin preparate ma non operative</h2>
+        <div>
+          <p className="eyebrow">Area admin</p>
+          <h2>Sezioni disponibili</h2>
+        </div>
         <p>
-          L&apos;interfaccia separa in modo esplicito il read-only pubblico gia
-          migrato dalle aree gestionali future, che restano disattivate.
+          La dashboard resta riservata a verifiche, stato servizi e consultazione.
+          Azioni operative e CRUD non sono abilitate.
         </p>
       </div>
 
@@ -44,14 +34,10 @@ export function AdminMigrationPanel() {
           gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         }}
       >
-        {migrationSections.map((section) => (
-          <article className="spotlight-card" key={section.title}>
-            <p className="eyebrow">Admin section</p>
-            <h3 style={{ marginTop: 0 }}>{section.title}</h3>
-            <p>
-              <span className="status-badge">{section.status}</span>
-            </p>
-            <p style={{ marginBottom: 0 }}>{section.description}</p>
+        {adminSections.map((section) => (
+          <article key={section.title} className="spotlight-card">
+            <h3>{section.title}</h3>
+            <p style={{ marginTop: "0.75rem" }}>{section.body}</p>
           </article>
         ))}
       </div>

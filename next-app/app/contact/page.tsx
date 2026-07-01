@@ -6,7 +6,7 @@ import { CONTACT_FLOW_COPY } from "../../lib/public-flow";
 export const metadata: Metadata = {
   title: "Contatti | No Cap Barbershop",
   description:
-    "Contatta No Cap Barbershop per disponibilita prodotti, acquisto in shop e richieste pubbliche dalla shell Next.",
+    "Contatta No Cap Barber Shop per prodotti, prenotazioni, disponibilita e richieste dirette.",
 };
 
 function readSearchParam(value?: string | string[]) {

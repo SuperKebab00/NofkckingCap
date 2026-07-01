@@ -106,7 +106,7 @@ export function AdminProductsSummaryPanel({
         </div>
       ) : (
         <p style={{ marginTop: "1rem" }}>
-          Nessun prodotto disponibile dal summary admin read-only.
+          Nessun prodotto disponibile nel riepilogo prodotti.
         </p>
       )}
     </section>

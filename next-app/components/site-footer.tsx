@@ -1,53 +1,35 @@
 export function SiteFooter() {
   return (
-    <footer
-      style={{
-        borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-        marginTop: "3rem",
-        padding: "1.5rem 1.25rem 2.25rem",
-      }}
-    >
+    <footer className="site-footer">
       <div
         style={{
+          maxWidth: "1120px",
+          margin: "0 auto",
           display: "flex",
           flexWrap: "wrap",
           gap: "1rem",
           justifyContent: "space-between",
-          margin: "0 auto",
-          maxWidth: "1120px",
+          alignItems: "flex-start",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gap: "0.35rem",
-            maxWidth: "560px",
-          }}
-        >
-          <strong>No Cap Barbershop</strong>
-          <span
-            style={{
-              color: "rgba(247, 243, 237, 0.72)",
-              fontSize: "0.95rem",
-            }}
-          >
-            Shell pubblica Next in migrazione. Il sito vanilla resta la sorgente
-            primaria e production.
+        <div style={{ maxWidth: "420px" }}>
+          <strong style={{ display: "block", marginBottom: "0.5rem" }}>
+            No Cap Barber Shop
+          </strong>
+          <span style={{ color: "rgba(247, 243, 237, 0.78)", lineHeight: 1.6 }}>
+            Shop prodotti barber professionali, contatti diretti e area riservata
+            per i controlli admin protetti.
           </span>
         </div>
 
         <nav
-          aria-label="Link legali e contatti"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem 1rem",
-          }}
+          aria-label="Link legali e servizio"
+          style={{ display: "flex", flexWrap: "wrap", gap: "0.85rem 1rem" }}
         >
-          <a href="/">Home</a>
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/cookie">Cookie Policy</a>
           <a href="/contact">Contatti</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/cookie">Cookie</a>
+          <a href="/admin">Area admin</a>
         </nav>
       </div>
     </footer>

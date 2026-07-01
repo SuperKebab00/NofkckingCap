@@ -6,45 +6,112 @@ export type NavItem = {
 export type ProductTeaser = {
   name: string;
   category: string;
-  image: string;
-};
-
-export type PlaceholderContent = {
-  id: string;
-  label: string;
-  title: string;
   description: string;
+  image: string;
+  lifestyleUrl: string;
+  packshotUrl: string;
+  checkoutHref: string;
+  contactHref: string;
+  stock: number | null;
 };
 
 export const navItems: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Shop", href: "/shop" },
-  { label: "Checkout", href: "/checkout" },
-  { label: "Admin", href: "/admin" },
-  { label: "Contact", href: "/contact" },
+  { label: "Taglio fresco", href: "/#fresh-cut" },
+  { label: "Showcase", href: "/#showcase" },
+  { label: "Contatti", href: "/contact" },
 ];
 
 export const heroContent = {
-  eyebrow: "Next migration shell",
+  eyebrow: "Shop essentials",
   titleFirstLine: "Fresh gear.",
   titleSecondLine: "Zero cap.",
   description:
-    "Prima versione statica della landing No Cap in Next.js. Il sito vanilla resta la sorgente primaria: questa shell serve solo a migrare layout e navigazione pubblica in modo graduale.",
+    "Prodotti professionali, strumenti da banco e disponibilita aggiornata per uno shop barber pronto a vendere.",
   primaryAction: {
-    label: "Vedi teaser shop",
-    href: "#shop",
+    label: "Vedi prodotti",
+    href: "/shop",
   },
   secondaryAction: {
-    label: "Stato migrazione",
-    href: "#status",
+    label: "Taglio del giorno",
+    href: "/#fresh-cut",
   },
   image: {
     src: "/Img/wallpaper/1-opt.webp",
-    alt: "No Cap Barber Shop",
+    alt: "No Cap Barber Shop hero",
   },
   badge: {
-    label: "NC",
-    description: "Static shell",
+    label: "Fresh cuts. Zero cap.",
+    description: "NC",
+  },
+};
+
+export const homeSectionBanners = [
+  {
+    href: "/shop",
+    accent: "01 / Shop",
+    title: "All products",
+    body: "Catalogo completo con disponibilita aggiornata",
+  },
+  {
+    href: "/shop?category=styling",
+    accent: "02 / Styling",
+    title: "Wax & pomade",
+    body: "Texture, tenuta e finish da barber shop",
+  },
+  {
+    href: "/shop?category=tools",
+    accent: "03 / Tools",
+    title: "Blade kits",
+    body: "Strumenti tecnici e ricambi premium",
+  },
+  {
+    href: "/#fresh-cut",
+    accent: "04 / Fresh cut",
+    title: "Taglio del giorno",
+    body: "Il look fresco da mettere in evidenza oggi",
+  },
+  {
+    href: "/#showcase",
+    accent: "05 / Showcase",
+    title: "Questo mese",
+    body: "Una selezione visiva dei tagli e delle atmosfere in evidenza",
+  },
+];
+
+export const homeEditorialSections = {
+  freshCut: {
+    eyebrow: "Daily highlight",
+    title: "Taglio fresco del giorno",
+    description:
+      "Il look da mettere in vetrina oggi: immagine ampia, taglio pulito e atmosfera editoriale in pieno stile No Cap.",
+    image: "/Img/wallpaper/2-opt.webp",
+    ctaLabel: "Vedi showcase mensile",
+    ctaHref: "/#showcase",
+  },
+  showcase: {
+    eyebrow: "Showcase",
+    title: "Tagli di questo mese",
+    description:
+      "Una raccolta visiva costruita con i riferimenti del barber shop: texture, sfumature, atmosfera di studio e dettagli prodotto.",
+    items: [
+      {
+        title: "Fade pulito",
+        body: "Linee strette, lati netti e finish opaco per il classico look da vetrina.",
+        image: "/Img/wallpaper/3-opt.webp",
+      },
+      {
+        title: "Texture naturale",
+        body: "Volume controllato e styling leggero per tagli pronti a durare tutta la giornata.",
+        image: "/Img/wallpaper/4-opt.webp",
+      },
+      {
+        title: "Mood da studio",
+        body: "Ambiente, strumenti e prodotti selezionati per un'esperienza coerente dal taglio allo shop.",
+        image: "/Img/wallpaper/1-opt.webp",
+      },
+    ],
   },
 };
 
@@ -52,150 +119,65 @@ export const productTeasers: ProductTeaser[] = [
   {
     name: "Black wax",
     category: "Styling",
+    description: "Texture forte, finish pulito e tenuta decisa per styling da barber shop.",
     image: "/Img/products/black-wax-packshot-opt.webp",
+    packshotUrl: "/Img/products/black-wax-packshot-opt.webp",
+    lifestyleUrl: "/Img/products/black-wax-lifestyle-opt.webp",
+    checkoutHref: "/checkout?product=black-wax",
+    contactHref: "/contact?product=black-wax",
+    stock: null,
   },
   {
     name: "Clay pomade",
-    category: "Finish matte",
+    category: "Styling",
+    description: "Texture opaca e controllo flessibile per una piega naturale da banco.",
     image: "/Img/products/clay-pomade-packshot-opt.webp",
+    packshotUrl: "/Img/products/clay-pomade-packshot-opt.webp",
+    lifestyleUrl: "/Img/products/clay-pomade-lifestyle-opt.webp",
+    checkoutHref: "/checkout?product=clay-pomade",
+    contactHref: "/contact?product=clay-pomade",
+    stock: null,
+  },
+  {
+    name: "Sea salt spray",
+    category: "Hair care",
+    description: "Volume leggero e texture salina per tagli mossi e finitura fresca.",
+    image: "/Img/products/sea-salt-spray-packshot-opt.webp",
+    packshotUrl: "/Img/products/sea-salt-spray-packshot-opt.webp",
+    lifestyleUrl: "/Img/products/sea-salt-spray-lifestyle-opt.webp",
+    checkoutHref: "/checkout?product=sea-salt-spray",
+    contactHref: "/contact?product=sea-salt-spray",
+    stock: null,
   },
 ];
 
 export const shopTeaserContent = {
-  eyebrow: "Shop teaser",
+  eyebrow: "Shop",
   title: "Prodotti No Cap",
   description:
-    "Anteprima statica del catalogo. Non e ancora collegata a Supabase e non legge disponibilita o prezzi reali.",
-  productNote: "Placeholder statico, nessun carrello collegato.",
+    "Catalogo professionale, disponibilita aggiornata e selezione costruita per barber shop, styling e strumenti da banco.",
 };
 
 export const shopPageContent = {
-  eyebrow: "Catalogo statico di migrazione",
-  title: "Shop preview",
+  eyebrow: "Shop",
+  title: "Prodotti No Cap",
+  badge: "Catalogo professionale",
   description:
-    "Prima route pubblica Next dedicata allo shop. Usa solo contenuti statici e non legge ancora prodotti, stock o prezzi da Supabase.",
-  badge: "Catalogo statico di migrazione",
-  missingTitle: "Cosa manca",
-  missingItems: ["Dati Supabase reali", "Stock reale", "Carrello", "Checkout"],
-  homeAction: {
-    label: "Torna alla home",
-    href: "/",
-  },
-  checkoutAction: {
-    label: "Placeholder checkout",
-    href: "/checkout",
-  },
-};
-
-export const checkoutPageContent = {
-  eyebrow: "Checkout migration placeholder",
-  title: "Checkout non ancora migrato",
-  description:
-    "Questa pagina documenta lo stato del checkout durante la migrazione Next.js. Il checkout reale resta nella app vanilla.",
-  notice:
-    "Placeholder di migrazione: nessun form, nessun carrello e nessuna chiamata API.",
-  currentStatusTitle: "Stato attuale",
-  currentStatusItems: [
-    "Checkout reale ancora vanilla",
-    'Payment mode attivo: "in-shop"',
-    "PayPal/Stripe off",
-    "API Cloudflare preservate",
-  ],
-  invariantsTitle: "Invarianti da preservare",
-  invariants: [
-    "Il frontend non invia prezzi, totali o status.",
-    "Il server resta fonte di verita per prezzi, stock, totali e stato ordine.",
-    "Il payload checkout e gia testato nella app vanilla.",
+    "Scopri prodotti, disponibilita e ultimi pezzi con un'esperienza pensata per barber shop e ritiro in negozio.",
+  missingTitle: "Catalogo in aggiornamento",
+  missingItems: [
+    "Al momento non ci sono prodotti pubblicati in questa vista.",
+    "Puoi contattarci direttamente per disponibilita e richieste specifiche.",
   ],
   homeAction: {
-    label: "Torna alla home",
     href: "/",
-  },
-  shopAction: {
-    label: "Vai allo shop statico",
-    href: "/shop",
-  },
-};
-
-export const adminPageContent = {
-  eyebrow: "Admin migration placeholder",
-  title: "Admin non ancora migrato",
-  description:
-    "Questa pagina documenta lo stato dell'area admin durante la migrazione Next.js. Il pannello operativo reale resta nella app vanilla.",
-  notice:
-    "Placeholder di migrazione: nessuna auth, nessuna dashboard e nessuna mutazione admin.",
-  currentStatusTitle: "Stato attuale",
-  currentStatusItems: [
-    "Admin reale ancora vanilla",
-    "Supabase Auth/RLS non ancora migrati",
-    "Service role mai nel client",
-    "Mutazioni admin da migrare tardi",
-  ],
-  goNoGoTitle: "Go/no-go admin",
-  goNoGoItems: [
-    "GO solo dopo checklist auth, RLS e mutazioni.",
-    "NO-GO se si rischia di confondere UI admin con sicurezza reale.",
-  ],
-  homeAction: {
     label: "Torna alla home",
-    href: "/",
-  },
-  shopAction: {
-    label: "Vai allo shop statico",
-    href: "/shop",
-  },
-};
-
-export const contactPageContent = {
-  eyebrow: "Contact migration placeholder",
-  title: "Contact non ancora migrato",
-  description:
-    "Questa pagina documenta lo stato del contatto durante la migrazione Next.js. Il form reale resta nella app vanilla e nelle API Cloudflare esistenti.",
-  notice:
-    "Placeholder di migrazione: nessun form funzionante e nessuna submit attiva.",
-  currentStatusTitle: "Stato attuale",
-  currentStatusItems: [
-    "Contact reale ancora vanilla/API Cloudflare",
-    "Nessuna submit attiva in Next",
-    "Nessun dato inviato",
-  ],
-  homeAction: {
-    label: "Torna alla home",
-    href: "/",
-  },
-  shopAction: {
-    label: "Vai allo shop statico",
-    href: "/shop",
   },
 };
 
 export const brandStoryContent = {
-  eyebrow: "Barber identity",
-  title: "Shop barber, contenuti e catalogo restano protetti.",
+  eyebrow: "No Cap Barbershop",
+  title: "Vignola, MO",
   description:
-    "Questa pagina porta solo home e navigazione pubblica. Checkout, admin, Supabase client e API Cloudflare non sono stati migrati in questo step.",
+    "Passa in shop, chiamaci o scrivici per prodotti, tagli e informazioni. Lo stile resta quello del barber studio: diretto, pulito, senza fronzoli.",
 };
-
-export const placeholders: PlaceholderContent[] = [
-  {
-    id: "checkout",
-    label: "Checkout",
-    title: "Non ancora migrato",
-    description:
-      "Il checkout reale resta nella app vanilla. Il flusso attivo resta `in-shop`; PayPal e Stripe restano off/futuri.",
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    title: "Non ancora migrato",
-    description:
-      "Admin, auth Supabase, ordini, prodotti e leads resteranno vanilla finche non avranno un task dedicato.",
-  },
-];
-
-export const migrationStatus = [
-  "Vanilla app ancora sorgente primaria",
-  "API Cloudflare ancora in functions/api",
-  "Payments online off",
-  "Active flow: in-shop",
-];
