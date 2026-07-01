@@ -7,9 +7,12 @@
     "dev": "next dev",
     "lint": "eslint .",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-concurrency=1 tests/*.test.mjs"
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "versions:upload": "opennextjs-cloudflare build && wrangler versions upload"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
