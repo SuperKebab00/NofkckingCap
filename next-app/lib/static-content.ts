@@ -25,18 +25,18 @@ export const navItems: NavItem[] = [
 ];
 
 export const heroContent = {
-  eyebrow: "No Cap barber studio",
+  eyebrow: "Next migration shell",
   titleFirstLine: "Fresh gear.",
   titleSecondLine: "Zero cap.",
   description:
-    "Tagli netti, styling curato e selezione prodotti in evidenza: la home Next presenta il lato pubblico gia pronto per preview e deploy dedicato.",
+    "Prima versione statica della landing No Cap in Next.js. Il sito vanilla resta la sorgente primaria: questa shell serve solo a migrare layout e navigazione pubblica in modo graduale.",
   primaryAction: {
     label: "Vedi teaser shop",
     href: "#shop",
   },
   secondaryAction: {
-    label: "Vai allo shop",
-    href: "/shop",
+    label: "Stato migrazione",
+    href: "#status",
   },
   image: {
     src: "/Img/wallpaper/1-opt.webp",
@@ -44,7 +44,7 @@ export const heroContent = {
   },
   badge: {
     label: "NC",
-    description: "Shop, contatti e admin read-only",
+    description: "Static shell",
   },
 };
 

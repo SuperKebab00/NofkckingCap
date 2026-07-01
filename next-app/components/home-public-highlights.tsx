@@ -29,7 +29,7 @@ const highlights = [
     eyebrow: "Public safe",
     title: "Passa dallo shop o scrivici",
     description:
-      "Shop pubblico, contatto contestuale e admin read-only sono gia disponibili nella nuova app, mantenendo separati i flussi operativi ancora non attivati.",
+      "La shell Next resta focalizzata sul catalogo pubblico e sui contatti. Checkout e admin reali rimangono fuori dal perimetro di questo step.",
     primaryAction: { href: "/contact", label: "Apri contatti" },
     secondaryAction: { href: "/", label: "Torna alla home" },
   },
