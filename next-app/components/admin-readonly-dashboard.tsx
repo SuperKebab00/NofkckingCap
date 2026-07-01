@@ -21,7 +21,7 @@ const flowStatus = [
   {
     description: "Checkout in-shop pubblico disponibile senza ordini reali o pagamenti.",
     label: "Checkout in-shop",
-    status: "read-only",
+    status: "consultazione",
   },
   {
     description: "Contact pubblico attivo con backend Cloudflare invariato.",
@@ -29,7 +29,7 @@ const flowStatus = [
     status: "same-origin",
   },
   {
-    description: "Admin CRUD, auth e scritture restano disabilitati nella shell Next.",
+    description: "Azioni admin, scritture e modifiche restano disabilitate in questa dashboard.",
     label: "CRUD admin",
     status: "non disponibile",
   },
@@ -71,7 +71,7 @@ export function AdminReadonlyDashboard({
       }}
     >
       <section className="missing-panel" aria-labelledby="admin-readonly-summary">
-        <h2 id="admin-readonly-summary">Snapshot read-only</h2>
+        <h2 id="admin-readonly-summary">Riepilogo dashboard</h2>
         <div
           style={{
             display: "grid",
@@ -85,7 +85,7 @@ export function AdminReadonlyDashboard({
               {productsCount}
             </p>
             <p style={{ margin: 0 }}>
-              {usesLiveReadOnlyData ? "Live read-only" : "Static / zero fallback"}
+              {usesLiveReadOnlyData ? "Dati live" : "Backup locale"}
             </p>
           </article>
 
@@ -160,7 +160,7 @@ export function AdminReadonlyDashboard({
       <section className="missing-panel" aria-labelledby="admin-scope-limits">
         <h2 id="admin-scope-limits">Perimetro attuale</h2>
         <ul style={{ margin: "1rem 0 0", paddingLeft: "1.25rem" }}>
-          <li>Nessun inserimento, update o delete prodotti dalla shell Next.</li>
+          <li>Nessun inserimento, aggiornamento o rimozione prodotti da questa dashboard.</li>
           <li>Nessun accesso a ordini, lead o dati sensibili.</li>
           <li>Nessun token admin o service role esposto al client.</li>
           <li>Nessuna auth admin finale implementata in questo step.</li>

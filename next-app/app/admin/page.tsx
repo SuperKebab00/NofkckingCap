@@ -49,10 +49,10 @@ export default async function AdminPage() {
       <SiteHeader />
       <main className="page-shell">
         <section className="hero-panel">
-          <span className="eyebrow">Admin Next read-only</span>
-          <h1>Panoramica gestione in migrazione</h1>
+          <span className="eyebrow">Area admin</span>
+          <h1>Panoramica gestione</h1>
           <p>
-            La shell Next resta non operativa per CRUD e auth admin. Quando la
+            La dashboard resta non operativa per CRUD e azioni amministrative. Quando la
             configurazione server-side e pronta, questa pagina legge in modo
             sicuro lo stato dell&apos;endpoint Cloudflare protetto senza esporre
             token al browser.

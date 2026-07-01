@@ -31,8 +31,8 @@ export function SiteFooter() {
               fontSize: "0.95rem",
             }}
           >
-            Shell pubblica Next in migrazione. Il sito vanilla resta la sorgente
-            primaria e production.
+            No Cap Barbershop online: shop pubblico, contatti diretti e area
+            admin protetta.
           </span>
         </div>
 

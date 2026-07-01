@@ -2,31 +2,23 @@ import type { Metadata } from "next";
 import { SiteHeader } from "../../components/site-header";
 
 export const metadata: Metadata = {
-  title: "Cookie Policy | No Cap Barbershop",
+  title: "Cookie | No Cap Barbershop",
   description:
-    "Bozza informativa prudente sulla gestione cookie della shell pubblica Next.",
+    "Informazioni essenziali sui cookie tecnici e sulle preferenze usate dal sito No Cap Barbershop.",
 };
 
-const cookieSections = [
+const cookieCards = [
   {
-    id: "draft",
-    title: "Bozza in migrazione",
-    body: "Questa route fa parte della shell pubblica Next in migrazione. Il sito vanilla resta la sorgente primaria e contiene gia il concetto operativo di consenso e preferenze cookie.",
+    title: "Cookie tecnici",
+    body: "Il sito puo usare cookie o storage tecnico strettamente necessari al funzionamento delle pagine, della navigazione e delle preferenze essenziali.",
   },
   {
-    id: "necessary",
-    title: "Cookie tecnici o necessari",
-    body: "Possono essere presenti elementi strettamente necessari al funzionamento della pagina, alla navigazione o alla memorizzazione di preferenze tecniche di base.",
+    title: "Preferenze",
+    body: "Le eventuali preferenze salvate servono a mantenere un'esperienza coerente durante la navigazione e non costituiscono una fonte di verita per permessi o ruoli.",
   },
   {
-    id: "consent",
-    title: "Preferenze di consenso",
-    body: "Il progetto vanilla include gia una logica di consenso e preferenze cookie. Questa route statica non introduce nuova logica di banner, storage del consenso o tracking nella next-app.",
-  },
-  {
-    id: "future-services",
-    title: "Servizi futuri o opzionali",
-    body: "Eventuali integrazioni terze future dovranno essere documentate solo quando effettivamente configurate. PayPal e Stripe restano off o futuri nella migrazione attuale.",
+    title: "Servizi integrati",
+    body: "Eventuali integrazioni di terze parti saranno documentate solo quando attivate e verificate nel flusso reale del progetto.",
   },
 ];
 
@@ -34,22 +26,15 @@ export default function CookiePage() {
   return (
     <>
       <SiteHeader />
-      <main>
-        <section className="page-hero">
-          <p className="eyebrow">Cookie</p>
+      <main className="page-shell">
+        <section className="hero section">
           <div className="hero__content">
-            <span className="status-badge">Bozza informativa</span>
-            <h1>Cookie Policy</h1>
+            <p className="eyebrow">Cookie</p>
+            <h1>Uso essenziale dei cookie</h1>
             <p>
-              Pagina statica minimale: non introduce banner reale, logica di
-              consenso o tracking aggiuntivo nella shell Next.
+              Questa pagina riassume l'uso di cookie tecnici e preferenze
+              essenziali all'interno del sito.
             </p>
-            <div className="hero__actions">
-              <a href="/privacy">Apri la Privacy Policy</a>
-              <a className="ghost-button" href="/contact">
-                Contattaci
-              </a>
-            </div>
           </div>
         </section>
 
@@ -61,31 +46,24 @@ export default function CookiePage() {
               gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
             }}
           >
-            {cookieSections.map((section) => (
-              <article className="spotlight-card" id={section.id} key={section.id}>
-                <p className="eyebrow">Cookie</p>
-                <h2>{section.title}</h2>
-                <p>{section.body}</p>
+            {cookieCards.map((card) => (
+              <article key={card.title} className="spotlight-card">
+                <h2>{card.title}</h2>
+                <p style={{ marginTop: "0.75rem" }}>{card.body}</p>
               </article>
             ))}
           </div>
         </section>
 
         <section className="section">
-          <div className="spotlight-card">
-            <p className="eyebrow">Link utili</p>
-            <h2>Navigazione pubblica essenziale</h2>
-            <p>
-              Per questa fase di migrazione puoi tornare allo shop pubblico,
-              consultare la privacy oppure scriverci senza dipendere da feature
-              non ancora migrate.
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-              <a href="/shop">Vai allo shop</a>
-              <a className="ghost-button" href="/">
-                Torna alla home
-              </a>
-            </div>
+          <p className="eyebrow">Link utili</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+            <a className="ghost-button" href="/privacy">
+              Privacy
+            </a>
+            <a className="ghost-button" href="/contact">
+              Contatti
+            </a>
           </div>
         </section>
       </main>
