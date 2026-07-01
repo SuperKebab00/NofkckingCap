@@ -1,7 +1,7 @@
 const futureActions = [
   {
     description:
-      "Inserimento prodotto futuro disattivato. Nessun form o submit admin disponibile.",
+      "Insert prodotto futuro, disattivato in questa shell. Nessun form o submit admin disponibile.",
     label: "Inserimento prodotto",
   },
   {

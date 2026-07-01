@@ -51,8 +51,8 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
         <h2>Primo slice reale del flusso in-shop</h2>
         <p>
           Qui puoi preparare un riepilogo leggero dell&apos;intenzione di acquisto.
-          Pagamento, conferma ordine e gestione operativa avvengono in negozio
-          o tramite contatto diretto con il team.
+          Pagamento, conferma ordine e gestione operativa restano fuori dalla
+          shell Next e avvengono in negozio o tramite contatto diretto.
         </p>
       </div>
 
@@ -184,7 +184,7 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
           <p className="eyebrow">Suggerimenti</p>
           <h2>Prodotti rapidi da portare nel checkout in shop</h2>
           <p>
-            Questi link aggiornano solo il riferimento pubblico della pagina. Non
+            Questi link aggiornano solo il riferimento pubblico nella shell Next. Non
             creano carrello persistente e non inviano dati.
           </p>
         </div>

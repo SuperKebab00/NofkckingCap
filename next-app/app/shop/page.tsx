@@ -14,7 +14,7 @@ import { productTeasers, shopPageContent } from "../../lib/static-content";
 export const metadata: Metadata = {
   title: "Shop | No Cap Barbershop",
   description:
-    "Catalogo No Cap Barbershop con prodotti, categorie e sezioni editoriali pubbliche.",
+    "Catalogo read-only Next di No Cap Barbershop con prodotti, categorie e sezioni editoriali pubbliche.",
 };
 
 function mapPublicProductToCard(product: PublicProduct): ShopProductCard {
@@ -75,11 +75,11 @@ export default async function ShopPage() {
   const usingSupabaseProducts = shopProducts.products.length > 0;
   const usingSupabaseCategories = shopCategories.length > 0;
   const dataBadge = usingSupabaseProducts
-    ? "Prodotti disponibili"
-    : "Catalogo di backup";
+    ? "Prodotti Supabase read-only"
+    : "Catalogo statico di fallback";
   const categoryBadge = usingSupabaseCategories
-    ? "Categorie disponibili"
-    : "Categorie di backup";
+    ? "Categorie Supabase read-only"
+    : "Categorie statiche derivate dal fallback";
 
   return (
     <>
@@ -132,7 +132,7 @@ export default async function ShopPage() {
               ))}
             </ul>
           ) : (
-            <p>Nessuna categoria disponibile nel backup locale.</p>
+            <p>Nessuna categoria disponibile nel fallback statico.</p>
           )}
         </section>
 

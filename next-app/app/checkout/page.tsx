@@ -15,7 +15,7 @@ import { getPublicProducts, type PublicProduct } from "../../lib/supabase-public
 export const metadata: Metadata = {
   title: "Checkout in Shop | No Cap Barbershop",
   description:
-    "Prepara il ritiro in shop con un riepilogo semplice del prodotto selezionato e dei dettagli utili.",
+    "Primo slice reale del checkout in-shop nella shell Next: riepilogo leggero, nessun pagamento online e nessun ordine inviato.",
 };
 
 function mapPublicProductToCheckoutProduct(
@@ -62,7 +62,7 @@ export default async function CheckoutPage() {
             <p>
               Questa pagina non e piu solo informativa: puoi usarla per preparare
               un riepilogo pubblico dell&apos;acquisto in negozio, senza pagamenti
-              online e senza invio automatico dell'ordine.
+              online e senza invio ordine dalla shell Next.
             </p>
             <div className="hero__actions">
               <a href="/shop">Scegli un prodotto</a>

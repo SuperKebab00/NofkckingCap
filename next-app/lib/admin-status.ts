@@ -49,8 +49,8 @@ export function normalizeAdminStatusPayload(
       typeof catalog.categoriesCount === "number" ? catalog.categoriesCount : 0,
     message:
       value.adminApi === "available"
-        ? "Admin API disponibile in nocap-next."
-        : "Admin API non disponibile.",
+        ? "Admin API read-only disponibile in nocap-next."
+        : "Admin API read-only non disponibile.",
     mode: value.mode === "read-only" ? "read-only" : "read-only",
     productsCount:
       typeof catalog.productsCount === "number" ? catalog.productsCount : 0,

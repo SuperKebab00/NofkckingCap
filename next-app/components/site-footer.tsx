@@ -31,8 +31,8 @@ export function SiteFooter() {
               fontSize: "0.95rem",
             }}
           >
-            No Cap Barbershop online: shop pubblico, contatti diretti e area
-            admin protetta.
+            Shell pubblica Next in migrazione. Il sito vanilla resta la sorgente
+            primaria e production.
           </span>
         </div>
 

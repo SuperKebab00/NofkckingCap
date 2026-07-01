@@ -6,14 +6,14 @@ export type NavItem = {
 export type ProductTeaser = {
   name: string;
   category: string;
-  description: string;
   image: string;
-  lifestyleUrl: string;
-  packshotUrl: string;
-  checkoutHref: string;
-  contactHref: string;
-  price: string;
-  stock: number | null;
+};
+
+export type PlaceholderContent = {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
 };
 
 export const navItems: NavItem[] = [
@@ -26,25 +26,25 @@ export const navItems: NavItem[] = [
 
 export const heroContent = {
   eyebrow: "No Cap barber studio",
-  titleFirstLine: "Tagli, prodotti",
-  titleSecondLine: "e passaggi in shop",
+  titleFirstLine: "Fresh gear.",
+  titleSecondLine: "Zero cap.",
   description:
-    "Una base pulita per scoprire il catalogo, preparare il ritiro in negozio e contattare il team senza attriti.",
+    "Tagli netti, styling curato e selezione prodotti in evidenza: la home Next presenta il lato pubblico gia pronto per preview e deploy dedicato.",
   primaryAction: {
-    label: "Scopri i prodotti",
-    href: "/shop",
+    label: "Vedi teaser shop",
+    href: "#shop",
   },
   secondaryAction: {
-    label: "Contattaci",
-    href: "/contact",
+    label: "Vai allo shop",
+    href: "/shop",
   },
   image: {
     src: "/Img/wallpaper/1-opt.webp",
-    alt: "Interno di No Cap Barbershop",
+    alt: "No Cap Barber Shop",
   },
   badge: {
-    label: "Ritiro in shop",
-    description: "Consulta i prodotti e prepara il passaggio in negozio.",
+    label: "NC",
+    description: "Shop, contatti e admin read-only",
   },
 };
 
@@ -52,68 +52,150 @@ export const productTeasers: ProductTeaser[] = [
   {
     name: "Black wax",
     category: "Styling",
-    description: "Tenuta decisa con finish pulito per look strutturati.",
     image: "/Img/products/black-wax-packshot-opt.webp",
-    packshotUrl: "/Img/products/black-wax-packshot-opt.webp",
-    lifestyleUrl: "/Img/products/black-wax-lifestyle-opt.webp",
-    checkoutHref: "/checkout?product=black-wax",
-    contactHref: "/contact?product=black-wax",
-    price: "€18",
-    stock: null,
   },
   {
     name: "Clay pomade",
-    category: "Texture",
-    description: "Texture opaca e controllo flessibile per styling quotidiano.",
+    category: "Finish matte",
     image: "/Img/products/clay-pomade-packshot-opt.webp",
-    packshotUrl: "/Img/products/clay-pomade-packshot-opt.webp",
-    lifestyleUrl: "/Img/products/clay-pomade-lifestyle-opt.webp",
-    checkoutHref: "/checkout?product=clay-pomade",
-    contactHref: "/contact?product=clay-pomade",
-    price: "€19",
-    stock: null,
-  },
-  {
-    name: "Sea salt spray",
-    category: "Volume",
-    description: "Volume leggero e texture salina per pieghe mosse e naturali.",
-    image: "/Img/products/sea-salt-spray-packshot-opt.webp",
-    packshotUrl: "/Img/products/sea-salt-spray-packshot-opt.webp",
-    lifestyleUrl: "/Img/products/sea-salt-spray-lifestyle-opt.webp",
-    checkoutHref: "/checkout?product=sea-salt-spray",
-    contactHref: "/contact?product=sea-salt-spray",
-    price: "€16",
-    stock: null,
   },
 ];
 
 export const shopTeaserContent = {
-  eyebrow: "Prodotti in evidenza",
-  title: "Una selezione pronta da consultare",
+  eyebrow: "Shop teaser",
+  title: "Prodotti No Cap",
   description:
-    "Styling, volume e finish da verificare prima del ritiro in negozio o del contatto diretto con il team.",
+    "Anteprima statica del catalogo. Non e ancora collegata a Supabase e non legge disponibilita o prezzi reali.",
+  productNote: "Placeholder statico, nessun carrello collegato.",
 };
 
 export const shopPageContent = {
-  eyebrow: "Shop pubblico",
-  title: "Prodotti e categorie disponibili",
-  badge: "Catalogo aggiornato",
+  eyebrow: "Catalogo statico di migrazione",
+  title: "Shop preview",
   description:
-    "Consulta la selezione prodotti, filtra per categoria e prepara il tuo prossimo passaggio in negozio.",
-  missingTitle: "Nessun prodotto disponibile al momento",
-  missingItems: [
-    "Controlla di nuovo piu tardi per la prossima disponibilita.",
-    "Contattaci se vuoi verificare un prodotto specifico.",
+    "Prima route pubblica Next dedicata allo shop. Usa solo contenuti statici e non legge ancora prodotti, stock o prezzi da Supabase.",
+  badge: "Catalogo statico di migrazione",
+  missingTitle: "Cosa manca",
+  missingItems: ["Dati Supabase reali", "Stock reale", "Carrello", "Checkout"],
+  homeAction: {
+    label: "Torna alla home",
+    href: "/",
+  },
+  checkoutAction: {
+    label: "Placeholder checkout",
+    href: "/checkout",
+  },
+};
+
+export const checkoutPageContent = {
+  eyebrow: "Checkout migration placeholder",
+  title: "Checkout non ancora migrato",
+  description:
+    "Questa pagina documenta lo stato del checkout durante la migrazione Next.js. Il checkout reale resta nella app vanilla.",
+  notice:
+    "Placeholder di migrazione: nessun form, nessun carrello e nessuna chiamata API.",
+  currentStatusTitle: "Stato attuale",
+  currentStatusItems: [
+    "Checkout reale ancora vanilla",
+    'Payment mode attivo: "in-shop"',
+    "PayPal/Stripe off",
+    "API Cloudflare preservate",
+  ],
+  invariantsTitle: "Invarianti da preservare",
+  invariants: [
+    "Il frontend non invia prezzi, totali o status.",
+    "Il server resta fonte di verita per prezzi, stock, totali e stato ordine.",
+    "Il payload checkout e gia testato nella app vanilla.",
   ],
   homeAction: {
-    href: "/",
     label: "Torna alla home",
+    href: "/",
+  },
+  shopAction: {
+    label: "Vai allo shop statico",
+    href: "/shop",
+  },
+};
+
+export const adminPageContent = {
+  eyebrow: "Admin migration placeholder",
+  title: "Admin non ancora migrato",
+  description:
+    "Questa pagina documenta lo stato dell'area admin durante la migrazione Next.js. Il pannello operativo reale resta nella app vanilla.",
+  notice:
+    "Placeholder di migrazione: nessuna auth, nessuna dashboard e nessuna mutazione admin.",
+  currentStatusTitle: "Stato attuale",
+  currentStatusItems: [
+    "Admin reale ancora vanilla",
+    "Supabase Auth/RLS non ancora migrati",
+    "Service role mai nel client",
+    "Mutazioni admin da migrare tardi",
+  ],
+  goNoGoTitle: "Go/no-go admin",
+  goNoGoItems: [
+    "GO solo dopo checklist auth, RLS e mutazioni.",
+    "NO-GO se si rischia di confondere UI admin con sicurezza reale.",
+  ],
+  homeAction: {
+    label: "Torna alla home",
+    href: "/",
+  },
+  shopAction: {
+    label: "Vai allo shop statico",
+    href: "/shop",
+  },
+};
+
+export const contactPageContent = {
+  eyebrow: "Contact migration placeholder",
+  title: "Contact non ancora migrato",
+  description:
+    "Questa pagina documenta lo stato del contatto durante la migrazione Next.js. Il form reale resta nella app vanilla e nelle API Cloudflare esistenti.",
+  notice:
+    "Placeholder di migrazione: nessun form funzionante e nessuna submit attiva.",
+  currentStatusTitle: "Stato attuale",
+  currentStatusItems: [
+    "Contact reale ancora vanilla/API Cloudflare",
+    "Nessuna submit attiva in Next",
+    "Nessun dato inviato",
+  ],
+  homeAction: {
+    label: "Torna alla home",
+    href: "/",
+  },
+  shopAction: {
+    label: "Vai allo shop statico",
+    href: "/shop",
   },
 };
 
 export const brandStoryContent = {
-  eyebrow: "Studio",
-  title: "Ritmo di bottega, taglio contemporaneo",
+  eyebrow: "Barber identity",
+  title: "Shop barber, contenuti e catalogo restano protetti.",
   description:
-    "No Cap unisce atmosfera da barber studio, prodotti selezionati e una gestione diretta delle richieste in shop.",
+    "Questa pagina porta solo home e navigazione pubblica. Checkout, admin, Supabase client e API Cloudflare non sono stati migrati in questo step.",
 };
+
+export const placeholders: PlaceholderContent[] = [
+  {
+    id: "checkout",
+    label: "Checkout",
+    title: "Non ancora migrato",
+    description:
+      "Il checkout reale resta nella app vanilla. Il flusso attivo resta `in-shop`; PayPal e Stripe restano off/futuri.",
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    title: "Non ancora migrato",
+    description:
+      "Admin, auth Supabase, ordini, prodotti e leads resteranno vanilla finche non avranno un task dedicato.",
+  },
+];
+
+export const migrationStatus = [
+  "Vanilla app ancora sorgente primaria",
+  "API Cloudflare ancora in functions/api",
+  "Payments online off",
+  "Active flow: in-shop",
+];

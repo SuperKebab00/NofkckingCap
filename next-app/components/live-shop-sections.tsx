@@ -73,7 +73,7 @@ export async function LiveShopSections() {
       <div className="panel">
         <div className="panel-heading">
           <h2 id="live-shop-sections-title">Sezioni live shop</h2>
-          <span className="status-badge">Supabase live</span>
+          <span className="status-badge">Supabase read-only</span>
         </div>
         <p>
           Preview server-side delle sezioni pubbliche attive. Nessuna modifica,
@@ -131,8 +131,7 @@ export async function LiveShopSections() {
                   </ul>
                 ) : (
                   <p style={{ marginBottom: 0, marginTop: "0.85rem" }}>
-                    Contenuti live disponibili per questa sezione, con
-                    selezione rapida
+                    Contenuti live disponibili per questa sezione, senza preview
                     stringa sicura.
                   </p>
                 )}
