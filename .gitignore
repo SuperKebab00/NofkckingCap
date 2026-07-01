@@ -17,3 +17,5 @@ delivery/
 *.bak
 *.swp
 coverage/
+
+.dev.vars*
