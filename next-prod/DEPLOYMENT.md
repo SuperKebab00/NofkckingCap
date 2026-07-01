@@ -75,6 +75,20 @@ OpenNext-built Cloudflare Worker and requires `.open-next/worker.js` to exist.
 No KV, D1, R2, Queues, Durable Objects, or Analytics Engine bindings are
 required by the current code.
 
+## Checkout and payment placeholders
+
+The checkout UI is client-side and mirrors the production-ready vanilla flow:
+
+- Cart state is stored in `localStorage`.
+- Orders are simulated and stored in `localStorage`.
+- Pickup and shipping modes are available.
+- PayPal is a visible placeholder payment option.
+- Stripe is documented as future-ready but disabled in the UI.
+
+No real payment is created, captured, authorized, or confirmed. Do not configure
+real PayPal or Stripe credentials until server-side payment routes are added and
+validated.
+
 ## Variabili e secrets Cloudflare
 
 ### Obbligatorie
@@ -164,6 +178,14 @@ not be added to this app as an environment variable.
 
 - `CLOUDFLARE_API_TOKEN`
   - This belongs to Cloudflare Workers Builds/Git integration, not Worker runtime.
+
+- `PAYPAL_CLIENT_ID`
+- `PAYPAL_CLIENT_SECRET`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+  - Payment providers are placeholders in this app. Do not add payment keys until
+    real server-side payment routes exist.
 
 - `NEXT_PUBLIC_ADMIN_API_TOKEN`
 - `NEXT_PUBLIC_ADMIN_AUTH_JWT`
