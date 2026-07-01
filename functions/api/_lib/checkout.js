@@ -1,5 +1,5 @@
 const JSON_HEADERS = {
-  "Content-Type": "application/json; charset=UTF-8"
+  "Content-Type": "application/json; charset=UTF-8",
 };
 
 const MAX_JSON_BYTES = 32 * 1024;
@@ -10,7 +10,7 @@ const LOCAL_RATE_LIMITS = new Map();
 
 const PAYPAL_API_BASE = {
   sandbox: "https://api-m.sandbox.paypal.com",
-  live: "https://api-m.paypal.com"
+  live: "https://api-m.paypal.com",
 };
 
 const STRIPE_API_BASE = "https://api.stripe.com";
@@ -30,11 +30,12 @@ function numeric(value) {
 function buildOrderNumber() {
   const now = new Date();
   const year = now.getFullYear();
-  const compact = `${now.getMonth() + 1}`.padStart(2, "0")
-    + `${now.getDate()}`.padStart(2, "0")
-    + `${now.getHours()}`.padStart(2, "0")
-    + `${now.getMinutes()}`.padStart(2, "0")
-    + `${now.getSeconds()}`.padStart(2, "0");
+  const compact =
+    `${now.getMonth() + 1}`.padStart(2, "0") +
+    `${now.getDate()}`.padStart(2, "0") +
+    `${now.getHours()}`.padStart(2, "0") +
+    `${now.getMinutes()}`.padStart(2, "0") +
+    `${now.getSeconds()}`.padStart(2, "0");
   const random = Math.floor(100 + Math.random() * 900);
   return `NC-${year}-${compact}-${random}`;
 }
@@ -42,11 +43,15 @@ function buildOrderNumber() {
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: JSON_HEADERS
+    headers: JSON_HEADERS,
   });
 }
 
-export function safeError(error, fallback = "Richiesta non riuscita.", exposeDetails = false) {
+export function safeError(
+  error,
+  fallback = "Richiesta non riuscita.",
+  exposeDetails = false,
+) {
   const message = String(error?.message || "");
   if (message.startsWith("CLIENT:")) {
     return message.replace(/^CLIENT:\s*/, "");
@@ -63,14 +68,14 @@ export function safeLog(context, message, details = {}) {
 export function statusFromError(error, fallback = 500) {
   const message = String(error?.message || "");
   if (
-    message.startsWith("CLIENT:")
-    || message.includes("Payload JSON non valido")
-    || message.includes("Payload troppo grande")
-    || message.includes("Content-Type non supportato")
-    || message.includes("non corrisponde all'ordine locale")
-    || message.includes("non e associato")
-    || message.includes("non ancora confermato")
-    || message.includes("Pagamento ")
+    message.startsWith("CLIENT:") ||
+    message.includes("Payload JSON non valido") ||
+    message.includes("Payload troppo grande") ||
+    message.includes("Content-Type non supportato") ||
+    message.includes("non corrisponde all'ordine locale") ||
+    message.includes("non e associato") ||
+    message.includes("non ancora confermato") ||
+    message.includes("Pagamento ")
   ) {
     return 400;
   }
@@ -108,9 +113,11 @@ function getRequiredEnv(env, key) {
 }
 
 function clientIp(request) {
-  return request.headers.get("cf-connecting-ip")
-    || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || "local";
+  return (
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "local"
+  );
 }
 
 async function verifyTurnstileIfConfigured(context, token) {
@@ -118,15 +125,18 @@ async function verifyTurnstileIfConfigured(context, token) {
   if (!secret) return;
   if (!token) throw new Error("CLIENT: Verifica anti-spam richiesta.");
 
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      secret,
-      response: token,
-      remoteip: clientIp(context.request)
-    }).toString()
-  });
+  const response = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        secret,
+        response: token,
+        remoteip: clientIp(context.request),
+      }).toString(),
+    },
+  );
   const result = await response.json().catch(() => null);
   if (!result?.success) {
     throw new Error("CLIENT: Verifica anti-spam non valida.");
@@ -137,7 +147,11 @@ export async function guardApiRequest(context, options = {}) {
   if (context.request.method !== "POST") {
     throw new Error("Metodo non consentito.");
   }
-  await applyRateLimit(context, options.rateLimitKey || "api", options.rateLimit || 30);
+  await applyRateLimit(
+    context,
+    options.rateLimitKey || "api",
+    options.rateLimit || 30,
+  );
 }
 
 async function applyRateLimit(context, bucket, maxRequests) {
@@ -147,20 +161,22 @@ async function applyRateLimit(context, bucket, maxRequests) {
 
   if (context.env.RATE_LIMIT_KV) {
     const current = await context.env.RATE_LIMIT_KV.get(key, "json");
-    const next = current && current.resetAt > now
-      ? { count: current.count + 1, resetAt: current.resetAt }
-      : { count: 1, resetAt };
+    const next =
+      current && current.resetAt > now
+        ? { count: current.count + 1, resetAt: current.resetAt }
+        : { count: 1, resetAt };
     await context.env.RATE_LIMIT_KV.put(key, JSON.stringify(next), {
-      expirationTtl: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)
+      expirationTtl: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000),
     });
     if (next.count > maxRequests) throw new Error("Troppe richieste.");
     return;
   }
 
   const current = LOCAL_RATE_LIMITS.get(key);
-  const next = current && current.resetAt > now
-    ? { count: current.count + 1, resetAt: current.resetAt }
-    : { count: 1, resetAt };
+  const next =
+    current && current.resetAt > now
+      ? { count: current.count + 1, resetAt: current.resetAt }
+      : { count: 1, resetAt };
   LOCAL_RATE_LIMITS.set(key, next);
   if (next.count > maxRequests) throw new Error("Troppe richieste.");
 }
@@ -169,7 +185,10 @@ export async function parseGuardedJson(context, options = {}) {
   await guardApiRequest(context, options);
   const payload = await readJson(context.request);
   if (options.turnstile) {
-    await verifyTurnstileIfConfigured(context, payload.turnstileToken || payload["cf-turnstile-response"]);
+    await verifyTurnstileIfConfigured(
+      context,
+      payload.turnstileToken || payload["cf-turnstile-response"],
+    );
   }
   return payload;
 }
@@ -185,7 +204,9 @@ async function parseResponse(response, fallbackMessage) {
     }
   }
   if (!response.ok) {
-    throw new Error(data?.message || data?.error_description || fallbackMessage);
+    throw new Error(
+      data?.message || data?.error_description || fallbackMessage,
+    );
   }
   return data;
 }
@@ -202,7 +223,7 @@ export async function supabaseRequest(env, path, init = {}) {
 
   const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     ...init,
-    headers
+    headers,
   });
 
   return parseResponse(response, "Errore chiamata Supabase.");
@@ -211,7 +232,7 @@ export async function supabaseRequest(env, path, init = {}) {
 export async function getProductsByIds(env, ids) {
   if (!ids.length) return [];
   const params = new URLSearchParams({
-    select: "id,name,price,stock,is_active"
+    select: "id,name,price,stock,is_active",
   });
   params.set("id", `in.(${ids.map(quoteListValue).join(",")})`);
   return supabaseRequest(env, `products?${params.toString()}`);
@@ -233,7 +254,11 @@ export function validateOrderDraft(inputOrder) {
     if (!/^[a-z0-9][a-z0-9-]{1,80}$/i.test(productId)) {
       throw new Error("CLIENT: Prodotto non valido.");
     }
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_ITEM_QUANTITY) {
+    if (
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > MAX_ITEM_QUANTITY
+    ) {
       throw new Error("CLIENT: Quantita non valida.");
     }
     return { productId, quantity };
@@ -247,29 +272,38 @@ export function validateOrderDraft(inputOrder) {
     customer: {
       fullName: clampText(inputOrder.customer?.fullName, 90),
       email: clampText(inputOrder.customer?.email, 160).toLowerCase(),
-      phone: normalizePhone(inputOrder.customer?.phone)
+      phone: normalizePhone(inputOrder.customer?.phone),
     },
     fulfillment: inputOrder.fulfillment === "shipping" ? "shipping" : "pickup",
-    shippingAddress: inputOrder.fulfillment === "shipping"
-      ? {
-          address: clampText(inputOrder.shippingAddress?.address, 180),
-          city: clampText(inputOrder.shippingAddress?.city, 90),
-          zip: clampText(inputOrder.shippingAddress?.zip, 20)
-        }
-      : null,
-    paymentMode: inputOrder.paymentMode === "stripe"
-      ? "stripe"
-      : (inputOrder.paymentMode === "paypal" ? "paypal" : "in-shop"),
-    items
+    shippingAddress:
+      inputOrder.fulfillment === "shipping"
+        ? {
+            address: clampText(inputOrder.shippingAddress?.address, 180),
+            city: clampText(inputOrder.shippingAddress?.city, 90),
+            zip: clampText(inputOrder.shippingAddress?.zip, 20),
+          }
+        : null,
+    paymentMode:
+      inputOrder.paymentMode === "stripe"
+        ? "stripe"
+        : inputOrder.paymentMode === "paypal"
+          ? "paypal"
+          : "in-shop",
+    items,
   };
 }
 
 export function clampText(value, maxLength) {
-  return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 export function normalizePhone(value) {
-  return String(value || "").replace(/[^\d+]/g, "").slice(0, 20);
+  return String(value || "")
+    .replace(/[^\d+]/g, "")
+    .slice(0, 20);
 }
 
 export async function buildCanonicalOrder(env, inputOrder) {
@@ -284,13 +318,22 @@ export async function buildCanonicalOrder(env, inputOrder) {
     throw new Error("CLIENT: Telefono cliente non valido.");
   }
   if (draft.fulfillment === "shipping") {
-    if (!draft.shippingAddress?.address || !draft.shippingAddress.city || !draft.shippingAddress.zip) {
+    if (
+      !draft.shippingAddress?.address ||
+      !draft.shippingAddress.city ||
+      !draft.shippingAddress.zip
+    ) {
       throw new Error("CLIENT: Indirizzo di spedizione incompleto.");
     }
   }
 
-  const products = await getProductsByIds(env, draft.items.map((item) => item.productId));
-  const productsById = new Map(products.map((product) => [product.id, product]));
+  const products = await getProductsByIds(
+    env,
+    draft.items.map((item) => item.productId),
+  );
+  const productsById = new Map(
+    products.map((product) => [product.id, product]),
+  );
 
   const orderItems = draft.items.map((item) => {
     const product = productsById.get(item.productId);
@@ -308,11 +351,13 @@ export async function buildCanonicalOrder(env, inputOrder) {
       productName: product.name,
       unitPrice: numeric(product.price),
       quantity: item.quantity,
-      lineTotal: numeric(Number(product.price || 0) * item.quantity)
+      lineTotal: numeric(Number(product.price || 0) * item.quantity),
     };
   });
 
-  const subtotal = numeric(orderItems.reduce((sum, item) => sum + item.lineTotal, 0));
+  const subtotal = numeric(
+    orderItems.reduce((sum, item) => sum + item.lineTotal, 0),
+  );
   const shipping = draft.fulfillment === "shipping" ? 6 : 0;
   const total = numeric(subtotal + shipping);
   if (total <= 0) {
@@ -331,8 +376,10 @@ export async function buildCanonicalOrder(env, inputOrder) {
     subtotal,
     shipping,
     total,
-    status: ["paypal", "stripe"].includes(draft.paymentMode) ? "pending-payment" : "prenotato",
-    paymentMode: draft.paymentMode
+    status: ["paypal", "stripe"].includes(draft.paymentMode)
+      ? "pending-payment"
+      : "prenotato",
+    paymentMode: draft.paymentMode,
   };
 }
 
@@ -340,7 +387,7 @@ export async function insertOrder(env, order) {
   const createdRows = await supabaseRequest(env, "orders", {
     method: "POST",
     headers: {
-      Prefer: "return=representation"
+      Prefer: "return=representation",
     },
     body: JSON.stringify({
       id: order.id,
@@ -357,24 +404,26 @@ export async function insertOrder(env, order) {
       total: order.total,
       status: "draft",
       payment_mode: order.paymentMode,
-      created_at: order.createdAt
-    })
+      created_at: order.createdAt,
+    }),
   });
 
   try {
     await supabaseRequest(env, "order_items", {
       method: "POST",
       headers: {
-        Prefer: "return=minimal"
+        Prefer: "return=minimal",
       },
-      body: JSON.stringify(order.items.map((item) => ({
-        order_id: order.id,
-        product_id: item.productId,
-        product_name: item.productName,
-        unit_price: item.unitPrice,
-        quantity: item.quantity,
-        line_total: item.lineTotal
-      })))
+      body: JSON.stringify(
+        order.items.map((item) => ({
+          order_id: order.id,
+          product_id: item.productId,
+          product_name: item.productName,
+          unit_price: item.unitPrice,
+          quantity: item.quantity,
+          line_total: item.lineTotal,
+        })),
+      ),
     });
 
     const updatedRow = await updateOrderStatus(env, order.id, order.status);
@@ -394,22 +443,23 @@ function normalizeOrderRow(row, items = []) {
     customer: {
       fullName: row.customer_name,
       email: row.customer_email,
-      phone: row.customer_phone
+      phone: row.customer_phone,
     },
     fulfillment: row.fulfillment,
-    shippingAddress: row.address || row.city || row.zip
-      ? {
-          address: row.address || "",
-          city: row.city || "",
-          zip: row.zip || ""
-        }
-      : null,
+    shippingAddress:
+      row.address || row.city || row.zip
+        ? {
+            address: row.address || "",
+            city: row.city || "",
+            zip: row.zip || "",
+          }
+        : null,
     items,
     subtotal: numeric(row.subtotal),
     shipping: numeric(row.shipping),
     total: numeric(row.total),
     status: row.status,
-    paymentMode: row.payment_mode || "in-shop"
+    paymentMode: row.payment_mode || "in-shop",
   };
 }
 
@@ -421,7 +471,7 @@ export async function getOrderWithItems(env, orderId) {
 
   const [orders, items] = await Promise.all([
     supabaseRequest(env, `orders?${orderParams.toString()}`),
-    supabaseRequest(env, `order_items?${itemParams.toString()}`)
+    supabaseRequest(env, `order_items?${itemParams.toString()}`),
   ]);
 
   if (!Array.isArray(orders) || !orders.length) {
@@ -433,7 +483,7 @@ export async function getOrderWithItems(env, orderId) {
     productName: item.product_name,
     unitPrice: numeric(item.unit_price),
     quantity: Number(item.quantity || 0),
-    lineTotal: numeric(item.line_total)
+    lineTotal: numeric(item.line_total),
   }));
 
   return normalizeOrderRow(orders[0], normalizedItems);
@@ -445,9 +495,9 @@ export async function updateOrderStatus(env, orderId, status) {
   const rows = await supabaseRequest(env, `orders?${params.toString()}`, {
     method: "PATCH",
     headers: {
-      Prefer: "return=representation"
+      Prefer: "return=representation",
     },
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status }),
   });
   return rows?.[0] || null;
 }
@@ -458,9 +508,9 @@ export async function updateOrderFields(env, orderId, fields) {
   const rows = await supabaseRequest(env, `orders?${params.toString()}`, {
     method: "PATCH",
     headers: {
-      Prefer: "return=representation"
+      Prefer: "return=representation",
     },
-    body: JSON.stringify(fields)
+    body: JSON.stringify(fields),
   });
   return rows?.[0] || null;
 }
@@ -471,8 +521,8 @@ export async function deleteOrder(env, orderId) {
   await supabaseRequest(env, `order_items?${itemParams.toString()}`, {
     method: "DELETE",
     headers: {
-      Prefer: "return=minimal"
-    }
+      Prefer: "return=minimal",
+    },
   });
 
   const orderParams = new URLSearchParams();
@@ -480,8 +530,8 @@ export async function deleteOrder(env, orderId) {
   await supabaseRequest(env, `orders?${orderParams.toString()}`, {
     method: "DELETE",
     headers: {
-      Prefer: "return=minimal"
-    }
+      Prefer: "return=minimal",
+    },
   });
 }
 
@@ -512,7 +562,7 @@ export async function stripeRequest(env, path, init = {}) {
 
   const response = await fetch(`${STRIPE_API_BASE}${path}`, {
     ...init,
-    headers
+    headers,
   });
 
   return parseResponse(response, "Errore API Stripe.");
@@ -526,35 +576,56 @@ export async function createStripeCheckoutSession(env, request, order) {
   const origin = getSiteOrigin(request, env);
   const params = [
     ["mode", "payment"],
-    ["success_url", `${origin}/?stripe=success&orderId=${encodeURIComponent(order.id)}&session_id={CHECKOUT_SESSION_ID}`],
-    ["cancel_url", `${origin}/?stripe=cancel&orderId=${encodeURIComponent(order.id)}`],
+    [
+      "success_url",
+      `${origin}/?stripe=success&orderId=${encodeURIComponent(order.id)}&session_id={CHECKOUT_SESSION_ID}`,
+    ],
+    [
+      "cancel_url",
+      `${origin}/?stripe=cancel&orderId=${encodeURIComponent(order.id)}`,
+    ],
     ["client_reference_id", order.id],
     ["customer_email", order.customer.email],
     ["locale", "it"],
     ["payment_method_types[0]", "card"],
     ["metadata[local_order_id]", order.id],
     ["metadata[order_number]", order.orderNumber],
-    ["custom_text[submit][message]", "No Cap Barber Shop confermera l'ordine automaticamente dopo il pagamento."]
+    [
+      "custom_text[submit][message]",
+      "No Cap Barber Shop confermera l'ordine automaticamente dopo il pagamento.",
+    ],
   ];
 
   order.items.forEach((item, index) => {
     params.push([`line_items[${index}][quantity]`, item.quantity]);
     params.push([`line_items[${index}][price_data][currency]`, "eur"]);
-    params.push([`line_items[${index}][price_data][unit_amount]`, toStripeAmount(item.unitPrice)]);
-    params.push([`line_items[${index}][price_data][product_data][name]`, item.productName]);
+    params.push([
+      `line_items[${index}][price_data][unit_amount]`,
+      toStripeAmount(item.unitPrice),
+    ]);
+    params.push([
+      `line_items[${index}][price_data][product_data][name]`,
+      item.productName,
+    ]);
   });
 
   if (order.shipping > 0) {
     const shippingIndex = order.items.length;
     params.push([`line_items[${shippingIndex}][quantity]`, 1]);
     params.push([`line_items[${shippingIndex}][price_data][currency]`, "eur"]);
-    params.push([`line_items[${shippingIndex}][price_data][unit_amount]`, toStripeAmount(order.shipping)]);
-    params.push([`line_items[${shippingIndex}][price_data][product_data][name]`, "Spedizione No Cap"]);
+    params.push([
+      `line_items[${shippingIndex}][price_data][unit_amount]`,
+      toStripeAmount(order.shipping),
+    ]);
+    params.push([
+      `line_items[${shippingIndex}][price_data][product_data][name]`,
+      "Spedizione No Cap",
+    ]);
   }
 
   const data = await stripeRequest(env, "/v1/checkout/sessions", {
     method: "POST",
-    body: buildFormBody(params)
+    body: buildFormBody(params),
   });
 
   if (!data?.url || !data?.id) {
@@ -563,17 +634,25 @@ export async function createStripeCheckoutSession(env, request, order) {
 
   return {
     stripeSessionId: data.id,
-    checkoutUrl: data.url
+    checkoutUrl: data.url,
   };
 }
 
 export async function getStripeCheckoutSession(env, sessionId) {
-  return stripeRequest(env, `/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
-    method: "GET"
-  });
+  return stripeRequest(
+    env,
+    `/v1/checkout/sessions/${encodeURIComponent(sessionId)}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
-export async function verifyStripeCheckoutSession(env, sessionId, localOrderId) {
+export async function verifyStripeCheckoutSession(
+  env,
+  sessionId,
+  localOrderId,
+) {
   const session = await getStripeCheckoutSession(env, sessionId);
   if (session?.client_reference_id !== localOrderId) {
     throw new Error("La sessione Stripe non corrisponde all'ordine locale.");
@@ -591,13 +670,23 @@ async function hmacSha256Hex(secret, payload) {
     encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
-  return Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(payload),
+  );
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-export async function verifyStripeWebhookSignature(env, payload, stripeSignature) {
+export async function verifyStripeWebhookSignature(
+  env,
+  payload,
+  stripeSignature,
+) {
   const webhookSecret = getRequiredEnv(env, "STRIPE_WEBHOOK_SECRET");
   if (!stripeSignature) {
     throw new Error("Header Stripe-Signature mancante.");
@@ -616,7 +705,9 @@ export async function verifyStripeWebhookSignature(env, payload, stripeSignature
     throw new Error("Header Stripe-Signature non valido.");
   }
 
-  const ageSeconds = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  const ageSeconds = Math.abs(
+    Math.floor(Date.now() / 1000) - Number(timestamp),
+  );
   if (!Number.isFinite(ageSeconds) || ageSeconds > 300) {
     throw new Error("Timestamp webhook Stripe fuori tolleranza.");
   }
@@ -629,7 +720,9 @@ export async function verifyStripeWebhookSignature(env, payload, stripeSignature
 }
 
 function paypalBaseUrl(env) {
-  return env.PAYPAL_ENV === "live" ? PAYPAL_API_BASE.live : PAYPAL_API_BASE.sandbox;
+  return env.PAYPAL_ENV === "live"
+    ? PAYPAL_API_BASE.live
+    : PAYPAL_API_BASE.sandbox;
 }
 
 export async function getPaypalAccessToken(env) {
@@ -640,12 +733,15 @@ export async function getPaypalAccessToken(env) {
     method: "POST",
     headers: {
       Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded"
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: "grant_type=client_credentials"
+    body: "grant_type=client_credentials",
   });
 
-  const data = await parseResponse(response, "Impossibile ottenere il token PayPal.");
+  const data = await parseResponse(
+    response,
+    "Impossibile ottenere il token PayPal.",
+  );
   return data.access_token;
 }
 
@@ -657,14 +753,17 @@ export async function paypalRequest(env, path, init = {}) {
 
   const response = await fetch(`${paypalBaseUrl(env)}${path}`, {
     ...init,
-    headers
+    headers,
   });
 
   return parseResponse(response, "Errore API PayPal.");
 }
 
 export function getSiteOrigin(request, env) {
-  return String(env.PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/$/, "");
+  return String(env.PUBLIC_SITE_URL || new URL(request.url).origin).replace(
+    /\/$/,
+    "",
+  );
 }
 
 export async function createPaypalOrder(env, request, order) {
@@ -679,9 +778,9 @@ export async function createPaypalOrder(env, request, order) {
         description: `Ordine ${order.orderNumber} No Cap Barber Shop`,
         amount: {
           currency_code: "EUR",
-          value: order.total.toFixed(2)
-        }
-      }
+          value: order.total.toFixed(2),
+        },
+      },
     ],
     payment_source: {
       paypal: {
@@ -691,25 +790,27 @@ export async function createPaypalOrder(env, request, order) {
           landing_page: "LOGIN",
           user_action: "PAY_NOW",
           return_url: `${origin}/?paypal=success&orderId=${encodeURIComponent(order.id)}`,
-          cancel_url: `${origin}/?paypal=cancel&orderId=${encodeURIComponent(order.id)}`
-        }
-      }
-    }
+          cancel_url: `${origin}/?paypal=cancel&orderId=${encodeURIComponent(order.id)}`,
+        },
+      },
+    },
   };
 
   const data = await paypalRequest(env, "/v2/checkout/orders", {
     method: "POST",
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 
-  const approvalLink = (data.links || []).find((link) => link.rel === "approve")?.href;
+  const approvalLink = (data.links || []).find(
+    (link) => link.rel === "approve",
+  )?.href;
   if (!approvalLink) {
     throw new Error("PayPal non ha restituito il link di approvazione.");
   }
 
   return {
     paypalOrderId: data.id,
-    approvalUrl: approvalLink
+    approvalUrl: approvalLink,
   };
 }
 
@@ -717,9 +818,9 @@ export async function capturePaypalOrder(env, paypalOrderId) {
   return paypalRequest(env, `/v2/checkout/orders/${paypalOrderId}/capture`, {
     method: "POST",
     headers: {
-      "PayPal-Request-Id": paypalOrderId
+      "PayPal-Request-Id": paypalOrderId,
     },
-    body: JSON.stringify({})
+    body: JSON.stringify({}),
   });
 }
 
@@ -734,6 +835,6 @@ export function verifyCapturedPaypalOrder(captureData, localOrderId) {
     throw new Error("Il pagamento PayPal non corrisponde all'ordine locale.");
   }
   return {
-    paypalCaptureId: purchaseUnit?.payments?.captures?.[0]?.id || null
+    paypalCaptureId: purchaseUnit?.payments?.captures?.[0]?.id || null,
   };
 }

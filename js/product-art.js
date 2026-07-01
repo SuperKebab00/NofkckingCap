@@ -35,7 +35,7 @@ export function productImage(product, variant = "front") {
       <g fill="${background}" stroke="${neutral}" stroke-width="5">
         ${Array.from({ length: 13 }, (_, index) => `<rect x="${52 + index * 12}" y="122" width="6" height="${86 - (index % 2) * 16}" rx="2"/>`).join("")}
       </g>
-      <text x="130" y="109" text-anchor="middle" font-family="Arial Black" font-size="22" fill="${detail}">NO CAP</text>`
+      <text x="130" y="109" text-anchor="middle" font-family="Arial Black" font-size="22" fill="${detail}">NO CAP</text>`,
   };
 
   const svg = `

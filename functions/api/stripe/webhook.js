@@ -7,17 +7,23 @@ import {
   supabaseRequest,
   updateOrderFields,
   updateOrderStatus,
-  verifyStripeWebhookSignature
+  verifyStripeWebhookSignature,
 } from "../_lib/checkout.js";
 
 export async function onRequestPost(context) {
   try {
-    const contentLength = Number(context.request.headers.get("content-length") || 0);
+    const contentLength = Number(
+      context.request.headers.get("content-length") || 0,
+    );
     if (contentLength > 64 * 1024) {
       throw new Error("CLIENT: Payload troppo grande.");
     }
     const payload = await context.request.text();
-    await verifyStripeWebhookSignature(context.env, payload, context.request.headers.get("Stripe-Signature"));
+    await verifyStripeWebhookSignature(
+      context.env,
+      payload,
+      context.request.headers.get("Stripe-Signature"),
+    );
 
     const event = JSON.parse(payload);
     if (event?.id) {
@@ -30,7 +36,9 @@ export async function onRequestPost(context) {
     }
 
     const session = event.data?.object;
-    const orderId = String(session?.client_reference_id || session?.metadata?.local_order_id || "").trim();
+    const orderId = String(
+      session?.client_reference_id || session?.metadata?.local_order_id || "",
+    ).trim();
     if (!orderId) {
       throw new Error("Order id mancante nel webhook Stripe.");
     }
@@ -42,15 +50,27 @@ export async function onRequestPost(context) {
     await updateOrderFields(context.env, orderId, {
       status: "pagato",
       stripe_session_id: session.id || null,
-      stripe_payment_intent_id: session.payment_intent || null
+      stripe_payment_intent_id: session.payment_intent || null,
     }).catch(async () => {
       await updateOrderStatus(context.env, orderId, "pagato");
     });
     const order = await getOrderWithItems(context.env, orderId);
     return json({ received: true, order });
   } catch (error) {
-    safeLog(context, "stripe-webhook failed", { status: statusFromError(error), message: error?.message });
-    return json({ error: safeError(error, "Webhook Stripe non valido.", context.env.APP_ENV !== "production") }, statusFromError(error));
+    safeLog(context, "stripe-webhook failed", {
+      status: statusFromError(error),
+      message: error?.message,
+    });
+    return json(
+      {
+        error: safeError(
+          error,
+          "Webhook Stripe non valido.",
+          context.env.APP_ENV !== "production",
+        ),
+      },
+      statusFromError(error),
+    );
   }
 }
 
@@ -59,17 +79,22 @@ async function recordStripeEvent(env, eventId) {
     await supabaseRequest(env, "payment_events", {
       method: "POST",
       headers: {
-        Prefer: "resolution=ignore-duplicates,return=minimal"
+        Prefer: "resolution=ignore-duplicates,return=minimal",
       },
       body: JSON.stringify({
         provider: "stripe",
         event_id: eventId,
-        processed_at: new Date().toISOString()
-      })
+        processed_at: new Date().toISOString(),
+      }),
     });
     return true;
   } catch (error) {
-    if (String(error?.message || "").toLowerCase().includes("duplicate")) return false;
+    if (
+      String(error?.message || "")
+        .toLowerCase()
+        .includes("duplicate")
+    )
+      return false;
     throw error;
   }
 }

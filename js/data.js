@@ -20,15 +20,16 @@ export const products = [
     shape: "bottle",
     images: {
       packshot: "Img/products/aftershave-packshot-opt.webp",
-      lifestyle: "Img/products/aftershave-lifestyle-opt.webp"
-    }
+      lifestyle: "Img/products/aftershave-lifestyle-opt.webp",
+    },
   },
   {
     id: "black-wax",
     name: "Black Wax",
     category: "styling",
     label: "Styling",
-    description: "Tenuta forte con shine controllato per look precisi tutto il giorno.",
+    description:
+      "Tenuta forte con shine controllato per look precisi tutto il giorno.",
     badge: "Best seller",
     price: 17,
     stock: 6,
@@ -37,8 +38,8 @@ export const products = [
     shape: "jar",
     images: {
       packshot: "Img/products/black-wax-packshot-opt.webp",
-      lifestyle: "Img/products/black-wax-lifestyle-opt.webp"
-    }
+      lifestyle: "Img/products/black-wax-lifestyle-opt.webp",
+    },
   },
   {
     id: "clay-pomade",
@@ -54,8 +55,8 @@ export const products = [
     shape: "jar",
     images: {
       packshot: "Img/products/clay-pomade-packshot-opt.webp",
-      lifestyle: "Img/products/clay-pomade-lifestyle-opt.webp"
-    }
+      lifestyle: "Img/products/clay-pomade-lifestyle-opt.webp",
+    },
   },
   {
     id: "dust-wax",
@@ -71,8 +72,8 @@ export const products = [
     shape: "spray",
     images: {
       packshot: "Img/products/dust-wax-packshot-opt.webp",
-      lifestyle: "Img/products/dust-wax-lifestyle-opt.webp"
-    }
+      lifestyle: "Img/products/dust-wax-lifestyle-opt.webp",
+    },
   },
   {
     id: "fade-dlc",
@@ -88,8 +89,8 @@ export const products = [
     shape: "blade",
     images: {
       packshot: "Img/products/fade-dlc-packshot-opt.webp",
-      lifestyle: "Img/products/fade-dlc-lifestyle-opt.webp"
-    }
+      lifestyle: "Img/products/fade-dlc-lifestyle-opt.webp",
+    },
   },
   {
     id: "fade-gold",
@@ -105,8 +106,8 @@ export const products = [
     shape: "blade",
     images: {
       packshot: "Img/products/fade-gold-packshot-opt.webp",
-      lifestyle: "Img/products/fade-gold-lifestyle-opt.webp"
-    }
+      lifestyle: "Img/products/fade-gold-lifestyle-opt.webp",
+    },
   },
   {
     id: "faper-dlc",
@@ -119,7 +120,7 @@ export const products = [
     stock: 1,
     restock: 6,
     colors: ["#111111", "#333333", "#f1f1f1"],
-    shape: "blade"
+    shape: "blade",
   },
   {
     id: "comb-kit",
@@ -132,16 +133,15 @@ export const products = [
     stock: 0,
     restock: 5,
     colors: ["#0a0a0a", "#d40f19", "#ffffff"],
-    shape: "comb"
-  }
+    shape: "comb",
+  },
 ];
 
 export const defaultFreshCut = {
   id: "default-cut",
   name: "Skin fade crop",
-  description: "Sfumatura pulita, texture naturale e finish opaco. Il taglio del giorno pronto per homepage, social e vetrina shop.",
+  description:
+    "Sfumatura pulita, texture naturale e finish opaco. Il taglio del giorno pronto per homepage, social e vetrina shop.",
   image: "Img/wallpaper/5-opt.webp",
-  date: todayISO()
+  date: todayISO(),
 };
-
-

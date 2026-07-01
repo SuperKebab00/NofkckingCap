@@ -1,5 +1,30 @@
 import { CONFIG, isPaymentMethodEnabled } from "./js/config.js";
+import { buildCheckoutOrderPayload } from "./js/checkout-domain.js";
 import { defaultFreshCut } from "./js/data.js";
+import {
+  getOrderStatusLabel,
+  isValidEmail,
+  isValidPhone,
+  normalizeCart,
+  normalizeOrderStatus,
+  normalizeShopCategories,
+  ORDER_COMPLETED_STATUSES,
+  ORDER_PENDING_STATUSES,
+} from "./js/app-domain.js";
+import {
+  clearAdminSession,
+  clearLocalAppData,
+  clearPendingPaypal,
+  clearPendingStripe,
+  hasAdminSession,
+  readPendingPaypal,
+  readPendingStripe,
+  readStoredConsent,
+  writeAdminSession,
+  writePendingPaypal,
+  writePendingStripe,
+  writeStoredConsent,
+} from "./js/app-storage.js";
 import { getSupabaseClient } from "./js/supabase-client.js";
 import * as repository from "./js/repository.js";
 import {
@@ -10,7 +35,7 @@ import {
   renderFreshCut,
   renderInventory,
   renderProducts,
-  renderShowcase
+  renderShowcase,
 } from "./js/render.js";
 import { escapeHtml, formatCurrency, todayISO } from "./js/utils.js";
 
@@ -33,42 +58,15 @@ const {
   saveSiteSections,
   saveProducts,
   updateOrderStatus,
-  uploadImage
+  uploadImage,
 } = repository;
 
-const ADMIN_SESSION_KEY = "no-cap-admin-session-v2";
-const CONSENT_STORAGE_KEY = "no-cap-consent-v1";
-const PAYPAL_CHECKOUT_KEY = "no-cap-paypal-checkout-v1";
-const STRIPE_CHECKOUT_KEY = "no-cap-stripe-checkout-v1";
 const MAX_MONTHLY_CUTS = 24;
 const MOBILE_HEADER_BREAKPOINT = 780;
-const ORDER_PENDING_STATUSES = ["prenotato", "pending-payment", "pagato", "in-lavorazione"];
-const ORDER_COMPLETED_STATUSES = ["spedito", "completato", "completed"];
-
-function normalizeOrderStatus(status) {
-  const normalized = String(status || "").trim().toLowerCase();
-  if (normalized === "in-attesa" || normalized === "pending") return "prenotato";
-  if (normalized === "paid") return "pagato";
-  if (normalized === "completed") return "completato";
-  return normalized || "prenotato";
-}
-
-function getOrderStatusLabel(status) {
-  switch (normalizeOrderStatus(status)) {
-    case "prenotato": return "Prenotato";
-    case "pending-payment": return "Attesa pagamento";
-    case "pagato": return "Pagato";
-    case "in-lavorazione": return "In lavorazione";
-    case "spedito": return "Spedito";
-    case "completato": return "Completato";
-    case "annullato": return "Annullato";
-    default: return String(status || "Prenotato");
-  }
-}
 
 const state = {
   activeCategory: "all",
-  adminAuthenticated: CONFIG.ADMIN_MODE === "local" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1",
+  adminAuthenticated: CONFIG.ADMIN_MODE === "local" && hasAdminSession(),
   adminView: "data",
   cart: [],
   consent: null,
@@ -80,16 +78,17 @@ const state = {
   products: [],
   siteSections: {
     shopTitle: "Prodotti No Cap",
-    shopCopy: "Catalogo professionale, disponibilità aggiornata e acquisto rapido.",
+    shopCopy:
+      "Catalogo professionale, disponibilità aggiornata e acquisto rapido.",
     shopCategories: [
       { value: "all", label: "All products" },
       { value: "hair", label: "Hair care" },
       { value: "styling", label: "Styling" },
       { value: "tools", label: "Tools" },
-      { value: "accessories", label: "Accessories" }
-    ]
+      { value: "accessories", label: "Accessories" },
+    ],
   },
-  toastTimer: null
+  toastTimer: null,
 };
 
 const dom = getDom();
@@ -102,7 +101,7 @@ function defaultConsent() {
     analytics: false,
     marketing: false,
     timestamp: new Date().toISOString(),
-    version: Number(CONFIG.COOKIE_POLICY_VERSION || 1)
+    version: Number(CONFIG.COOKIE_POLICY_VERSION || 1),
   };
 }
 
@@ -116,21 +115,11 @@ function isConsentExpired(consent) {
 }
 
 function readConsent() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(CONSENT_STORAGE_KEY));
-    if (!parsed || typeof parsed !== "object") return null;
-    const consent = {
-      ...defaultConsent(),
-      ...parsed,
-      necessary: true
-    };
-    const expectedVersion = Number(CONFIG.COOKIE_POLICY_VERSION || 1);
-    if (Number(consent.version || 0) !== expectedVersion) return null;
-    if (isConsentExpired(consent)) return null;
-    return consent;
-  } catch {
-    return null;
-  }
+  return readStoredConsent({
+    defaultConsent: defaultConsent(),
+    expectedVersion: Number(CONFIG.COOKIE_POLICY_VERSION || 1),
+    isExpired: isConsentExpired,
+  });
 }
 
 function syncHeaderOnScroll() {
@@ -139,7 +128,9 @@ function syncHeaderOnScroll() {
   const currentScrollY = window.scrollY;
   dom.siteHeader.dataset.elevated = currentScrollY > 12 ? "true" : "false";
 
-  if (!window.matchMedia(`(max-width: ${MOBILE_HEADER_BREAKPOINT}px)`).matches) {
+  if (
+    !window.matchMedia(`(max-width: ${MOBILE_HEADER_BREAKPOINT}px)`).matches
+  ) {
     dom.siteHeader.dataset.scroll = "visible";
     lastScrollY = currentScrollY;
     return;
@@ -162,17 +153,26 @@ function syncHeaderOnScroll() {
 
 function applyConsent(consent) {
   state.consent = { ...defaultConsent(), ...(consent || {}), necessary: true };
-  document.documentElement.dataset.consentAnalytics = state.consent.analytics ? "granted" : "denied";
-  document.documentElement.dataset.consentMarketing = state.consent.marketing ? "granted" : "denied";
+  document.documentElement.dataset.consentAnalytics = state.consent.analytics
+    ? "granted"
+    : "denied";
+  document.documentElement.dataset.consentMarketing = state.consent.marketing
+    ? "granted"
+    : "denied";
   window.NoCapConsent = {
     ...state.consent,
-    canUse: (category) => Boolean(state.consent?.[category])
+    canUse: (category) => Boolean(state.consent?.[category]),
   };
 }
 
 function saveConsent(consent) {
-  const next = { ...defaultConsent(), ...(consent || {}), necessary: true, timestamp: new Date().toISOString() };
-  localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
+  const next = {
+    ...defaultConsent(),
+    ...(consent || {}),
+    necessary: true,
+    timestamp: new Date().toISOString(),
+  };
+  writeStoredConsent(next);
   applyConsent(next);
   if (dom.consentBanner) dom.consentBanner.hidden = true;
   closeConsentModal();
@@ -189,8 +189,10 @@ function openConsentModal() {
   if (!dom.consentModal) return;
   dom.consentModal.hidden = false;
   document.body.classList.add("consent-open");
-  if (dom.consentAnalytics) dom.consentAnalytics.checked = Boolean(state.consent?.analytics);
-  if (dom.consentMarketing) dom.consentMarketing.checked = Boolean(state.consent?.marketing);
+  if (dom.consentAnalytics)
+    dom.consentAnalytics.checked = Boolean(state.consent?.analytics);
+  if (dom.consentMarketing)
+    dom.consentMarketing.checked = Boolean(state.consent?.marketing);
 }
 
 function initConsentUi() {
@@ -220,7 +222,9 @@ function syncAdminVisibility({ clearError = false } = {}) {
 
 function setAdminView(view) {
   const next = String(view || "").trim();
-  state.adminView = ["data", "manage", "orders", "leads"].includes(next) ? next : "data";
+  state.adminView = ["data", "manage", "orders", "leads"].includes(next)
+    ? next
+    : "data";
   document.querySelectorAll("[data-admin-tab]").forEach((button) => {
     const active = button.dataset.adminTab === state.adminView;
     button.classList.toggle("is-active", active);
@@ -253,7 +257,11 @@ function normalizeCuts(cuts) {
   const unique = [];
   const seen = new Set();
   for (const cut of list) {
-    const normalized = { ...defaultFreshCut, ...cut, date: cut?.date || todayISO() };
+    const normalized = {
+      ...defaultFreshCut,
+      ...cut,
+      date: cut?.date || todayISO(),
+    };
     const key = `${normalized.date}|${normalized.name}|${String(normalized.image).slice(0, 80)}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -264,48 +272,9 @@ function normalizeCuts(cuts) {
 }
 
 function getRealMonthlyCuts(cuts) {
-  return (Array.isArray(cuts) ? cuts : []).filter((cut) => cut?.id && cut.id !== defaultFreshCut.id);
-}
-
-function getDefaultShopCategories(products) {
-  const base = [{ value: "all", label: "All products" }];
-  const seen = new Set(["all"]);
-  products.forEach((product) => {
-    const value = String(product.category || "").trim().toLowerCase();
-    if (!value || seen.has(value)) return;
-    seen.add(value);
-    base.push({ value, label: value.charAt(0).toUpperCase() + value.slice(1) });
-  });
-  return base;
-}
-
-function normalizeShopCategories(raw, products) {
-  const source = Array.isArray(raw) && raw.length ? raw : getDefaultShopCategories(products);
-  const unique = [];
-  const seen = new Set();
-  source.forEach((item) => {
-    const value = String(item?.value || "").trim().toLowerCase();
-    const label = String(item?.label || "").trim();
-    if (!value || seen.has(value)) return;
-    seen.add(value);
-    unique.push({ value, label: label || (value.charAt(0).toUpperCase() + value.slice(1)) });
-  });
-  if (!unique.some((item) => item.value === "all")) unique.unshift({ value: "all", label: "All products" });
-  return unique;
-}
-
-function normalizeCart(rawCart, products, inventory) {
-  const normalized = [];
-  for (const row of rawCart || []) {
-    const productId = row.productId || row.id;
-    const quantity = Number(row.quantity || 0);
-    const product = products.find((item) => item.id === productId);
-    if (!product || quantity <= 0) continue;
-    const maxQty = Math.max(0, Number(inventory[productId] ?? 0));
-    if (maxQty <= 0) continue;
-    normalized.push({ productId, quantity: Math.min(quantity, maxQty) });
-  }
-  return normalized;
+  return (Array.isArray(cuts) ? cuts : []).filter(
+    (cut) => cut?.id && cut.id !== defaultFreshCut.id,
+  );
 }
 
 function cartExpanded() {
@@ -322,14 +291,15 @@ async function persistCart() {
 }
 
 async function loadPublicState() {
-  const [products, inventory, featuredCut, monthlyCuts, cart, siteSections] = await Promise.all([
-    getProducts(),
-    getInventory(),
-    getFeaturedCut(),
-    getMonthlyCuts(),
-    getCart(),
-    getSiteSections()
-  ]);
+  const [products, inventory, featuredCut, monthlyCuts, cart, siteSections] =
+    await Promise.all([
+      getProducts(),
+      getInventory(),
+      getFeaturedCut(),
+      getMonthlyCuts(),
+      getCart(),
+      getSiteSections(),
+    ]);
   state.products = products;
   state.inventory = inventory;
   state.featuredCut = { ...defaultFreshCut, ...featuredCut };
@@ -338,7 +308,10 @@ async function loadPublicState() {
   state.orders = [];
   state.leads = [];
   state.siteSections = { ...state.siteSections, ...(siteSections || {}) };
-  state.siteSections.shopCategories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
+  state.siteSections.shopCategories = normalizeShopCategories(
+    state.siteSections.shopCategories,
+    state.products,
+  );
   await persistCart();
 }
 
@@ -352,10 +325,7 @@ async function loadAdminState() {
     return;
   }
 
-  const [orders, leads] = await Promise.all([
-    getOrders(),
-    getLeads()
-  ]);
+  const [orders, leads] = await Promise.all([getOrders(), getLeads()]);
   state.orders = orders;
   state.leads = leads;
   renderOrdersDashboard();
@@ -398,17 +368,31 @@ function renderOrdersDashboard() {
   const orders = [...state.orders];
   const totalOrders = orders.length;
   const todayKey = todayISO();
-  const todayOrders = orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayKey).length;
-  const pendingOrders = orders.filter((order) => ORDER_PENDING_STATUSES.includes(normalizeOrderStatus(order.status))).length;
-  const completedOrders = orders.filter((order) => ORDER_COMPLETED_STATUSES.includes(normalizeOrderStatus(order.status))).length;
-  const revenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const todayOrders = orders.filter(
+    (order) => String(order.createdAt || "").slice(0, 10) === todayKey,
+  ).length;
+  const pendingOrders = orders.filter((order) =>
+    ORDER_PENDING_STATUSES.includes(normalizeOrderStatus(order.status)),
+  ).length;
+  const completedOrders = orders.filter((order) =>
+    ORDER_COMPLETED_STATUSES.includes(normalizeOrderStatus(order.status)),
+  ).length;
+  const revenue = orders.reduce(
+    (sum, order) => sum + Number(order.total || 0),
+    0,
+  );
   const avg = totalOrders ? revenue / totalOrders : 0;
 
-  if (dom.adminOrdersTotal) dom.adminOrdersTotal.textContent = String(totalOrders);
-  if (dom.adminOrdersToday) dom.adminOrdersToday.textContent = String(todayOrders);
-  if (dom.adminOrdersPending) dom.adminOrdersPending.textContent = String(pendingOrders);
-  if (dom.adminOrdersCompleted) dom.adminOrdersCompleted.textContent = String(completedOrders);
-  if (dom.adminOrdersRevenue) dom.adminOrdersRevenue.textContent = formatCurrency(revenue);
+  if (dom.adminOrdersTotal)
+    dom.adminOrdersTotal.textContent = String(totalOrders);
+  if (dom.adminOrdersToday)
+    dom.adminOrdersToday.textContent = String(todayOrders);
+  if (dom.adminOrdersPending)
+    dom.adminOrdersPending.textContent = String(pendingOrders);
+  if (dom.adminOrdersCompleted)
+    dom.adminOrdersCompleted.textContent = String(completedOrders);
+  if (dom.adminOrdersRevenue)
+    dom.adminOrdersRevenue.textContent = formatCurrency(revenue);
   if (dom.adminOrdersAvg) dom.adminOrdersAvg.textContent = formatCurrency(avg);
 
   if (!orders.length) {
@@ -418,7 +402,8 @@ function renderOrdersDashboard() {
 
   dom.adminOrdersList.innerHTML = orders
     .slice(0, 12)
-    .map((order) => `
+    .map(
+      (order) => `
       <tr>
         <td><strong>${escapeHtml(order.orderNumber || order.id || "-")}</strong></td>
         <td>${escapeHtml(order.customer?.fullName || "-")}</td>
@@ -440,7 +425,8 @@ function renderOrdersDashboard() {
             <button class="mini-button" type="button" data-order-detail="${escapeHtml(order.id)}">Dettagli</button>
           </div>
         </td>
-      </tr>`)
+      </tr>`,
+    )
     .join("");
 }
 
@@ -448,8 +434,11 @@ function renderLeadsDashboard() {
   if (!dom.adminLeadsList) return;
   const leads = [...state.leads];
   const todayKey = todayISO();
-  const todayLeads = leads.filter((lead) => String(lead.createdAt || "").slice(0, 10) === todayKey).length;
-  if (dom.adminLeadsTotal) dom.adminLeadsTotal.textContent = String(leads.length);
+  const todayLeads = leads.filter(
+    (lead) => String(lead.createdAt || "").slice(0, 10) === todayKey,
+  ).length;
+  if (dom.adminLeadsTotal)
+    dom.adminLeadsTotal.textContent = String(leads.length);
   if (dom.adminLeadsToday) dom.adminLeadsToday.textContent = String(todayLeads);
   if (!leads.length) {
     dom.adminLeadsList.innerHTML = `<tr><td colspan="6">Nessuna richiesta contatto registrata.</td></tr>`;
@@ -458,7 +447,8 @@ function renderLeadsDashboard() {
 
   dom.adminLeadsList.innerHTML = leads
     .slice(0, 12)
-    .map((lead) => `
+    .map(
+      (lead) => `
       <tr>
         <td>${escapeHtml(String(lead.createdAt || "").slice(0, 10) || "-")}</td>
         <td><a href="mailto:${escapeHtml(lead.email || "")}">${escapeHtml(lead.email || "-")}</a></td>
@@ -471,7 +461,8 @@ function renderLeadsDashboard() {
             <button class="mini-button" type="button" data-lead-delete="${escapeHtml(lead.id)}">Elimina</button>
           </div>
         </td>
-      </tr>`)
+      </tr>`,
+    )
     .join("");
 }
 
@@ -504,20 +495,33 @@ async function saveOrderStatusFromUi(orderId) {
 function showOrderDetail(orderId) {
   const order = state.orders.find((item) => item.id === orderId);
   if (!order) return;
-  const itemCount = Array.isArray(order.items) ? order.items.reduce((sum, row) => sum + Number(row.quantity || 0), 0) : 0;
+  const itemCount = Array.isArray(order.items)
+    ? order.items.reduce((sum, row) => sum + Number(row.quantity || 0), 0)
+    : 0;
   const delivery = order.fulfillment === "shipping" ? "Spedizione" : "Ritiro";
-  const payment = order.paymentMode === "paypal"
-    ? "PayPal"
-    : (order.paymentMode === "stripe" ? "Carta / Stripe" : "In sede");
-  showToast(`${order.orderNumber || order.id} · ${delivery} · ${payment} · ${itemCount} articoli`);
+  const payment =
+    order.paymentMode === "paypal"
+      ? "PayPal"
+      : order.paymentMode === "stripe"
+        ? "Carta / Stripe"
+        : "In sede";
+  showToast(
+    `${order.orderNumber || order.id} · ${delivery} · ${payment} · ${itemCount} articoli`,
+  );
 }
 
 function renderCategoryBar() {
   if (!dom.categoryBar) return;
-  const categories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
+  const categories = normalizeShopCategories(
+    state.siteSections.shopCategories,
+    state.products,
+  );
   state.siteSections.shopCategories = categories;
   dom.categoryBar.innerHTML = categories
-    .map((category) => `<button class="category-pill ${state.activeCategory === category.value ? "is-active" : ""}" type="button" data-category="${category.value}">${category.label}</button>`)
+    .map(
+      (category) =>
+        `<button class="category-pill ${state.activeCategory === category.value ? "is-active" : ""}" type="button" data-category="${category.value}">${category.label}</button>`,
+    )
     .join("");
 }
 
@@ -525,15 +529,24 @@ function renderCategoryEditor() {
   if (!dom.categorySelect) return;
   const categories = state.siteSections.shopCategories || [];
   dom.categorySelect.innerHTML = categories
-    .map((category) => `<option value="${category.value}">${category.label}</option>`)
+    .map(
+      (category) =>
+        `<option value="${category.value}">${category.label}</option>`,
+    )
     .join("");
-  const current = categories.some((item) => item.value === dom.categorySelect.value) ? dom.categorySelect.value : "all";
+  const current = categories.some(
+    (item) => item.value === dom.categorySelect.value,
+  )
+    ? dom.categorySelect.value
+    : "all";
   dom.categorySelect.value = current;
   fillCategoryEditor(current);
 }
 
 function fillCategoryEditor(value) {
-  const category = (state.siteSections.shopCategories || []).find((item) => item.value === value);
+  const category = (state.siteSections.shopCategories || []).find(
+    (item) => item.value === value,
+  );
   if (!category) return;
   dom.categoryValueInput.value = category.value;
   dom.categoryLabelInput.value = category.label;
@@ -547,29 +560,44 @@ function renderSiteSectionsEditor() {
 }
 
 function applySiteSections() {
-  if (dom.siteShopTitle && state.siteSections.shopTitle) dom.siteShopTitle.textContent = state.siteSections.shopTitle;
-  if (dom.siteShopCopy && state.siteSections.shopCopy) dom.siteShopCopy.textContent = state.siteSections.shopCopy;
+  if (dom.siteShopTitle && state.siteSections.shopTitle)
+    dom.siteShopTitle.textContent = state.siteSections.shopTitle;
+  if (dom.siteShopCopy && state.siteSections.shopCopy)
+    dom.siteShopCopy.textContent = state.siteSections.shopCopy;
 }
 
 function renderAdminStats() {
-  const quantities = state.products.map((product) => state.inventory[product.id] ?? 0);
+  const quantities = state.products.map(
+    (product) => state.inventory[product.id] ?? 0,
+  );
   const totalUnits = quantities.reduce((sum, value) => sum + value, 0);
   const lowStock = quantities.filter((value) => value > 0 && value <= 2).length;
   const soldOut = quantities.filter((value) => value <= 0).length;
-  const inventoryValue = state.products.reduce((sum, product) => sum + (state.inventory[product.id] ?? 0) * Number(product.price || 0), 0);
-  const monthlyCount = getRealMonthlyCuts(state.monthlyCuts).filter((cut) => String(cut.date).startsWith(todayISO().slice(0, 7))).length;
-  const todayOrders = state.orders.filter((order) => String(order.createdAt || "").slice(0, 10) === todayISO()).length;
+  const inventoryValue = state.products.reduce(
+    (sum, product) =>
+      sum + (state.inventory[product.id] ?? 0) * Number(product.price || 0),
+    0,
+  );
+  const monthlyCount = getRealMonthlyCuts(state.monthlyCuts).filter((cut) =>
+    String(cut.date).startsWith(todayISO().slice(0, 7)),
+  ).length;
+  const todayOrders = state.orders.filter(
+    (order) => String(order.createdAt || "").slice(0, 10) === todayISO(),
+  ).length;
   document.querySelector("[data-summary-total]").textContent = totalUnits;
   document.querySelector("[data-summary-low]").textContent = lowStock;
   document.querySelector("[data-summary-soldout]").textContent = soldOut;
   document.querySelector("[data-summary-cuts]").textContent = monthlyCount;
-  document.querySelector("[data-summary-value]").textContent = formatCurrency(inventoryValue);
+  document.querySelector("[data-summary-value]").textContent =
+    formatCurrency(inventoryValue);
   document.querySelector("[data-summary-orders]").textContent = todayOrders;
-  if (dom.dataInventoryValue) dom.dataInventoryValue.textContent = formatCurrency(inventoryValue);
+  if (dom.dataInventoryValue)
+    dom.dataInventoryValue.textContent = formatCurrency(inventoryValue);
   if (dom.dataLowStock) dom.dataLowStock.textContent = String(lowStock);
   if (dom.adminKpiOrders) dom.adminKpiOrders.textContent = state.orders.length;
   if (dom.adminKpiLeads) dom.adminKpiLeads.textContent = state.leads.length;
-  if (dom.adminKpiProducts) dom.adminKpiProducts.textContent = state.products.length;
+  if (dom.adminKpiProducts)
+    dom.adminKpiProducts.textContent = state.products.length;
 }
 
 function renderProductEditor() {
@@ -577,9 +605,13 @@ function renderProductEditor() {
   const current = dom.productSelect.value || state.products[0]?.id || "";
   dom.productSelect.innerHTML = [
     `<option value="__new__">+ Nuovo prodotto</option>`,
-    ...state.products.map((p) => `<option value="${p.id}">${p.name}</option>`)
+    ...state.products.map((p) => `<option value="${p.id}">${p.name}</option>`),
   ].join("");
-  dom.productSelect.value = state.products.some((p) => p.id === current) ? current : (current === "__new__" ? "__new__" : state.products[0]?.id || "__new__");
+  dom.productSelect.value = state.products.some((p) => p.id === current)
+    ? current
+    : current === "__new__"
+      ? "__new__"
+      : state.products[0]?.id || "__new__";
   fillProductForm(dom.productSelect.value);
 }
 
@@ -605,12 +637,17 @@ function showToast(message) {
   clearTimeout(state.toastTimer);
   dom.toast.textContent = message;
   dom.toast.classList.add("is-visible");
-  state.toastTimer = setTimeout(() => dom.toast.classList.remove("is-visible"), 2600);
+  state.toastTimer = setTimeout(
+    () => dom.toast.classList.remove("is-visible"),
+    2600,
+  );
 }
 
 function getEnabledPaymentMode(requestedMode) {
-  if (requestedMode === "stripe" && isPaymentMethodEnabled("stripe")) return "stripe";
-  if (requestedMode === "paypal" && isPaymentMethodEnabled("paypal")) return "paypal";
+  if (requestedMode === "stripe" && isPaymentMethodEnabled("stripe"))
+    return "stripe";
+  if (requestedMode === "paypal" && isPaymentMethodEnabled("paypal"))
+    return "paypal";
   return "in-shop";
 }
 
@@ -618,13 +655,19 @@ function syncPaymentMethodAvailability() {
   document.querySelectorAll('input[name="paymentMode"]').forEach((input) => {
     const enabled = getEnabledPaymentMode(input.value) === input.value;
     input.disabled = !enabled;
-    input.closest(".checkout-option")?.classList.toggle("is-disabled", !enabled);
+    input
+      .closest(".checkout-option")
+      ?.classList.toggle("is-disabled", !enabled);
   });
 
-  const selectedValue = dom.checkoutForm.querySelector('input[name="paymentMode"]:checked')?.value || "in-shop";
+  const selectedValue =
+    dom.checkoutForm.querySelector('input[name="paymentMode"]:checked')
+      ?.value || "in-shop";
   const validValue = getEnabledPaymentMode(selectedValue);
   if (selectedValue !== validValue) {
-    const fallbackInput = dom.checkoutForm.querySelector(`input[name="paymentMode"][value="${validValue}"]`);
+    const fallbackInput = dom.checkoutForm.querySelector(
+      `input[name="paymentMode"][value="${validValue}"]`,
+    );
     if (fallbackInput) fallbackInput.checked = true;
   }
 }
@@ -632,7 +675,9 @@ function syncPaymentMethodAvailability() {
 function syncCheckoutButtonLabel() {
   const payButton = dom.checkoutForm?.querySelector("[data-pay-now]");
   if (!payButton) return;
-  const paymentMode = getEnabledPaymentMode(dom.checkoutForm.querySelector('input[name="paymentMode"]:checked')?.value);
+  const paymentMode = getEnabledPaymentMode(
+    dom.checkoutForm.querySelector('input[name="paymentMode"]:checked')?.value,
+  );
   if (paymentMode === "paypal") {
     payButton.textContent = "Continua con PayPal";
     return;
@@ -651,9 +696,9 @@ function renderCheckoutSuccess(order) {
     dom,
     order.items.map((item) => ({
       product: { name: item.productName, price: item.unitPrice },
-      quantity: item.quantity
+      quantity: item.quantity,
     })),
-    order.total
+    order.total,
   );
   dom.checkoutForm.hidden = true;
   dom.checkoutSummary.hidden = false;
@@ -664,18 +709,20 @@ async function postJson(url, payload) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 
   if (response.status === 404 || response.status === 501) {
-    throw new Error("API backend non disponibile in questo ambiente locale. Avvia il progetto con Cloudflare Pages Functions attive.");
+    throw new Error(
+      "API backend non disponibile in questo ambiente locale. Avvia il progetto con Cloudflare Pages Functions attive.",
+    );
   }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error("API error", {
       url,
-      status: response.status
+      status: response.status,
     });
     throw new Error(data?.error || "Richiesta non riuscita.");
   }
@@ -684,38 +731,6 @@ async function postJson(url, payload) {
 
 async function submitLeadRequest(payload) {
   return postJson("/api/contact/create", payload);
-}
-
-function writePendingPaypal(payload) {
-  sessionStorage.setItem(PAYPAL_CHECKOUT_KEY, JSON.stringify(payload));
-}
-
-function readPendingPaypal() {
-  try {
-    return JSON.parse(sessionStorage.getItem(PAYPAL_CHECKOUT_KEY) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function clearPendingPaypal() {
-  sessionStorage.removeItem(PAYPAL_CHECKOUT_KEY);
-}
-
-function writePendingStripe(payload) {
-  sessionStorage.setItem(STRIPE_CHECKOUT_KEY, JSON.stringify(payload));
-}
-
-function readPendingStripe() {
-  try {
-    return JSON.parse(sessionStorage.getItem(STRIPE_CHECKOUT_KEY) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function clearPendingStripe() {
-  sessionStorage.removeItem(STRIPE_CHECKOUT_KEY);
 }
 
 function clearCheckoutSearch(hash = "#checkout") {
@@ -734,7 +749,8 @@ async function handlePaypalReturn() {
 
   const pending = readPendingPaypal();
   const orderId = url.searchParams.get("orderId") || pending?.orderId || "";
-  const paypalOrderId = url.searchParams.get("token") || pending?.paypalOrderId || "";
+  const paypalOrderId =
+    url.searchParams.get("token") || pending?.paypalOrderId || "";
 
   window.location.hash = "#checkout";
 
@@ -753,7 +769,10 @@ async function handlePaypalReturn() {
   }
 
   try {
-    const { order } = await postJson("/api/checkout/capture", { orderId, paypalOrderId });
+    const { order } = await postJson("/api/checkout/capture", {
+      orderId,
+      paypalOrderId,
+    });
     await clearCart();
     clearPendingPaypal();
     state.cart = [];
@@ -778,7 +797,8 @@ async function handleStripeReturn() {
 
   const pending = readPendingStripe();
   const orderId = url.searchParams.get("orderId") || pending?.orderId || "";
-  const stripeSessionId = url.searchParams.get("session_id") || pending?.stripeSessionId || "";
+  const stripeSessionId =
+    url.searchParams.get("session_id") || pending?.stripeSessionId || "";
 
   window.location.hash = "#checkout";
 
@@ -797,7 +817,10 @@ async function handleStripeReturn() {
   }
 
   try {
-    const { order } = await postJson("/api/checkout/stripe/verify", { orderId, stripeSessionId });
+    const { order } = await postJson("/api/checkout/stripe/verify", {
+      orderId,
+      stripeSessionId,
+    });
     await clearCart();
     clearPendingStripe();
     state.cart = [];
@@ -820,23 +843,45 @@ function routeToPage() {
   const aliases = { products: "shop", top: "home" };
   const requestedRoute = window.location.hash.replace("#", "") || "home";
   const route = aliases[requestedRoute] || requestedRoute;
-  const valid = document.querySelector(`[data-page="${route}"]`) ? route : "home";
-  document.querySelectorAll("[data-page]").forEach((page) => page.classList.toggle("is-active", page.dataset.page === valid));
-  document.querySelectorAll(".main-nav a").forEach((link) => link.classList.toggle("is-active", link.getAttribute("href") === `#${valid}`));
+  const valid = document.querySelector(`[data-page="${route}"]`)
+    ? route
+    : "home";
+  document
+    .querySelectorAll("[data-page]")
+    .forEach((page) =>
+      page.classList.toggle("is-active", page.dataset.page === valid),
+    );
+  document
+    .querySelectorAll(".main-nav a")
+    .forEach((link) =>
+      link.classList.toggle(
+        "is-active",
+        link.getAttribute("href") === `#${valid}`,
+      ),
+    );
   if (valid !== "checkout") {
     dom.checkoutForm.hidden = false;
     dom.checkoutSummary.hidden = true;
     dom.checkoutSuccess.hidden = true;
   }
   if (valid === "admin" && !state.adminAuthenticated) {
-    dom.adminLoginError.textContent = "Accedi con account gestore per entrare nel pannello.";
-    setTimeout(() => dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus(), 0);
+    dom.adminLoginError.textContent =
+      "Accedi con account gestore per entrare nel pannello.";
+    setTimeout(
+      () =>
+        dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus(),
+      0,
+    );
   }
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 function trapFocus(drawer) {
-  const focusables = [...drawer.querySelectorAll("button,[href],input,select,textarea,[tabindex]:not([tabindex='-1'])")].filter((el) => !el.disabled && !el.hidden);
+  const focusables = [
+    ...drawer.querySelectorAll(
+      "button,[href],input,select,textarea,[tabindex]:not([tabindex='-1'])",
+    ),
+  ].filter((el) => !el.disabled && !el.hidden);
   if (!focusables.length) return;
   const first = focusables[0];
   const last = focusables.at(-1);
@@ -858,24 +903,40 @@ function trapFocus(drawer) {
 function openDrawer(drawer, triggerSelector) {
   drawerFocus.previous = document.activeElement;
   drawer.setAttribute("aria-hidden", "false");
-  document.querySelectorAll(triggerSelector).forEach((item) => item.setAttribute("aria-expanded", "true"));
+  document
+    .querySelectorAll(triggerSelector)
+    .forEach((item) => item.setAttribute("aria-expanded", "true"));
   document.body.classList.add("drawer-open");
   trapFocus(drawer);
 }
 
 function closeDrawer(drawer, triggerSelector) {
   drawer.setAttribute("aria-hidden", "true");
-  document.querySelectorAll(triggerSelector).forEach((item) => item.setAttribute("aria-expanded", "false"));
-  if (drawer._focusTrap) drawer.removeEventListener("keydown", drawer._focusTrap);
-  const anyOpen = [dom.cartDrawer].some((item) => item.getAttribute("aria-hidden") === "false");
+  document
+    .querySelectorAll(triggerSelector)
+    .forEach((item) => item.setAttribute("aria-expanded", "false"));
+  if (drawer._focusTrap)
+    drawer.removeEventListener("keydown", drawer._focusTrap);
+  const anyOpen = [dom.cartDrawer].some(
+    (item) => item.getAttribute("aria-hidden") === "false",
+  );
   if (!anyOpen) document.body.classList.remove("drawer-open");
   drawerFocus.previous?.focus?.({ preventScroll: true });
 }
 
 function setCategory(category) {
-  const allowed = new Set((state.siteSections.shopCategories || []).map((item) => item.value));
+  const allowed = new Set(
+    (state.siteSections.shopCategories || []).map((item) => item.value),
+  );
   state.activeCategory = allowed.has(category) ? category : "all";
-  document.querySelectorAll("[data-category]").forEach((button) => button.classList.toggle("is-active", button.dataset.category === state.activeCategory));
+  document
+    .querySelectorAll("[data-category]")
+    .forEach((button) =>
+      button.classList.toggle(
+        "is-active",
+        button.dataset.category === state.activeCategory,
+      ),
+    );
   renderProducts(dom, state.products, state.inventory, state.activeCategory);
 }
 
@@ -885,7 +946,10 @@ async function addToCart(productId) {
   const row = state.cart.find((item) => item.productId === productId);
   const inCart = Number(row?.quantity || 0);
   if (!product || available <= 0) return showToast("Prodotto esaurito.");
-  if (inCart >= available) return showToast("Hai raggiunto la disponibilita massima per questo prodotto.");
+  if (inCart >= available)
+    return showToast(
+      "Hai raggiunto la disponibilita massima per questo prodotto.",
+    );
   if (row) row.quantity += 1;
   else state.cart.push({ productId, quantity: 1 });
   await persistCart();
@@ -897,21 +961,27 @@ async function removeFromCart(productId) {
   const row = state.cart.find((item) => item.productId === productId);
   if (!row) return;
   row.quantity -= 1;
-  if (row.quantity <= 0) state.cart = state.cart.filter((item) => item.productId !== productId);
+  if (row.quantity <= 0)
+    state.cart = state.cart.filter((item) => item.productId !== productId);
   await persistCart();
   syncUi();
 }
 
 async function adjustInventory(productId, amount) {
   if (!requireAdmin()) return;
-  state.inventory[productId] = Math.max(0, (state.inventory[productId] ?? 0) + amount);
+  state.inventory[productId] = Math.max(
+    0,
+    (state.inventory[productId] ?? 0) + amount,
+  );
   await saveInventory(state.inventory);
   await reloadDbBackedState();
 }
 
 async function restockAll() {
   if (!requireAdmin()) return;
-  state.products.forEach((product) => { state.inventory[product.id] = Number(product.restock || 0); });
+  state.products.forEach((product) => {
+    state.inventory[product.id] = Number(product.restock || 0);
+  });
   await saveInventory(state.inventory);
   await reloadDbBackedState();
   showToast("Magazzino rifornito.");
@@ -927,7 +997,7 @@ async function saveFreshCut() {
     name: dom.cutNameInput.value.trim() || defaultFreshCut.name,
     description: dom.cutTextInput.value.trim() || defaultFreshCut.description,
     image: image || state.featuredCut.image,
-    date: dom.cutDateInput.value || todayISO()
+    date: dom.cutDateInput.value || todayISO(),
   };
   state.featuredCut = cut;
   state.monthlyCuts = normalizeCuts([cut, ...state.monthlyCuts]);
@@ -943,22 +1013,30 @@ async function saveProductFromForm() {
   const id = dom.productSelect.value;
   if (id === "__new__") {
     const name = dom.productNameInput.value.trim();
-    const category = dom.productCategoryInput.value.trim().toLowerCase() || "accessories";
+    const category =
+      dom.productCategoryInput.value.trim().toLowerCase() || "accessories";
     if (!name) {
       showToast("Inserisci il nome prodotto.");
       return;
     }
-    const newIdBase = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const newIdBase = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
     let newId = newIdBase || `product-${Date.now()}`;
     let suffix = 1;
     while (state.products.some((item) => item.id === newId)) {
       newId = `${newIdBase}-${suffix++}`;
     }
     const packshot = dom.productPackshotInput.files[0]
-      ? await uploadImage(dom.productPackshotInput.files[0], { bucket: "products" })
+      ? await uploadImage(dom.productPackshotInput.files[0], {
+          bucket: "products",
+        })
       : "";
     const lifestyle = dom.productLifestyleInput.files[0]
-      ? await uploadImage(dom.productLifestyleInput.files[0], { bucket: "products" })
+      ? await uploadImage(dom.productLifestyleInput.files[0], {
+          bucket: "products",
+        })
       : packshot;
     const restock = Math.max(0, Number(dom.productRestockInput.value || 0));
     const product = {
@@ -973,7 +1051,7 @@ async function saveProductFromForm() {
       restock,
       colors: ["#111111", "#d40f19", "#ffffff"],
       shape: "jar",
-      images: { packshot, lifestyle }
+      images: { packshot, lifestyle },
     };
     state.products.unshift(product);
     state.inventory[newId] = restock;
@@ -990,8 +1068,16 @@ async function saveProductFromForm() {
   const index = state.products.findIndex((item) => item.id === id);
   if (index < 0) return;
   const base = state.products[index];
-  const packshot = dom.productPackshotInput.files[0] ? await uploadImage(dom.productPackshotInput.files[0], { bucket: "products" }) : (base.images?.packshot || "");
-  const lifestyle = dom.productLifestyleInput.files[0] ? await uploadImage(dom.productLifestyleInput.files[0], { bucket: "products" }) : (base.images?.lifestyle || packshot);
+  const packshot = dom.productPackshotInput.files[0]
+    ? await uploadImage(dom.productPackshotInput.files[0], {
+        bucket: "products",
+      })
+    : base.images?.packshot || "";
+  const lifestyle = dom.productLifestyleInput.files[0]
+    ? await uploadImage(dom.productLifestyleInput.files[0], {
+        bucket: "products",
+      })
+    : base.images?.lifestyle || packshot;
   state.products[index] = {
     ...base,
     name: dom.productNameInput.value.trim() || base.name,
@@ -999,7 +1085,7 @@ async function saveProductFromForm() {
     label: dom.productCategoryInput.value.trim() || base.label,
     price: Math.max(0, Number(dom.productPriceInput.value || base.price)),
     restock: Math.max(0, Number(dom.productRestockInput.value || base.restock)),
-    images: { packshot, lifestyle }
+    images: { packshot, lifestyle },
   };
   await saveProducts(state.products);
   await reloadDbBackedState();
@@ -1012,7 +1098,8 @@ async function saveProductFromForm() {
 
 async function deleteSelectedProduct() {
   if (!requireAdmin()) return;
-  if (state.products.length <= 1) return showToast("Serve almeno un prodotto nel catalogo.");
+  if (state.products.length <= 1)
+    return showToast("Serve almeno un prodotto nel catalogo.");
   const id = dom.productSelect.value;
   const product = state.products.find((item) => item.id === id);
   await deleteProduct(id);
@@ -1026,34 +1113,28 @@ async function deleteSelectedProduct() {
 
 function validateCheckout(formData) {
   const errors = {};
-  if (!String(formData.get("fullName") || "").trim()) errors.fullName = "Inserisci nome completo.";
-  if (!/\S+@\S+\.\S+/.test(String(formData.get("email") || ""))) errors.email = "Email non valida.";
-  if (String(formData.get("phone") || "").trim().length < 6) errors.phone = "Telefono non valido.";
+  if (!String(formData.get("fullName") || "").trim())
+    errors.fullName = "Inserisci nome completo.";
+  if (!/\S+@\S+\.\S+/.test(String(formData.get("email") || "")))
+    errors.email = "Email non valida.";
+  if (String(formData.get("phone") || "").trim().length < 6)
+    errors.phone = "Telefono non valido.";
   if (formData.get("fulfillment") === "shipping") {
-    if (!String(formData.get("address") || "").trim()) errors.address = "Inserisci indirizzo.";
-    if (!String(formData.get("city") || "").trim()) errors.city = "Inserisci città.";
-    if (!String(formData.get("zip") || "").trim()) errors.zip = "Inserisci CAP.";
+    if (!String(formData.get("address") || "").trim())
+      errors.address = "Inserisci indirizzo.";
+    if (!String(formData.get("city") || "").trim())
+      errors.city = "Inserisci città.";
+    if (!String(formData.get("zip") || "").trim())
+      errors.zip = "Inserisci CAP.";
   }
-  dom.checkoutForm.querySelectorAll(".field-error").forEach((node) => { node.textContent = ""; });
+  dom.checkoutForm.querySelectorAll(".field-error").forEach((node) => {
+    node.textContent = "";
+  });
   Object.entries(errors).forEach(([key, message]) => {
     const node = dom.checkoutForm.querySelector(`[data-error-for="${key}"]`);
     if (node) node.textContent = message;
   });
   return Object.keys(errors).length === 0;
-}
-
-function normalizePhone(value) {
-  return String(value || "").replace(/[^\d+]/g, "");
-}
-
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || "").trim());
-}
-
-function isValidPhone(value) {
-  const normalized = normalizePhone(value);
-  const digits = normalized.replace(/\D/g, "");
-  return /^\+?\d{8,15}$/.test(normalized) && digits.length >= 8 && digits.length <= 15 && !/^(\d)\1+$/.test(digits);
 }
 
 function validateContactForm(form, formData) {
@@ -1067,13 +1148,18 @@ function validateContactForm(form, formData) {
   if (!email) errors.email = "Inserisci la tua email.";
   else if (!isValidEmail(email)) errors.email = "Inserisci una email valida.";
   if (!phone) errors.phone = "Inserisci un numero di telefono.";
-  else if (!isValidPhone(phone)) errors.phone = "Inserisci un numero reale con prefisso, es. +39 320 000 0000.";
+  else if (!isValidPhone(phone))
+    errors.phone =
+      "Inserisci un numero reale con prefisso, es. +39 320 000 0000.";
   if (!subject) errors.subject = "Inserisci l'oggetto della richiesta.";
   if (!message) errors.message = "Scrivi il messaggio.";
   else if (message.length < 10) errors.message = "Scrivi almeno 10 caratteri.";
-  if (!privacy) errors.privacy = "Accetta la Privacy Policy per inviare la richiesta.";
+  if (!privacy)
+    errors.privacy = "Accetta la Privacy Policy per inviare la richiesta.";
 
-  form.querySelectorAll("[data-contact-error-for]").forEach((node) => { node.textContent = ""; });
+  form.querySelectorAll("[data-contact-error-for]").forEach((node) => {
+    node.textContent = "";
+  });
   Object.entries(errors).forEach(([key, messageText]) => {
     const node = form.querySelector(`[data-contact-error-for="${key}"]`);
     if (node) node.textContent = messageText;
@@ -1083,47 +1169,45 @@ function validateContactForm(form, formData) {
 }
 
 function buildOrderPayload(formData) {
-  const requestedPaymentMode = String(formData.get("paymentMode") || "in-shop");
-  const paymentMode = getEnabledPaymentMode(requestedPaymentMode);
-  const items = cartExpanded().map((row) => ({
-    productId: row.product.id,
-    quantity: row.quantity
-  }));
-  return {
-    customer: {
-      fullName: String(formData.get("fullName")).trim(),
-      email: String(formData.get("email")).trim(),
-      phone: String(formData.get("phone")).trim()
-    },
-    fulfillment: formData.get("fulfillment"),
-    shippingAddress: formData.get("fulfillment") === "shipping"
-      ? { address: formData.get("address"), city: formData.get("city"), zip: formData.get("zip") }
-      : null,
-    items,
-    paymentMode
-  };
+  return buildCheckoutOrderPayload({
+    formData,
+    cartRows: cartExpanded(),
+    resolvePaymentMode: getEnabledPaymentMode,
+  });
 }
 
 async function saveSiteSectionsFromForm() {
   if (!requireAdmin()) return;
-  const rawValue = String(dom.categoryValueInput.value || "").trim().toLowerCase();
+  const rawValue = String(dom.categoryValueInput.value || "")
+    .trim()
+    .toLowerCase();
   const rawLabel = String(dom.categoryLabelInput.value || "").trim();
-  if (!rawValue || !rawLabel) return showToast("Compila chiave e nome categoria.");
+  if (!rawValue || !rawLabel)
+    return showToast("Compila chiave e nome categoria.");
   const nextCategories = [...(state.siteSections.shopCategories || [])];
   const selected = dom.categorySelect.value;
-  const existingIndex = nextCategories.findIndex((item) => item.value === selected);
-  const duplicateIndex = nextCategories.findIndex((item) => item.value === rawValue);
-  if (duplicateIndex >= 0 && duplicateIndex !== existingIndex) return showToast("Categoria gia presente.");
+  const existingIndex = nextCategories.findIndex(
+    (item) => item.value === selected,
+  );
+  const duplicateIndex = nextCategories.findIndex(
+    (item) => item.value === rawValue,
+  );
+  if (duplicateIndex >= 0 && duplicateIndex !== existingIndex)
+    return showToast("Categoria gia presente.");
   if (existingIndex >= 0) {
     nextCategories[existingIndex] = { value: rawValue, label: rawLabel };
-    state.products = state.products.map((product) => (
-      product.category === selected ? { ...product, category: rawValue, label: rawLabel } : product
-    ));
+    state.products = state.products.map((product) =>
+      product.category === selected
+        ? { ...product, category: rawValue, label: rawLabel }
+        : product,
+    );
   }
   state.siteSections = {
-    shopTitle: dom.sectionShopTitleInput.value.trim() || state.siteSections.shopTitle,
-    shopCopy: dom.sectionShopCopyInput.value.trim() || state.siteSections.shopCopy,
-    shopCategories: normalizeShopCategories(nextCategories, state.products)
+    shopTitle:
+      dom.sectionShopTitleInput.value.trim() || state.siteSections.shopTitle,
+    shopCopy:
+      dom.sectionShopCopyInput.value.trim() || state.siteSections.shopCopy,
+    shopCategories: normalizeShopCategories(nextCategories, state.products),
   };
   await saveProducts(state.products);
   await saveSiteSections(state.siteSections);
@@ -1133,12 +1217,22 @@ async function saveSiteSectionsFromForm() {
 
 async function addCategorySection() {
   if (!requireAdmin()) return;
-  const value = String(dom.categoryValueInput.value || "").trim().toLowerCase();
+  const value = String(dom.categoryValueInput.value || "")
+    .trim()
+    .toLowerCase();
   const label = String(dom.categoryLabelInput.value || "").trim();
   if (!value || !label) return showToast("Inserisci chiave e nome categoria.");
-  if ((state.siteSections.shopCategories || []).some((item) => item.value === value)) return showToast("Categoria gia esistente.");
+  if (
+    (state.siteSections.shopCategories || []).some(
+      (item) => item.value === value,
+    )
+  )
+    return showToast("Categoria gia esistente.");
   state.siteSections.shopCategories.push({ value, label });
-  state.siteSections.shopCategories = normalizeShopCategories(state.siteSections.shopCategories, state.products);
+  state.siteSections.shopCategories = normalizeShopCategories(
+    state.siteSections.shopCategories,
+    state.products,
+  );
   await saveSiteSections(state.siteSections);
   await reloadDbBackedState();
   dom.categorySelect.value = value;
@@ -1148,12 +1242,19 @@ async function addCategorySection() {
 
 async function deleteCategorySection() {
   if (!requireAdmin()) return;
-  const value = String(dom.categorySelect.value || "").trim().toLowerCase();
-  if (!value || value === "all") return showToast("ALL non puo essere rimossa.");
-  state.siteSections.shopCategories = (state.siteSections.shopCategories || []).filter((item) => item.value !== value);
-  state.products = state.products.map((product) => (
-    product.category === value ? { ...product, category: "accessories", label: "Accessories" } : product
-  ));
+  const value = String(dom.categorySelect.value || "")
+    .trim()
+    .toLowerCase();
+  if (!value || value === "all")
+    return showToast("ALL non puo essere rimossa.");
+  state.siteSections.shopCategories = (
+    state.siteSections.shopCategories || []
+  ).filter((item) => item.value !== value);
+  state.products = state.products.map((product) =>
+    product.category === value
+      ? { ...product, category: "accessories", label: "Accessories" }
+      : product,
+  );
   if (state.activeCategory === value) state.activeCategory = "all";
   await saveProducts(state.products);
   await saveSiteSections(state.siteSections);
@@ -1176,13 +1277,15 @@ async function submitCheckout(event) {
 
   try {
     const orderDraft = buildOrderPayload(formData);
-    const result = await postJson("/api/checkout/create", { order: orderDraft });
+    const result = await postJson("/api/checkout/create", {
+      order: orderDraft,
+    });
 
     if (result.mode === "paypal") {
       writePendingPaypal({
         orderId: result.order.id,
         orderNumber: result.order.orderNumber,
-        paypalOrderId: result.paypalOrderId
+        paypalOrderId: result.paypalOrderId,
       });
       window.location.href = result.approvalUrl;
       return;
@@ -1192,7 +1295,7 @@ async function submitCheckout(event) {
       writePendingStripe({
         orderId: result.order.id,
         orderNumber: result.order.orderNumber,
-        stripeSessionId: result.stripeSessionId
+        stripeSessionId: result.stripeSessionId,
       });
       window.location.href = result.checkoutUrl;
       return;
@@ -1216,7 +1319,9 @@ async function submitCheckout(event) {
 }
 
 function setFulfillmentUi() {
-  const value = dom.checkoutForm.querySelector('input[name="fulfillment"]:checked')?.value;
+  const value = dom.checkoutForm.querySelector(
+    'input[name="fulfillment"]:checked',
+  )?.value;
   const shipping = value === "shipping";
   dom.shippingFields.hidden = !shipping;
   syncPaymentMethodAvailability();
@@ -1226,7 +1331,9 @@ function setFulfillmentUi() {
 async function unlockAdmin(password, email = "") {
   if (dom.adminLoginError) dom.adminLoginError.textContent = "";
   if (CONFIG.ADMIN_MODE === "supabase-auth") {
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
     if (!normalizedEmail) {
       dom.adminLoginError.textContent = "Inserisci email admin.";
       return;
@@ -1242,16 +1349,19 @@ async function unlockAdmin(password, email = "") {
     }
     const { error } = await sb.auth.signInWithPassword({
       email: normalizedEmail,
-      password
+      password,
     });
     if (error) {
-      dom.adminLoginError.textContent = error.message || "Credenziali non valide.";
-      showToast(`Login admin fallito: ${error.message || "errore sconosciuto"}`);
+      dom.adminLoginError.textContent =
+        error.message || "Credenziali non valide.";
+      showToast(
+        `Login admin fallito: ${error.message || "errore sconosciuto"}`,
+      );
       return;
     }
     state.adminAuthenticated = true;
     await loadAdminState();
-    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    writeAdminSession();
     state.adminView = "data";
     syncAdminVisibility({ clearError: true });
     setAdminView("data");
@@ -1266,7 +1376,7 @@ async function unlockAdmin(password, email = "") {
     }
     state.adminAuthenticated = true;
     await loadAdminState();
-    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    writeAdminSession();
     state.adminView = "data";
     syncAdminVisibility({ clearError: true });
     setAdminView("data");
@@ -1280,15 +1390,18 @@ async function logoutAdmin() {
     if (sb) await sb.auth.signOut();
   }
   state.adminAuthenticated = false;
-  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  clearAdminSession();
   await loadAdminState();
   syncAdminVisibility({ clearError: true });
   setAdminView("data");
-  if (isAdminRoute()) dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus();
+  if (isAdminRoute())
+    dom.adminLoginForm?.querySelector('input[name="adminEmail"]')?.focus();
 }
 
 function exportJson(filename, payload) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = filename;
@@ -1305,20 +1418,31 @@ function bindEvents() {
     const remove = event.target.closest("[data-remove-cart]");
     const restock = event.target.closest("[data-restock]");
     const toggleImage = event.target.closest("[data-toggle-product-image]");
-    const consentOpen = event.target.closest("[data-open-consent], [data-consent-open]");
+    const consentOpen = event.target.closest(
+      "[data-open-consent], [data-consent-open]",
+    );
     const consentClose = event.target.closest("[data-consent-close]");
     const consentAccept = event.target.closest("[data-consent-accept]");
     const consentReject = event.target.closest("[data-consent-reject]");
-    const consentSaveSelected = event.target.closest("[data-consent-save-selected]");
+    const consentSaveSelected = event.target.closest(
+      "[data-consent-save-selected]",
+    );
 
     if (add) await addToCart(add.dataset.addToCart);
     if (cat) setCategory(cat.dataset.category);
     if (catLink) setCategory(catLink.dataset.categoryLink);
-    if (adjust) await adjustInventory(adjust.dataset.adjust, Number(adjust.dataset.delta));
+    if (adjust)
+      await adjustInventory(
+        adjust.dataset.adjust,
+        Number(adjust.dataset.delta),
+      );
     if (remove) await removeFromCart(remove.dataset.removeCart);
     if (restock) {
-      const product = state.products.find((item) => item.id === restock.dataset.restock);
-      if (product) await adjustInventory(product.id, Number(product.restock || 0));
+      const product = state.products.find(
+        (item) => item.id === restock.dataset.restock,
+      );
+      if (product)
+        await adjustInventory(product.id, Number(product.restock || 0));
     }
     if (toggleImage) {
       const card = toggleImage.closest(".product-card");
@@ -1328,57 +1452,73 @@ function bindEvents() {
     }
     if (consentOpen) openConsentModal();
     if (consentClose) closeConsentModal();
-    if (consentAccept) saveConsent({ necessary: true, analytics: true, marketing: true });
-    if (consentReject) saveConsent({ necessary: true, analytics: false, marketing: false });
+    if (consentAccept)
+      saveConsent({ necessary: true, analytics: true, marketing: true });
+    if (consentReject)
+      saveConsent({ necessary: true, analytics: false, marketing: false });
     if (consentSaveSelected) {
       saveConsent({
         necessary: true,
         analytics: Boolean(dom.consentAnalytics?.checked),
-        marketing: Boolean(dom.consentMarketing?.checked)
+        marketing: Boolean(dom.consentMarketing?.checked),
       });
     }
 
-    if (event.target.closest(".cart-trigger")) openDrawer(dom.cartDrawer, ".cart-trigger");
-    if (event.target.closest("[data-close-cart]")) closeDrawer(dom.cartDrawer, ".cart-trigger");
+    if (event.target.closest(".cart-trigger"))
+      openDrawer(dom.cartDrawer, ".cart-trigger");
+    if (event.target.closest("[data-close-cart]"))
+      closeDrawer(dom.cartDrawer, ".cart-trigger");
     if (event.target.closest("[data-restock-all]")) await restockAll();
     if (event.target.closest("[data-reset-local]")) {
       if (!requireAdmin()) return;
       if (!confirm("Confermi il ripristino dei dati locali?")) return;
-      localStorage.clear();
-      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      clearLocalAppData();
       window.location.reload();
     }
     if (event.target.closest("[data-cut-reset]")) {
-    state.featuredCut = { ...defaultFreshCut };
-    state.monthlyCuts = [defaultFreshCut];
-    await saveFeaturedCut(state.featuredCut);
-    await saveMonthlyCuts(state.monthlyCuts);
-    await reloadDbBackedState();
-  }
+      state.featuredCut = { ...defaultFreshCut };
+      state.monthlyCuts = [defaultFreshCut];
+      await saveFeaturedCut(state.featuredCut);
+      await saveMonthlyCuts(state.monthlyCuts);
+      await reloadDbBackedState();
+    }
     if (event.target.closest("[data-checkout]")) {
       closeDrawer(dom.cartDrawer, ".cart-trigger");
       if (!state.cart.length) return showToast("Il carrello è vuoto.");
       window.location.hash = "#checkout";
     }
-    if (event.target.closest("[data-product-delete]")) await deleteSelectedProduct();
+    if (event.target.closest("[data-product-delete]"))
+      await deleteSelectedProduct();
     if (event.target.closest("[data-admin-logout]")) await logoutAdmin();
     if (event.target.closest("[data-category-new]")) await addCategorySection();
-    if (event.target.closest("[data-category-delete]")) await deleteCategorySection();
+    if (event.target.closest("[data-category-delete]"))
+      await deleteCategorySection();
     const orderSave = event.target.closest("[data-order-status-save]");
     const orderDetail = event.target.closest("[data-order-detail]");
     const leadDone = event.target.closest("[data-lead-done]");
     const leadDelete = event.target.closest("[data-lead-delete]");
-    if (orderSave) await saveOrderStatusFromUi(orderSave.dataset.orderStatusSave);
+    if (orderSave)
+      await saveOrderStatusFromUi(orderSave.dataset.orderStatusSave);
     if (orderDetail) showOrderDetail(orderDetail.dataset.orderDetail);
-    if (leadDone) await removeLeadFromUi(leadDone.dataset.leadDone, "Richiesta segnata come fatta.");
-    if (leadDelete) await removeLeadFromUi(leadDelete.dataset.leadDelete, "Richiesta eliminata.");
+    if (leadDone)
+      await removeLeadFromUi(
+        leadDone.dataset.leadDone,
+        "Richiesta segnata come fatta.",
+      );
+    if (leadDelete)
+      await removeLeadFromUi(
+        leadDelete.dataset.leadDelete,
+        "Richiesta eliminata.",
+      );
     const adminTab = event.target.closest("[data-admin-tab]");
     if (adminTab && requireAdmin()) {
       setAdminView(adminTab.dataset.adminTab);
     }
     if (event.target.closest("[data-copy-order]")) {
       const summary = dom.checkoutSuccessSummary.textContent || "";
-      await navigator.clipboard.writeText(`Ordine ${dom.orderNumber.textContent}\n${summary}`);
+      await navigator.clipboard.writeText(
+        `Ordine ${dom.orderNumber.textContent}\n${summary}`,
+      );
       showToast("Riepilogo copiato.");
     }
     if (event.target.closest("[data-download-order]")) {
@@ -1387,17 +1527,29 @@ function bindEvents() {
     }
   });
 
-  dom.productSearchInput?.addEventListener("input", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
-  dom.productSortSelect?.addEventListener("change", () => renderProducts(dom, state.products, state.inventory, state.activeCategory));
-  dom.categorySelect?.addEventListener("change", (event) => fillCategoryEditor(event.target.value));
-  dom.productSelect?.addEventListener("change", (event) => fillProductForm(event.target.value));
+  dom.productSearchInput?.addEventListener("input", () =>
+    renderProducts(dom, state.products, state.inventory, state.activeCategory),
+  );
+  dom.productSortSelect?.addEventListener("change", () =>
+    renderProducts(dom, state.products, state.inventory, state.activeCategory),
+  );
+  dom.categorySelect?.addEventListener("change", (event) =>
+    fillCategoryEditor(event.target.value),
+  );
+  dom.productSelect?.addEventListener("change", (event) =>
+    fillProductForm(event.target.value),
+  );
   dom.productNewButton?.addEventListener("click", () => {
     dom.productSelect.value = "__new__";
     fillProductForm("__new__");
   });
 
   dom.checkoutForm.addEventListener("change", (event) => {
-    if (event.target.name === "fulfillment" || event.target.name === "paymentMode") setFulfillmentUi();
+    if (
+      event.target.name === "fulfillment" ||
+      event.target.name === "paymentMode"
+    )
+      setFulfillmentUi();
   });
   dom.checkoutForm.addEventListener("submit", submitCheckout);
   dom.adminLoginForm.addEventListener("submit", (event) => {
@@ -1407,44 +1559,52 @@ function bindEvents() {
     const password = String(formData.get("adminPassword") || "").trim();
     unlockAdmin(password, email);
   });
-  document.querySelector("[data-product-form]").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveProductFromForm();
-  });
-  document.querySelector("[data-sections-form]")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveSiteSectionsFromForm();
-  });
-  document.querySelector("[data-cut-form]").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveFreshCut();
-  });
-  document.querySelector("[data-contact-form]").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const fd = new FormData(form);
-    if (!validateContactForm(form, fd)) {
-      return showToast("Controlla i campi del form contatti.");
-    }
-    const email = String(fd.get("email") || "").trim();
-    const phone = String(fd.get("phone") || "").trim();
-    const subject = String(fd.get("subject") || "").trim();
-    const message = String(fd.get("message") || "").trim();
-    await submitLeadRequest({
-      email,
-      phone,
-      subject,
-      message,
-      privacy_accepted: true,
-      source: "contact-form",
-      website: String(fd.get("website") || "")
+  document
+    .querySelector("[data-product-form]")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await saveProductFromForm();
     });
-    if (state.adminAuthenticated) {
-      await loadAdminState();
-    }
-    form.reset();
-    showToast("Messaggio inviato allo staff.");
-  });
+  document
+    .querySelector("[data-sections-form]")
+    ?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await saveSiteSectionsFromForm();
+    });
+  document
+    .querySelector("[data-cut-form]")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await saveFreshCut();
+    });
+  document
+    .querySelector("[data-contact-form]")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const fd = new FormData(form);
+      if (!validateContactForm(form, fd)) {
+        return showToast("Controlla i campi del form contatti.");
+      }
+      const email = String(fd.get("email") || "").trim();
+      const phone = String(fd.get("phone") || "").trim();
+      const subject = String(fd.get("subject") || "").trim();
+      const message = String(fd.get("message") || "").trim();
+      await submitLeadRequest({
+        email,
+        phone,
+        subject,
+        message,
+        privacy_accepted: true,
+        source: "contact-form",
+        website: String(fd.get("website") || ""),
+      });
+      if (state.adminAuthenticated) {
+        await loadAdminState();
+      }
+      form.reset();
+      showToast("Messaggio inviato allo staff.");
+    });
 
   window.addEventListener("hashchange", routeToPage);
   window.addEventListener("scroll", syncHeaderOnScroll, { passive: true });
@@ -1455,7 +1615,8 @@ function bindEvents() {
       closeDrawer(dom.cartDrawer, ".cart-trigger");
       closeConsentModal();
     }
-    if (event.altKey && event.key.toLowerCase() === "g") window.location.hash = "#admin";
+    if (event.altKey && event.key.toLowerCase() === "g")
+      window.location.hash = "#admin";
     if (event.altKey && event.key.toLowerCase() === "l") logoutAdmin();
   });
 }

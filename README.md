@@ -1,6 +1,6 @@
 # No Cap Barber Shop
 
-Frontend statico ecommerce per barber shop con Supabase, Cloudflare Pages Functions, PayPal e Stripe opzionali.
+Frontend statico ecommerce per barber shop con Supabase e Cloudflare Pages Functions. Il flusso prioritario attuale e' `in-shop`; PayPal e Stripe sono presenti nel codice come supporti opzionali/futuri, ma non vanno considerati attivi o production-ready finche' provider ed env non sono configurati.
 
 ## Avvio locale
 
@@ -55,36 +55,19 @@ Le Functions pubbliche accettano solo `POST` JSON con payload limitato, rate lim
 
 Il checkout server-side ricalcola prodotti, prezzi, stock, spedizione, totale e status da Supabase. Il client invia solo dati cliente, fulfillment, payment mode, product id e quantity.
 
-## SQL e ordine migration
+## Database e script SQL
 
-Applica in questo ordine:
+Lo schema Supabase reale attuale e il modello RLS sono documentati in `DATABASE.md`. Considera quel file la fonte documentale corrente per tabelle, colonne, letture pubbliche, inserimenti backend-only e modello admin.
 
-1. `sql/2026-06-18-seed-products-catalog.sql` se parti da DB vuoto.
-2. `sql/2026-06-18-order-status-normalization.sql`
-3. `sql/2026-06-18-order-status-stock-flow.sql`
-4. `sql/2026-06-18-admin-policies-template.sql`
-5. `sql/2026-06-18-close-public-order-lead-inserts.sql` solo dopo deploy Functions funzionante.
-6. `sql/2026-06-19-security-hardening.sql`
+La cartella `sql/` non fa parte del working tree attuale. Se trovi riferimenti a `sql/` in note o task precedenti, trattali come script operativi esterni/storici da lanciare manualmente su Supabase, non come una cartella richiesta da questo repo nello stato corrente.
 
-Dopo la migration di hardening, inserisci gli admin:
+Non aggiungere migrations o script SQL al repo senza una richiesta esplicita e senza prima verificare lo schema reale contro `DATABASE.md`.
 
-```sql
-insert into public.admin_users (user_id, role)
-values ('UUID_AUTH_USER_ADMIN', 'owner')
-on conflict (user_id) do update set role = excluded.role;
-```
-
-La migration `2026-06-19-security-hardening.sql` aggiunge `admin_users`, ID pagamento, tabella idempotenza `payment_events`, reservation expiry sugli ordini online e funzione `expire_stock_reservations()`.
-
-Esegui periodicamente:
-
-```sql
-select public.expire_stock_reservations();
-```
-
-Puoi schedularla con Supabase cron o con un job Cloudflare protetto.
+Eventuali miglioramenti futuri, come `admin_users`, eventi webhook/idempotenza o stock reservation, sono da considerare proposte documentate e non parte garantita dello schema attuale.
 
 ## Pagamenti
+
+Stato attuale: `in-shop` e' il flusso principale. PayPal e Stripe richiedono configurazione provider, env server-side e test sandbox prima dell'attivazione reale.
 
 Stripe:
 
@@ -92,12 +75,21 @@ Stripe:
 - usa `STRIPE_WEBHOOK_SECRET`;
 - considera il webhook firmato fonte primaria dello stato pagamento;
 - la verify client-side serve solo a riconciliare UX dopo il redirect.
+- il codice webhook puo' usare `payment_events` per idempotenza, ma questa tabella non fa parte dello schema reale documentato in `DATABASE.md`.
 
 PayPal:
 
 - la capture avviene server-side;
 - `PayPal-Request-Id` usa l'order id PayPal per ridurre duplicati;
 - per produzione aggiungi webhook PayPal o riconciliazione operativa giornaliera.
+
+Prima di vendere online con pagamento immediato, verifica in sandbox provider, idempotenza webhook/capture e comportamento stock sul progetto Supabase reale.
+
+## Stock e reservation
+
+Il backend verifica stock durante la canonicalizzazione ordine e ricalcola prezzi, subtotal, shipping, total e status lato server.
+
+La mutazione o reservation stock dipende dal comportamento reale del database Supabase, inclusi eventuali trigger collegati a `orders.inventory_reserved`. Questa logica non e' completamente descritta nel repo attuale. Prima di abilitare pagamenti online immediati, verifica e documenta i trigger stock o una strategia equivalente di reservation.
 
 ## Delivery zip pulito
 
@@ -134,11 +126,13 @@ Esegui questa checklist se un secret è stato esposto o copiato in un file pubbl
 - `.dev.vars`, `.env`, `.wrangler`, `.git`, log e zip non sono nel pacchetto.
 - Cloudflare env contiene solo secret server-side.
 - `APP_ENV=production` è impostato in Cloudflare.
-- Stripe webhook firma correttamente e riceve `checkout.session.completed`.
-- PayPal è in `live` solo dopo test sandbox.
+- PayPal/Stripe sono abilitati solo dopo env provider, sandbox test e idempotenza verificata.
+- Stripe webhook firma correttamente e riceve `checkout.session.completed`, con tabella/event store idempotenza verificato se usato.
+- PayPal e' in `live` solo dopo test sandbox e procedura webhook/riconciliazione.
+- Trigger/reservation stock sono verificati sul DB reale prima di accettare pagamenti online immediati.
 - Turnstile è configurato per contact e checkout, oppure il rischio spam è accettato.
-- `admin_users` contiene solo account autorizzati.
-- RLS e storage policy sono applicate.
-- `expire_stock_reservations()` è schedulata.
+- Lo schema e le RLS corrispondono a quanto documentato in `DATABASE.md`.
+- Le policy admin/storage sono verificate sul progetto Supabase reale.
+- Eventuali script SQL operativi esterni sono stati applicati manualmente e documentati.
 - Test manuale: contatto, checkout in sede, checkout PayPal, checkout Stripe, ordine duplicato/webhook duplicato.
 - Privacy Policy, Cookie Policy, ragione sociale e contatti legali sono completati.

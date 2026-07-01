@@ -5,7 +5,7 @@ import {
   INVENTORY_STORAGE_KEY,
   MONTHLY_CUTS_STORAGE_KEY,
   PRODUCTS_STORAGE_KEY,
-  products
+  products,
 } from "./data.js";
 import { getSupabaseClient } from "./supabase-client.js";
 import { todayISO } from "./utils.js";
@@ -50,7 +50,11 @@ function throwIfSupabaseError(error, context) {
 export async function getProducts() {
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const { data, error } = await sb.from("products").select("*").eq("is_active", true).order("created_at", { ascending: true });
+    const { data, error } = await sb
+      .from("products")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
     throwIfSupabaseError(error, "Impossibile leggere i prodotti");
     if (Array.isArray(data)) {
       return data.map((item) => ({
@@ -65,11 +69,17 @@ export async function getProducts() {
         badge: item.badge || "",
         colors: item.colors || ["#0a0a0a", "#d40f19", "#ffffff"],
         shape: item.shape || "jar",
-        images: { packshot: item.packshot_url || "", lifestyle: item.lifestyle_url || "" }
+        images: {
+          packshot: item.packshot_url || "",
+          lifestyle: item.lifestyle_url || "",
+        },
       }));
     }
   }
-  return loadJson(PRODUCTS_STORAGE_KEY, products.map((item) => ({ ...item })));
+  return loadJson(
+    PRODUCTS_STORAGE_KEY,
+    products.map((item) => ({ ...item })),
+  );
 }
 
 export async function saveProducts(nextProducts) {
@@ -90,9 +100,9 @@ export async function saveProducts(nextProducts) {
         colors: item.colors || [],
         shape: item.shape || "jar",
         badge: item.badge || "",
-        is_active: true
+        is_active: true,
       })),
-      { onConflict: "id" }
+      { onConflict: "id" },
     );
     throwIfSupabaseError(error, "Impossibile salvare i prodotti");
   }
@@ -103,20 +113,28 @@ export async function deleteProduct(productId) {
   if (!productId) return false;
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const { error } = await sb
-      .from("products")
-      .delete()
-      .eq("id", productId);
+    const { error } = await sb.from("products").delete().eq("id", productId);
 
     if (error) {
-      throw new Error(`Impossibile eliminare il prodotto ${productId}: ${error.message}`);
+      throw new Error(
+        `Impossibile eliminare il prodotto ${productId}: ${error.message}`,
+      );
     }
   }
 
-  const localProducts = loadJson(PRODUCTS_STORAGE_KEY, products.map((item) => ({ ...item })));
-  saveJson(PRODUCTS_STORAGE_KEY, localProducts.filter((item) => item.id !== productId));
+  const localProducts = loadJson(
+    PRODUCTS_STORAGE_KEY,
+    products.map((item) => ({ ...item })),
+  );
+  saveJson(
+    PRODUCTS_STORAGE_KEY,
+    localProducts.filter((item) => item.id !== productId),
+  );
 
-  const localInventory = loadJson(INVENTORY_STORAGE_KEY, Object.fromEntries(products.map((item) => [item.id, item.stock])));
+  const localInventory = loadJson(
+    INVENTORY_STORAGE_KEY,
+    Object.fromEntries(products.map((item) => [item.id, item.stock])),
+  );
   delete localInventory[productId];
   saveJson(INVENTORY_STORAGE_KEY, localInventory);
 
@@ -124,13 +142,17 @@ export async function deleteProduct(productId) {
 }
 
 export async function getInventory() {
-  const fallback = Object.fromEntries(products.map((item) => [item.id, item.stock]));
+  const fallback = Object.fromEntries(
+    products.map((item) => [item.id, item.stock]),
+  );
   const sb = await getSupabaseOrNull();
   if (sb) {
     const { data, error } = await sb.from("products").select("id, stock");
     throwIfSupabaseError(error, "Impossibile leggere la giacenza");
     if (Array.isArray(data)) {
-      const remote = Object.fromEntries(data.map((item) => [item.id, Number(item.stock || 0)]));
+      const remote = Object.fromEntries(
+        data.map((item) => [item.id, Number(item.stock || 0)]),
+      );
       saveJson(INVENTORY_STORAGE_KEY, remote);
       return remote;
     }
@@ -143,7 +165,7 @@ export async function saveInventory(inventory) {
   if (sb) {
     const rows = Object.entries(inventory).map(([id, stock]) => ({
       id,
-      stock: Number(stock || 0)
+      stock: Number(stock || 0),
     }));
 
     for (const row of rows) {
@@ -151,12 +173,14 @@ export async function saveInventory(inventory) {
         .from("products")
         .update({
           stock: row.stock,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq("id", row.id);
 
       if (error) {
-        throw new Error(`Impossibile aggiornare la giacenza di ${row.id}: ${error.message}`);
+        throw new Error(
+          `Impossibile aggiornare la giacenza di ${row.id}: ${error.message}`,
+        );
       }
     }
   }
@@ -182,7 +206,7 @@ export async function getFeaturedCut() {
         name: data.title || defaultFreshCut.name,
         description: data.description || defaultFreshCut.description,
         image: data.image_url || defaultFreshCut.image,
-        date: data.date || defaultFreshCut.date
+        date: data.date || defaultFreshCut.date,
       };
       saveJson(FEATURED_CUT_STORAGE_KEY, featured);
       return featured;
@@ -194,17 +218,23 @@ export async function getFeaturedCut() {
 export async function saveFeaturedCut(cut) {
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const { error: resetError } = await sb.from(CUTS_TABLE).update({ is_featured: false }).eq("is_featured", true);
+    const { error: resetError } = await sb
+      .from(CUTS_TABLE)
+      .update({ is_featured: false })
+      .eq("is_featured", true);
     throwIfSupabaseError(resetError, "Impossibile resettare il featured cut");
 
-    const { error: upsertError } = await sb.from(CUTS_TABLE).upsert({
-      id: cut.id,
-      title: cut.name,
-      description: cut.description || null,
-      image_url: cut.image || null,
-      date: cut.date || todayISO(),
-      is_featured: true
-    }, { onConflict: "id" });
+    const { error: upsertError } = await sb.from(CUTS_TABLE).upsert(
+      {
+        id: cut.id,
+        title: cut.name,
+        description: cut.description || null,
+        image_url: cut.image || null,
+        date: cut.date || todayISO(),
+        is_featured: true,
+      },
+      { onConflict: "id" },
+    );
     throwIfSupabaseError(upsertError, "Impossibile salvare il featured cut");
   }
   saveJson(FEATURED_CUT_STORAGE_KEY, cut);
@@ -231,7 +261,7 @@ export async function getMonthlyCuts() {
         name: item.title || defaultFreshCut.name,
         description: item.description || defaultFreshCut.description,
         image: item.image_url || defaultFreshCut.image,
-        date: item.date || defaultFreshCut.date
+        date: item.date || defaultFreshCut.date,
       }));
       saveJson(MONTHLY_CUTS_STORAGE_KEY, cuts);
       return cuts;
@@ -250,9 +280,9 @@ export async function saveMonthlyCuts(cuts) {
         description: cut.description || null,
         image_url: cut.image || null,
         date: cut.date || todayISO(),
-        is_featured: index === 0
+        is_featured: index === 0,
       })),
-      { onConflict: "id" }
+      { onConflict: "id" },
     );
     throwIfSupabaseError(error, "Impossibile salvare i tagli del mese");
   }
@@ -274,9 +304,12 @@ export async function clearCart() {
 export async function getOrders() {
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const [{ data: ordersData, error: ordersError }, { data: itemsData, error: itemsError }] = await Promise.all([
+    const [
+      { data: ordersData, error: ordersError },
+      { data: itemsData, error: itemsError },
+    ] = await Promise.all([
       sb.from("orders").select("*").order("created_at", { ascending: false }),
-      sb.from("order_items").select("*")
+      sb.from("order_items").select("*"),
     ]);
     throwIfSupabaseError(ordersError, "Impossibile leggere gli ordini");
     throwIfSupabaseError(itemsError, "Impossibile leggere le righe ordine");
@@ -290,7 +323,7 @@ export async function getOrders() {
           productName: item.product_name,
           unitPrice: Number(item.unit_price || 0),
           quantity: Number(item.quantity || 0),
-          lineTotal: Number(item.line_total || 0)
+          lineTotal: Number(item.line_total || 0),
         });
         itemsByOrderId.set(item.order_id, list);
       });
@@ -302,22 +335,23 @@ export async function getOrders() {
         customer: {
           fullName: item.customer_name,
           email: item.customer_email,
-          phone: item.customer_phone
+          phone: item.customer_phone,
         },
         fulfillment: item.fulfillment,
-        shippingAddress: item.address || item.city || item.zip
-          ? {
-              address: item.address || "",
-              city: item.city || "",
-              zip: item.zip || ""
-            }
-          : null,
+        shippingAddress:
+          item.address || item.city || item.zip
+            ? {
+                address: item.address || "",
+                city: item.city || "",
+                zip: item.zip || "",
+              }
+            : null,
         items: itemsByOrderId.get(item.id) || [],
         subtotal: Number(item.subtotal || 0),
         shipping: Number(item.shipping || 0),
         total: Number(item.total || 0),
         status: item.status || "prenotato",
-        paymentMode: item.payment_mode || "in-shop"
+        paymentMode: item.payment_mode || "in-shop",
       }));
 
       saveJson(ORDERS_STORAGE_KEY, orders);
@@ -344,21 +378,26 @@ export async function createOrder(order) {
       shipping: order.shipping,
       total: order.total,
       status: order.status,
-      payment_mode: order.paymentMode
+      payment_mode: order.paymentMode,
     });
     if (order.items?.length) {
-      await sb.from("order_items").insert(order.items.map((item) => ({
-        order_id: order.id,
-        product_id: item.productId,
-        product_name: item.productName,
-        unit_price: item.unitPrice,
-        quantity: item.quantity,
-        line_total: item.lineTotal
-      })));
+      await sb.from("order_items").insert(
+        order.items.map((item) => ({
+          order_id: order.id,
+          product_id: item.productId,
+          product_name: item.productName,
+          unit_price: item.unitPrice,
+          quantity: item.quantity,
+          line_total: item.lineTotal,
+        })),
+      );
     }
   }
   const list = await getOrders();
-  const created = { ...order, createdAt: order.createdAt || new Date().toISOString() };
+  const created = {
+    ...order,
+    createdAt: order.createdAt || new Date().toISOString(),
+  };
   list.unshift(created);
   saveJson(ORDERS_STORAGE_KEY, list.slice(0, 200));
   return created;
@@ -366,12 +405,17 @@ export async function createOrder(order) {
 
 export async function updateOrderStatus(orderId, status) {
   if (!orderId) return null;
-  const normalizedStatus = String(status || "").trim().toLowerCase();
+  const normalizedStatus = String(status || "")
+    .trim()
+    .toLowerCase();
   if (!normalizedStatus) return null;
 
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const { error } = await sb.from("orders").update({ status: normalizedStatus }).eq("id", orderId);
+    const { error } = await sb
+      .from("orders")
+      .update({ status: normalizedStatus })
+      .eq("id", orderId);
     throwIfSupabaseError(error, "Impossibile aggiornare lo stato ordine");
   }
 
@@ -386,7 +430,10 @@ export async function updateOrderStatus(orderId, status) {
 export async function getLeads() {
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const { data, error } = await sb.from("leads").select("*").order("created_at", { ascending: false });
+    const { data, error } = await sb
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false });
     throwIfSupabaseError(error, "Impossibile leggere le richieste");
     if (Array.isArray(data)) {
       const leads = data.map((item) => ({
@@ -397,7 +444,7 @@ export async function getLeads() {
         message: item.message || "",
         privacy_accepted: Boolean(item.privacy_accepted),
         source: item.source || "site",
-        createdAt: item.created_at || new Date().toISOString()
+        createdAt: item.created_at || new Date().toISOString(),
       }));
       saveJson(LEADS_STORAGE_KEY, leads);
       return leads;
@@ -419,12 +466,15 @@ export async function createLead(lead) {
       message: lead.message,
       privacy_accepted: Boolean(lead.privacy_accepted),
       source: lead.source || "site",
-      created_at: createdAt
+      created_at: createdAt,
     });
   }
   const list = await getLeads();
   const created = { ...lead, id, createdAt };
-  saveJson(LEADS_STORAGE_KEY, [created, ...list.filter((item) => item.id !== id)].slice(0, 200));
+  saveJson(
+    LEADS_STORAGE_KEY,
+    [created, ...list.filter((item) => item.id !== id)].slice(0, 200),
+  );
   return created;
 }
 
@@ -436,7 +486,10 @@ export async function deleteLead(leadId) {
     throwIfSupabaseError(error, "Impossibile eliminare la richiesta");
   }
   const list = await getLeads();
-  saveJson(LEADS_STORAGE_KEY, list.filter((lead) => lead.id !== leadId).slice(0, 200));
+  saveJson(
+    LEADS_STORAGE_KEY,
+    list.filter((lead) => lead.id !== leadId).slice(0, 200),
+  );
   return true;
 }
 
@@ -462,7 +515,9 @@ export async function uploadImage(file, options = {}) {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(bitmap, 0, 0, width, height);
 
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, "image/webp", quality),
+  );
   const base64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -473,8 +528,13 @@ export async function uploadImage(file, options = {}) {
   const sb = await getSupabaseOrNull();
   if (sb) {
     const path = `${bucket}/${todayISO()}-${Date.now()}.webp`;
-    const { error } = await sb.storage.from(bucket).upload(path, blob || file, { contentType: "image/webp", upsert: true });
-    throwIfSupabaseError(error, `Impossibile caricare l'immagine nel bucket ${bucket}`);
+    const { error } = await sb.storage
+      .from(bucket)
+      .upload(path, blob || file, { contentType: "image/webp", upsert: true });
+    throwIfSupabaseError(
+      error,
+      `Impossibile caricare l'immagine nel bucket ${bucket}`,
+    );
     const { data } = sb.storage.from(bucket).getPublicUrl(path);
     return data.publicUrl;
   }
@@ -485,32 +545,48 @@ export async function uploadImage(file, options = {}) {
 export async function getSiteSections() {
   const fallback = loadJson(SITE_SECTIONS_STORAGE_KEY, {
     shopTitle: "Prodotti No Cap",
-    shopCopy: "Catalogo professionale, disponibilità aggiornata e acquisto rapido.",
+    shopCopy:
+      "Catalogo professionale, disponibilità aggiornata e acquisto rapido.",
     shopCategories: [
       { value: "all", label: "All products" },
       { value: "hair", label: "Hair care" },
       { value: "styling", label: "Styling" },
       { value: "tools", label: "Tools" },
-      { value: "accessories", label: "Accessories" }
-    ]
+      { value: "accessories", label: "Accessories" },
+    ],
   });
 
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const [{ data: sectionData, error: sectionError }, { data: categoryData, error: categoryError }] = await Promise.all([
-      sb.from(SHOP_SECTIONS_TABLE).select("title, subtitle").eq("key", SHOP_BANNER_KEY).maybeSingle(),
-      sb.from(SHOP_CATEGORIES_TABLE).select("value, label, sort_order, is_active").eq("is_active", true).order("sort_order", { ascending: true })
+    const [
+      { data: sectionData, error: sectionError },
+      { data: categoryData, error: categoryError },
+    ] = await Promise.all([
+      sb
+        .from(SHOP_SECTIONS_TABLE)
+        .select("title, subtitle")
+        .eq("key", SHOP_BANNER_KEY)
+        .maybeSingle(),
+      sb
+        .from(SHOP_CATEGORIES_TABLE)
+        .select("value, label, sort_order, is_active")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
     ]);
 
     throwIfSupabaseError(sectionError, "Impossibile leggere le sezioni shop");
-    throwIfSupabaseError(categoryError, "Impossibile leggere le categorie shop");
+    throwIfSupabaseError(
+      categoryError,
+      "Impossibile leggere le categorie shop",
+    );
 
     const remote = {
       shopTitle: sectionData?.title || fallback.shopTitle,
       shopCopy: sectionData?.subtitle || fallback.shopCopy,
-      shopCategories: Array.isArray(categoryData) && categoryData.length
-        ? categoryData.map((row) => ({ value: row.value, label: row.label }))
-        : fallback.shopCategories
+      shopCategories:
+        Array.isArray(categoryData) && categoryData.length
+          ? categoryData.map((row) => ({ value: row.value, label: row.label }))
+          : fallback.shopCategories,
     };
 
     saveJson(SITE_SECTIONS_STORAGE_KEY, remote);
@@ -523,48 +599,74 @@ export async function getSiteSections() {
 export async function saveSiteSections(sections) {
   const sb = await getSupabaseOrNull();
   if (sb) {
-    const { error: sectionSaveError } = await sb.from(SHOP_SECTIONS_TABLE).upsert({
-      key: SHOP_BANNER_KEY,
-      title: sections.shopTitle || "Prodotti No Cap",
-      subtitle: sections.shopCopy || "",
-      is_active: true,
-      sort_order: 10,
-      settings: {}
-    }, { onConflict: "key" });
-    throwIfSupabaseError(sectionSaveError, "Impossibile salvare la sezione shop");
+    const { error: sectionSaveError } = await sb
+      .from(SHOP_SECTIONS_TABLE)
+      .upsert(
+        {
+          key: SHOP_BANNER_KEY,
+          title: sections.shopTitle || "Prodotti No Cap",
+          subtitle: sections.shopCopy || "",
+          is_active: true,
+          sort_order: 10,
+          settings: {},
+        },
+        { onConflict: "key" },
+      );
+    throwIfSupabaseError(
+      sectionSaveError,
+      "Impossibile salvare la sezione shop",
+    );
 
     if (Array.isArray(sections.shopCategories)) {
       const nextCategories = sections.shopCategories.map((category, index) => ({
         value: category.value,
         label: category.label,
         is_active: true,
-        sort_order: index + 1
+        sort_order: index + 1,
       }));
 
-      const { error: categoryUpsertError } = await sb.from(SHOP_CATEGORIES_TABLE).upsert(
-        nextCategories,
-        { onConflict: "value" }
+      const { error: categoryUpsertError } = await sb
+        .from(SHOP_CATEGORIES_TABLE)
+        .upsert(nextCategories, { onConflict: "value" });
+      throwIfSupabaseError(
+        categoryUpsertError,
+        "Impossibile salvare le categorie shop",
       );
-      throwIfSupabaseError(categoryUpsertError, "Impossibile salvare le categorie shop");
 
       const nextValues = new Set(nextCategories.map((item) => item.value));
-      const { data: existing, error: existingError } = await sb.from(SHOP_CATEGORIES_TABLE).select("value");
-      throwIfSupabaseError(existingError, "Impossibile leggere le categorie esistenti");
+      const { data: existing, error: existingError } = await sb
+        .from(SHOP_CATEGORIES_TABLE)
+        .select("value");
+      throwIfSupabaseError(
+        existingError,
+        "Impossibile leggere le categorie esistenti",
+      );
 
       const toDisable = (existing || [])
         .map((row) => row.value)
         .filter((value) => !nextValues.has(value));
 
       if (toDisable.length) {
-        const { error: disableError } = await sb.from(SHOP_CATEGORIES_TABLE).update({ is_active: false }).in("value", toDisable);
-        throwIfSupabaseError(disableError, "Impossibile disattivare le categorie rimosse");
+        const { error: disableError } = await sb
+          .from(SHOP_CATEGORIES_TABLE)
+          .update({ is_active: false })
+          .in("value", toDisable);
+        throwIfSupabaseError(
+          disableError,
+          "Impossibile disattivare le categorie rimosse",
+        );
       }
 
-      const { error: enableError } = await sb.from(SHOP_CATEGORIES_TABLE).update({ is_active: true }).in("value", [...nextValues]);
-      throwIfSupabaseError(enableError, "Impossibile attivare le categorie correnti");
+      const { error: enableError } = await sb
+        .from(SHOP_CATEGORIES_TABLE)
+        .update({ is_active: true })
+        .in("value", [...nextValues]);
+      throwIfSupabaseError(
+        enableError,
+        "Impossibile attivare le categorie correnti",
+      );
     }
   }
 
   saveJson(SITE_SECTIONS_STORAGE_KEY, sections);
 }
-

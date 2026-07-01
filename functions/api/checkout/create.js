@@ -8,7 +8,7 @@ import {
   parseGuardedJson,
   safeError,
   safeLog,
-  statusFromError
+  statusFromError,
 } from "../_lib/checkout.js";
 
 export async function onRequestPost(context) {
@@ -16,19 +16,23 @@ export async function onRequestPost(context) {
     const payload = await parseGuardedJson(context, {
       rateLimitKey: "checkout:create",
       rateLimit: 12,
-      turnstile: true
+      turnstile: true,
     });
     const order = await buildCanonicalOrder(context.env, payload.order);
     const createdOrder = await insertOrder(context.env, order);
 
     if (createdOrder.paymentMode === "paypal") {
       try {
-        const paypal = await createPaypalOrder(context.env, context.request, createdOrder);
+        const paypal = await createPaypalOrder(
+          context.env,
+          context.request,
+          createdOrder,
+        );
         return json({
           mode: "paypal",
           order: createdOrder,
           paypalOrderId: paypal.paypalOrderId,
-          approvalUrl: paypal.approvalUrl
+          approvalUrl: paypal.approvalUrl,
         });
       } catch (error) {
         await deleteOrder(context.env, createdOrder.id);
@@ -38,12 +42,16 @@ export async function onRequestPost(context) {
 
     if (createdOrder.paymentMode === "stripe") {
       try {
-        const stripe = await createStripeCheckoutSession(context.env, context.request, createdOrder);
+        const stripe = await createStripeCheckoutSession(
+          context.env,
+          context.request,
+          createdOrder,
+        );
         return json({
           mode: "stripe",
           order: createdOrder,
           stripeSessionId: stripe.stripeSessionId,
-          checkoutUrl: stripe.checkoutUrl
+          checkoutUrl: stripe.checkoutUrl,
         });
       } catch (error) {
         await deleteOrder(context.env, createdOrder.id);
@@ -53,10 +61,22 @@ export async function onRequestPost(context) {
 
     return json({
       mode: "in-shop",
-      order: createdOrder
+      order: createdOrder,
     });
   } catch (error) {
-    safeLog(context, "checkout-create failed", { status: statusFromError(error), message: error?.message });
-    return json({ error: safeError(error, "Impossibile creare l'ordine.", context.env.APP_ENV !== "production") }, statusFromError(error));
+    safeLog(context, "checkout-create failed", {
+      status: statusFromError(error),
+      message: error?.message,
+    });
+    return json(
+      {
+        error: safeError(
+          error,
+          "Impossibile creare l'ordine.",
+          context.env.APP_ENV !== "production",
+        ),
+      },
+      statusFromError(error),
+    );
   }
 }

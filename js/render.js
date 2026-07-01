@@ -6,7 +6,7 @@ import {
   getCurrentMonthName,
   getMonthKey,
   getStockLabel,
-  todayISO
+  todayISO,
 } from "./utils.js";
 
 export function getDom() {
@@ -20,7 +20,9 @@ export function getDom() {
     adminOrdersAvg: document.querySelector("[data-admin-orders-avg]"),
     adminOrdersList: document.querySelector("[data-admin-orders-list]"),
     adminOrdersPending: document.querySelector("[data-admin-orders-pending]"),
-    adminOrdersCompleted: document.querySelector("[data-admin-orders-completed]"),
+    adminOrdersCompleted: document.querySelector(
+      "[data-admin-orders-completed]",
+    ),
     adminOrdersToday: document.querySelector("[data-admin-orders-today]"),
     adminOrdersTotal: document.querySelector("[data-admin-orders-total]"),
     adminOrdersRevenue: document.querySelector("[data-admin-orders-revenue]"),
@@ -48,7 +50,9 @@ export function getDom() {
     checkoutForm: document.querySelector("[data-checkout-form]"),
     checkoutItems: document.querySelector("[data-checkout-items]"),
     checkoutSuccess: document.querySelector("[data-checkout-success]"),
-    checkoutSuccessSummary: document.querySelector("[data-checkout-success-summary]"),
+    checkoutSuccessSummary: document.querySelector(
+      "[data-checkout-success-summary]",
+    ),
     checkoutSummary: document.querySelector("[data-checkout-summary]"),
     checkoutTotal: document.querySelector("[data-checkout-total]"),
     currentMonthLabel: document.querySelector("[data-current-month]"),
@@ -79,26 +83,35 @@ export function getDom() {
     orderNumber: document.querySelector("[data-order-number]"),
     shippingFields: document.querySelector("[data-shipping-fields]"),
     showcaseGrid: document.querySelector("[data-showcase-grid]"),
-    toast: document.querySelector("[data-toast]")
+    toast: document.querySelector("[data-toast]"),
   };
 }
 
 export function renderProducts(dom, products, inventory, activeCategory) {
   const search = (dom.productSearchInput?.value || "").trim().toLowerCase();
   const sort = dom.productSortSelect?.value || "featured";
-  let filtered = products.filter((product) => activeCategory === "all" || product.category === activeCategory);
+  let filtered = products.filter(
+    (product) =>
+      activeCategory === "all" || product.category === activeCategory,
+  );
   filtered = filtered.filter((product) => {
     if (!search) return true;
-    return `${product.name} ${product.label} ${product.description || ""}`.toLowerCase().includes(search);
+    return `${product.name} ${product.label} ${product.description || ""}`
+      .toLowerCase()
+      .includes(search);
   });
 
-  if (sort === "price-asc") filtered = filtered.sort((a, b) => a.price - b.price);
-  if (sort === "price-desc") filtered = filtered.sort((a, b) => b.price - a.price);
-  if (sort === "available") filtered = filtered.filter((product) => (inventory[product.id] ?? 0) > 0);
-  if (sort === "low-stock") filtered = filtered.filter((product) => {
-    const q = inventory[product.id] ?? 0;
-    return q > 0 && q <= 2;
-  });
+  if (sort === "price-asc")
+    filtered = filtered.sort((a, b) => a.price - b.price);
+  if (sort === "price-desc")
+    filtered = filtered.sort((a, b) => b.price - a.price);
+  if (sort === "available")
+    filtered = filtered.filter((product) => (inventory[product.id] ?? 0) > 0);
+  if (sort === "low-stock")
+    filtered = filtered.filter((product) => {
+      const q = inventory[product.id] ?? 0;
+      return q > 0 && q <= 2;
+    });
 
   if (!filtered.length) {
     dom.grid.innerHTML = `<div class="showcase-empty"><strong>Nessun prodotto trovato</strong><span>Modifica ricerca, filtri o ordinamento.</span></div>`;
@@ -110,7 +123,7 @@ export function renderProducts(dom, products, inventory, activeCategory) {
       const quantity = inventory[product.id] ?? 0;
       const stock = getStockLabel(quantity);
       const soldOut = quantity <= 0;
-      const badge = soldOut ? "Esaurito" : (product.badge || "");
+      const badge = soldOut ? "Esaurito" : product.badge || "";
 
       const hasLifestyle = Boolean(product.images?.lifestyle);
       const packshot = resolveProductImage(product, "packshot");
@@ -156,7 +169,10 @@ export function renderInventory(dom, products, inventory, monthlyCuts) {
     .map((product) => {
       const quantity = inventory[product.id] ?? 0;
       const stock = getStockLabel(quantity);
-      const rowState = stock.level === "low" || stock.level === "empty" ? `data-row-state="${stock.level}"` : "";
+      const rowState =
+        stock.level === "low" || stock.level === "empty"
+          ? `data-row-state="${stock.level}"`
+          : "";
 
       return `
         <tr ${rowState}>
@@ -176,22 +192,38 @@ export function renderInventory(dom, products, inventory, monthlyCuts) {
     .join("");
 
   const quantities = products.map((product) => inventory[product.id] ?? 0);
-  const totalUnits = quantities.reduce((total, quantity) => total + quantity, 0);
-  const lowStock = quantities.filter((quantity) => quantity > 0 && quantity <= 2).length;
+  const totalUnits = quantities.reduce(
+    (total, quantity) => total + quantity,
+    0,
+  );
+  const lowStock = quantities.filter(
+    (quantity) => quantity > 0 && quantity <= 2,
+  ).length;
   const soldOut = quantities.filter((quantity) => quantity <= 0).length;
-  const inventoryValue = products.reduce((total, product) => total + product.price * (inventory[product.id] ?? 0), 0);
-  const monthlyCount = monthlyCuts.filter((cut) => cut?.id !== "default-cut" && getMonthKey(cut.date || todayISO()) === getMonthKey()).length;
+  const inventoryValue = products.reduce(
+    (total, product) => total + product.price * (inventory[product.id] ?? 0),
+    0,
+  );
+  const monthlyCount = monthlyCuts.filter(
+    (cut) =>
+      cut?.id !== "default-cut" &&
+      getMonthKey(cut.date || todayISO()) === getMonthKey(),
+  ).length;
 
   document.querySelector("[data-summary-total]").textContent = totalUnits;
   document.querySelector("[data-summary-low]").textContent = lowStock;
   document.querySelector("[data-summary-soldout]").textContent = soldOut;
   document.querySelector("[data-summary-cuts]").textContent = monthlyCount;
-  document.querySelector("[data-summary-value]").textContent = formatCurrency(inventoryValue);
+  document.querySelector("[data-summary-value]").textContent =
+    formatCurrency(inventoryValue);
 }
 
 export function renderCart(dom, cart) {
   const totalQty = cart.reduce((total, item) => total + item.quantity, 0);
-  const totalPrice = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  const totalPrice = cart.reduce(
+    (total, item) => total + item.product.price * item.quantity,
+    0,
+  );
 
   dom.cartCount.textContent = totalQty;
   dom.cartTotal.textContent = formatCurrency(totalPrice);
@@ -206,7 +238,8 @@ export function renderCart(dom, cart) {
   }
 
   dom.cartItems.innerHTML = cart
-    .map(({ product, quantity }) => `
+    .map(
+      ({ product, quantity }) => `
       <article class="cart-item">
         <img src="${resolveProductImage(product, "packshot")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">
         <div>
@@ -214,7 +247,8 @@ export function renderCart(dom, cart) {
           <p>${quantity} x ${formatCurrency(product.price)}</p>
         </div>
         <button class="mini-button" type="button" data-remove-cart="${product.id}" aria-label="Rimuovi ${escapeHtml(product.name)}">-</button>
-      </article>`)
+      </article>`,
+    )
     .join("");
 }
 
@@ -231,7 +265,10 @@ export function renderFreshCut(dom, freshCut) {
 export function renderCheckoutSummary(dom, cart, totalOverride = null) {
   const totalPrice = Number.isFinite(totalOverride)
     ? totalOverride
-    : cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+    : cart.reduce(
+        (total, item) => total + item.product.price * item.quantity,
+        0,
+      );
   dom.checkoutTotal.textContent = formatCurrency(totalPrice);
 
   if (!cart.length) {
@@ -244,22 +281,27 @@ export function renderCheckoutSummary(dom, cart, totalOverride = null) {
   }
 
   dom.checkoutItems.innerHTML = cart
-    .map(({ product, quantity }) => `
+    .map(
+      ({ product, quantity }) => `
       <article class="checkout-summary-item">
         <div>
           <strong>${escapeHtml(product.name)}</strong>
           <p>${quantity} x ${formatCurrency(product.price)}</p>
         </div>
         <strong>${formatCurrency(product.price * quantity)}</strong>
-      </article>`)
+      </article>`,
+    )
     .join("");
 }
 
 export function renderCheckoutSuccessSummary(dom, order) {
   if (!order) return;
-  const paymentLabel = order.paymentMode === "paypal"
-    ? "PayPal"
-    : (order.paymentMode === "stripe" ? "Carta / Stripe" : "Pagamento in sede");
+  const paymentLabel =
+    order.paymentMode === "paypal"
+      ? "PayPal"
+      : order.paymentMode === "stripe"
+        ? "Carta / Stripe"
+        : "Pagamento in sede";
   dom.checkoutSuccessSummary.innerHTML = `
     <p><strong>Totale:</strong> ${formatCurrency(order.total)}</p>
     <p><strong>Pagamento:</strong> ${paymentLabel}</p>
@@ -285,7 +327,8 @@ export function renderShowcase(dom, monthlyCuts) {
   }
 
   dom.showcaseGrid.innerHTML = currentCuts
-    .map((cut, index) => `
+    .map(
+      (cut, index) => `
       <article class="showcase-card" style="--stagger:${index * 80}ms">
         <img src="${cut.image}" alt="${escapeHtml(cut.name)}" loading="lazy" decoding="async">
         <div class="showcase-card__body">
@@ -293,6 +336,7 @@ export function renderShowcase(dom, monthlyCuts) {
           <h3>${escapeHtml(cut.name)}</h3>
           <p>${escapeHtml(cut.description)}</p>
         </div>
-      </article>`)
+      </article>`,
+    )
     .join("");
 }
