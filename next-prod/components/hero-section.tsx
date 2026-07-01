@@ -1,31 +1,36 @@
-import { heroContent } from "../lib/static-content";
+import Link from "next/link";
 
 export function HeroSection() {
   return (
-    <section className="hero" id="home">
+    <section className="hero" aria-label="No Cap Barber Shop">
+      <div className="hero__side-text">NO CAP BARBER SHOP</div>
       <div className="hero__content">
-        <p className="eyebrow">{heroContent.eyebrow}</p>
+        <p className="eyebrow">Shop essentials</p>
         <h1>
-          {heroContent.titleFirstLine}
+          FRESH
           <br />
-          <span>{heroContent.titleSecondLine}</span>
+          GEAR.
+          <br />
+          <span>ZERO</span>
+          <br />
+          <span>CAP.</span>
         </h1>
-        <p>{heroContent.description}</p>
+        <p className="hero__copy">
+          Prodotti professionali, strumenti da banco e disponibilita aggiornata
+          per uno shop barber pronto a vendere.
+        </p>
         <div className="hero__actions">
-          <a className="primary-button" href={heroContent.primaryAction.href}>
-            {heroContent.primaryAction.label}
-          </a>
-          <a className="outline-button" href={heroContent.secondaryAction.href}>
-            {heroContent.secondaryAction.label}
-          </a>
+          <Link className="primary-button" href="/shop">
+            Vedi prodotti
+          </Link>
+          <Link className="outline-button" href="/#fresh-cut">
+            Taglio del giorno
+          </Link>
         </div>
       </div>
-      <div className="hero__media" aria-label="No Cap visual">
-        <img src={heroContent.image.src} alt={heroContent.image.alt} />
-        <div className="hero__badge" aria-hidden="true">
-          <span>{heroContent.badge.label}</span>
-          <strong>{heroContent.badge.description}</strong>
-        </div>
+      <div className="hero__panel" aria-hidden="true">
+        <span>Fresh cuts. Zero cap.</span>
+        <strong>NC</strong>
       </div>
     </section>
   );

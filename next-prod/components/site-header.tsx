@@ -18,14 +18,14 @@ export function SiteHeader() {
       </nav>
 
       <div className="header-actions">
-        <Link className="manager-toggle" href="/admin" aria-label="Area gestore">
+        <Link
+          className="manager-toggle manager-toggle--hidden"
+          href="/admin"
+          aria-label="Area gestore"
+        >
           <span aria-hidden="true">...</span>
         </Link>
-        <Link
-          className="cart-trigger"
-          href="/checkout"
-          aria-label="Vai al checkout"
-        >
+        <Link className="cart-trigger" href="/checkout" aria-label="Vai al checkout">
           <span className="cart-trigger__icon" aria-hidden="true" />
           <span className="cart-trigger__count">0</span>
         </Link>

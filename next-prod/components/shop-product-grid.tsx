@@ -1,68 +1,93 @@
-import {
-  buildShopCheckoutHref,
-  buildShopContactHref,
-  SHOP_FLOW_COPY,
-} from "../lib/public-flow";
-import { productTeasers, shopTeaserContent } from "../lib/static-content";
+import Link from "next/link";
+
+import { buildShopCheckoutHref } from "../lib/public-flow";
+import { productTeasers } from "../lib/static-content";
 
 export type ShopProductCard = {
-  category: string | null;
+  category?: string | null;
   checkoutHref?: string;
-  contactHref?: string;
   description?: string | null;
   image: string | null;
   name: string;
+  price?: number | string | null;
   stock?: number | null;
 };
 
-type ShopProductGridProps = {
+export type ShopProductGridProps = {
   products?: ShopProductCard[];
   showStock?: boolean;
 };
+
+const currencyFormatter = new Intl.NumberFormat("it-IT", {
+  style: "currency",
+  currency: "EUR",
+});
+
+function formatPrice(price: ShopProductCard["price"]) {
+  const numeric = Number(price || 0);
+  return numeric > 0 ? currencyFormatter.format(numeric) : "Prezzo in shop";
+}
+
+function stockLabel(stock: ShopProductCard["stock"]) {
+  if (stock === null || stock === undefined) return "Disponibile";
+  if (stock <= 2) return "Ultimi 2!";
+  return `${stock} disponibili`;
+}
 
 export function ShopProductGrid({
   products = productTeasers,
   showStock = false,
 }: ShopProductGridProps) {
-  return (
-    <section className="section" aria-labelledby="shop-grid-title">
-      <div className="section-heading">
-        <p className="eyebrow">{shopTeaserContent.eyebrow}</p>
-        <h2 id="shop-grid-title">{shopTeaserContent.title}</h2>
-        <p>{shopTeaserContent.description}</p>
-      </div>
+  const normalizedProducts = products.map((product) => ({
+    ...product,
+    category: product.category || "shop",
+    description:
+      product.description || "Prodotto No Cap selezionato dal catalogo barber.",
+    price: product.price ?? null,
+  }));
 
-      <div className="product-grid">
-        {products.map((product) => (
-          <article className="product-card" key={product.name}>
-            {product.image ? (
-              <img src={product.image} alt={`${product.name} packshot`} />
-            ) : null}
-            <span>{product.category || "Prodotto"}</span>
-            <h3>{product.name}</h3>
-            {product.description ? <p>{product.description}</p> : null}
-            {showStock ? <small>Stock informativo: {product.stock}</small> : null}
-            <div style={{ display: "grid", gap: "0.5rem", marginTop: "0.5rem" }}>
-              <p style={{ margin: 0 }}>{SHOP_FLOW_COPY.helperText}</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-                <a
-                  href={
-                    product.checkoutHref || buildShopCheckoutHref(product.name)
-                  }
-                >
-                  {SHOP_FLOW_COPY.checkoutCta}
-                </a>
-                <a
-                  className="ghost-button"
-                  href={product.contactHref || buildShopContactHref(product.name)}
-                >
-                  {SHOP_FLOW_COPY.contactCta}
-                </a>
-              </div>
-            </div>
-          </article>
-        ))}
+  if (!normalizedProducts.length) {
+    return (
+      <div className="spotlight-card product-empty">
+        <p className="eyebrow">Catalogo</p>
+        <h3>Nessun prodotto trovato</h3>
+        <p>Modifica ricerca o categoria per vedere altri prodotti.</p>
       </div>
-    </section>
+    );
+  }
+
+  return (
+    <div className="product-grid">
+      {normalizedProducts.map((product) => (
+        <article className="product-card" key={product.name}>
+          <img
+            src={product.image || "/Img/products/black-wax-packshot-opt.webp"}
+            alt={product.name}
+            loading="lazy"
+          />
+          <div className="product-card__meta">
+            <span>{product.category}</span>
+            {showStock ? <small>{stockLabel(product.stock)}</small> : null}
+          </div>
+          <h3>{product.name}</h3>
+          <p>{product.description}</p>
+          <strong className="product-card__price">{formatPrice(product.price)}</strong>
+          <div className="product-card__actions">
+            <Link
+              className="primary-button"
+              href={product.checkoutHref || buildShopCheckoutHref(product.name)}
+            >
+              Aggiungi
+            </Link>
+            <Link
+              className="outline-button"
+              href={product.checkoutHref || buildShopCheckoutHref(product.name)}
+            >
+              Vedi risultato
+            </Link>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
