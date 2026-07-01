@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CartCount } from "./cart-count";
 import { navItems } from "../lib/static-content";
 
 export function SiteHeader() {
@@ -27,7 +28,7 @@ export function SiteHeader() {
         </Link>
         <Link className="cart-trigger" href="/checkout" aria-label="Vai al checkout">
           <span className="cart-trigger__icon" aria-hidden="true" />
-          <span className="cart-trigger__count">0</span>
+          <CartCount />
         </Link>
       </div>
     </header>

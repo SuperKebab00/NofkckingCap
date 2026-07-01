@@ -23,7 +23,7 @@ export function HeroSection() {
           <Link className="primary-button" href="/shop">
             Vedi prodotti
           </Link>
-          <Link className="outline-button" href="/#fresh-cut">
+          <Link className="outline-button" href="/taglio-fresco">
             Taglio del giorno
           </Link>
         </div>

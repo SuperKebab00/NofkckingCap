@@ -24,14 +24,14 @@ const banners = [
   },
   {
     className: "section-banner--cut",
-    href: "/#fresh-cut",
+    href: "/taglio-fresco",
     kicker: "04 / Fresh cut",
     title: "Taglio del giorno",
     copy: "Il look fresco da mettere in evidenza oggi",
   },
   {
     className: "section-banner--showcase",
-    href: "/#showcase",
+    href: "/showcase",
     kicker: "05 / Showcase",
     title: "Questo mese",
     copy: "Solo i tagli caricati nel mese corrente",

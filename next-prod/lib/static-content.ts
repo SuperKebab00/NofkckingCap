@@ -18,8 +18,8 @@ export type ProductTeaser = {
 export const navItems: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Shop", href: "/shop" },
-  { label: "Taglio fresco", href: "/#fresh-cut" },
-  { label: "Showcase", href: "/#showcase" },
+  { label: "Taglio fresco", href: "/taglio-fresco" },
+  { label: "Showcase", href: "/showcase" },
   { label: "Contatti", href: "/contact" },
 ];
 
