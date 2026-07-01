@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AdminAuthStatusPanel } from "../../components/admin-auth-status-panel";
 import { AdminFutureActions } from "../../components/admin-future-actions";
+import { AdminLoginPanel } from "../../components/admin-login-panel";
 import { AdminMigrationPanel } from "../../components/admin-migration-panel";
 import { AdminProductsSummaryPanel } from "../../components/admin-products-summary-panel";
 import { AdminReadonlyDashboard } from "../../components/admin-readonly-dashboard";
 import { SiteHeader } from "../../components/site-header";
+import { getAdminAuthCheck } from "../../lib/admin-auth-check";
 import { getAdminProductsSummary } from "../../lib/admin-products-summary";
 import { getAdminStatus } from "../../lib/admin-status";
 import {
@@ -19,12 +22,18 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPage() {
-  const [productsResult, categoriesResult, adminStatus, adminProductsSummary] =
-    await Promise.all([
+  const [
+    productsResult,
+    categoriesResult,
+    adminStatus,
+    adminProductsSummary,
+    adminAuthCheck,
+  ] = await Promise.all([
       getPublicProducts(),
       getPublicShopCategories(),
       getAdminStatus(),
       getAdminProductsSummary(),
+      getAdminAuthCheck(),
     ]);
 
   const productsCount =
@@ -79,6 +88,8 @@ export default async function AdminPage() {
           usesLiveReadOnlyData={usesLiveReadOnlyData}
         />
 
+        <AdminAuthStatusPanel authCheck={adminAuthCheck} />
+        <AdminLoginPanel />
         <AdminProductsSummaryPanel summary={adminProductsSummary} />
         <AdminMigrationPanel />
         <AdminFutureActions />

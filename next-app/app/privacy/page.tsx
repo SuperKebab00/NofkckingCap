@@ -21,7 +21,7 @@ const privacySections = [
   {
     id: "backend",
     title: "Backend attuale",
-    body: "L'invio del form Next usa ancora l'endpoint Cloudflare esistente `POST /api/contact/create`. La validazione finale e la gestione operativa restano quindi lato backend gia presente nel progetto vanilla.",
+    body: "L'invio del form Next usa l'endpoint same-origin `POST /api/contact/create` esposto direttamente da nocap-next. La validazione finale e la gestione operativa restano server-side, senza dipendere dal worker vanilla.",
   },
   {
     id: "limits",

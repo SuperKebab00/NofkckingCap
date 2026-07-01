@@ -1,47 +1,78 @@
 import "server-only";
 
+import {
+  readAdminProductsSummary,
+  type AdminProductSummaryItem,
+  type AdminProductsSummaryPayload,
+} from "./server/admin-products-summary";
+import { getServerEnv } from "./server/api-core";
+
 export type AdminProductsSummaryState =
   | "configured"
   | "not-configured"
   | "error";
 
-export type AdminProductSummaryItem = {
-  category: string | null;
-  id: string;
-  name: string;
-  price: number;
-};
+export type { AdminProductSummaryItem };
 
 export type AdminProductsSummaryResult = {
-  adminApi: string;
+  adminApi: "available" | "not-configured" | "unavailable";
   message: string;
-  mode: string;
+  mode: "read-only";
   products: AdminProductSummaryItem[];
   source: "endpoint" | "fallback";
   state: AdminProductsSummaryState;
   total: number;
-  writes: string;
+  writes: "disabled";
 };
 
-type AdminProductsSummaryPayload = {
-  adminApi?: unknown;
-  mode?: unknown;
-  products?: unknown;
-  total?: unknown;
-  writes?: unknown;
+type AdminProductsSummaryConfig = {
+  supabaseServiceRoleKey: string;
+  supabaseUrl: string;
 };
 
-type GetAdminProductsSummaryOptions = {
-  env?: Record<string, string | undefined>;
-  fetchImpl?: typeof fetch;
-};
+export function getAdminProductsSummaryConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): AdminProductsSummaryConfig | null {
+  const supabaseUrl = env.SUPABASE_URL?.trim();
+  const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    return null;
+  }
+
+  return {
+    supabaseServiceRoleKey,
+    supabaseUrl,
+  };
+}
+
+export function normalizeAdminProductsSummaryPayload(
+  payload: unknown,
+): AdminProductsSummaryResult {
+  const value = (payload || {}) as Partial<AdminProductsSummaryPayload>;
+  const products = Array.isArray(value.products) ? value.products : [];
+
+  return {
+    adminApi: value.adminApi === "available" ? "available" : "unavailable",
+    message:
+      value.adminApi === "available"
+        ? "Prodotti admin read-only caricati da nocap-next."
+        : "Prodotti admin read-only non disponibili.",
+    mode: value.mode === "read-only" ? "read-only" : "read-only",
+    products,
+    source: "endpoint",
+    state: value.adminApi === "available" ? "configured" : "error",
+    total: typeof value.total === "number" ? value.total : products.length,
+    writes: value.writes === "disabled" ? "disabled" : "disabled",
+  };
+}
 
 function createFallbackResult(
   state: AdminProductsSummaryState,
   message: string,
 ): AdminProductsSummaryResult {
   return {
-    adminApi: state === "configured" ? "unavailable" : "not-configured",
+    adminApi: state === "configured" ? "available" : "not-configured",
     message,
     mode: "read-only",
     products: [],
@@ -52,116 +83,27 @@ function createFallbackResult(
   };
 }
 
-function normalizeProduct(value: unknown): AdminProductSummaryItem | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const row = value as Record<string, unknown>;
-  const id =
-    typeof row.id === "string" ? row.id : String(row.id === undefined ? "" : row.id);
-  const name = typeof row.name === "string" ? row.name.trim() : "";
-  const priceValue = Number(row.price);
-  const category =
-    typeof row.category === "string" ? row.category.trim() || null : null;
-
-  if (!id || !name || !Number.isFinite(priceValue)) {
-    return null;
-  }
-
-  return {
-    category,
-    id,
-    name,
-    price: priceValue,
-  };
-}
-
-export function getAdminProductsSummaryConfig(
-  env: Record<string, string | undefined> = process.env,
-) {
-  const baseUrl = env.ADMIN_API_BASE_URL?.trim();
-  const token = env.ADMIN_API_TOKEN?.trim();
-
-  if (!baseUrl || !token) {
-    return null;
-  }
-
-  return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    token,
-  };
-}
-
-export function normalizeAdminProductsSummaryPayload(
-  payload: AdminProductsSummaryPayload,
-) {
-  const products = Array.isArray(payload.products)
-    ? payload.products
-        .map(normalizeProduct)
-        .filter((product): product is AdminProductSummaryItem => Boolean(product))
-    : [];
-
-  return {
-    adminApi:
-      typeof payload.adminApi === "string" ? payload.adminApi : "available",
-    mode: typeof payload.mode === "string" ? payload.mode : "read-only",
-    products,
-    total:
-      typeof payload.total === "number" && Number.isFinite(payload.total)
-        ? payload.total
-        : products.length,
-    writes: typeof payload.writes === "string" ? payload.writes : "disabled",
-  };
-}
-
 export async function getAdminProductsSummary(
-  options: GetAdminProductsSummaryOptions = {},
+  options: { env?: NodeJS.ProcessEnv } = {},
 ): Promise<AdminProductsSummaryResult> {
-  const env = options.env ?? process.env;
-  const config = getAdminProductsSummaryConfig(env);
+  const env = options.env || process.env;
 
-  if (!config) {
+  if (!getAdminProductsSummaryConfig(env)) {
     return createFallbackResult(
       "not-configured",
-      "Admin products summary non configurato in questa shell Next.",
+      "Admin products summary non configurato: servono SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY lato server.",
     );
   }
 
-  const fetchImpl = options.fetchImpl ?? fetch;
-
   try {
-    const response = await fetchImpl(
-      `${config.baseUrl}/api/admin/products/summary`,
-      {
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${config.token}`,
-        },
-        method: "GET",
-      },
-    );
-
-    if (!response.ok) {
-      return createFallbackResult(
-        "error",
-        `Admin products summary non disponibile (${response.status}).`,
-      );
-    }
-
-    const payload = (await response.json()) as AdminProductsSummaryPayload;
-    const normalized = normalizeAdminProductsSummaryPayload(payload);
-
-    return {
-      ...normalized,
-      message: "Admin products summary collegato lato server.",
-      source: "endpoint",
-      state: "configured",
-    };
-  } catch {
+    const payload = await readAdminProductsSummary(getServerEnv(env));
+    return normalizeAdminProductsSummaryPayload(payload);
+  } catch (error) {
     return createFallbackResult(
       "error",
-      "Admin products summary non raggiungibile dalla shell Next.",
+      error instanceof Error && error.message
+        ? error.message
+        : "Admin products summary non disponibile.",
     );
   }
 }

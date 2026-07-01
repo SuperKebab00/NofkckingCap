@@ -1,35 +1,61 @@
 import "server-only";
 
+import { getServerEnv } from "./server/api-core";
+import { readAdminStatus, type AdminStatusPayload } from "./server/admin-status";
+
 export type AdminApiState = "configured" | "not-configured" | "error";
 
 export type AdminStatusSummary = {
-  adminApi: string;
   apiState: AdminApiState;
   categoriesCount: number | null;
   message: string;
-  mode: string;
+  mode: "read-only";
   productsCount: number | null;
   source: "endpoint" | "fallback";
-  writes: string;
+  writes: "disabled";
 };
 
-type AdminStatusPayload = {
-  adminApi?: unknown;
-  catalog?: {
-    categoriesCount?: unknown;
-    productsCount?: unknown;
+type AdminStatusConfig = {
+  supabaseServiceRoleKey: string;
+  supabaseUrl: string;
+};
+
+export function getAdminStatusConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): AdminStatusConfig | null {
+  const supabaseUrl = env.SUPABASE_URL?.trim();
+  const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    return null;
+  }
+
+  return {
+    supabaseServiceRoleKey,
+    supabaseUrl,
   };
-  mode?: unknown;
-  writes?: unknown;
-};
+}
 
-type GetAdminStatusOptions = {
-  env?: Record<string, string | undefined>;
-  fetchImpl?: typeof fetch;
-};
+export function normalizeAdminStatusPayload(
+  payload: unknown,
+): AdminStatusSummary {
+  const value = (payload || {}) as Partial<AdminStatusPayload>;
+  const catalog = (value.catalog || {}) as Partial<AdminStatusPayload["catalog"]>;
 
-function toCount(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return {
+    apiState: value.adminApi === "available" ? "configured" : "error",
+    categoriesCount:
+      typeof catalog.categoriesCount === "number" ? catalog.categoriesCount : 0,
+    message:
+      value.adminApi === "available"
+        ? "Admin API read-only disponibile in nocap-next."
+        : "Admin API read-only non disponibile.",
+    mode: value.mode === "read-only" ? "read-only" : "read-only",
+    productsCount:
+      typeof catalog.productsCount === "number" ? catalog.productsCount : 0,
+    source: "endpoint",
+    writes: value.writes === "disabled" ? "disabled" : "disabled",
+  };
 }
 
 function createFallbackStatus(
@@ -37,7 +63,6 @@ function createFallbackStatus(
   message: string,
 ): AdminStatusSummary {
   return {
-    adminApi: apiState === "configured" ? "unavailable" : "not-configured",
     apiState,
     categoriesCount: null,
     message,
@@ -48,82 +73,27 @@ function createFallbackStatus(
   };
 }
 
-export function getAdminStatusConfig(
-  env: Record<string, string | undefined> = process.env,
-) {
-  const baseUrl = env.ADMIN_API_BASE_URL?.trim();
-  const token = env.ADMIN_API_TOKEN?.trim();
-
-  if (!baseUrl || !token) {
-    return null;
-  }
-
-  return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    token,
-  };
-}
-
-export function normalizeAdminStatusPayload(
-  payload: AdminStatusPayload,
-): Pick<
-  AdminStatusSummary,
-  "adminApi" | "categoriesCount" | "mode" | "productsCount" | "writes"
-> {
-  return {
-    adminApi:
-      typeof payload.adminApi === "string" ? payload.adminApi : "available",
-    categoriesCount: toCount(payload.catalog?.categoriesCount),
-    mode: typeof payload.mode === "string" ? payload.mode : "read-only",
-    productsCount: toCount(payload.catalog?.productsCount),
-    writes: typeof payload.writes === "string" ? payload.writes : "disabled",
-  };
-}
-
 export async function getAdminStatus(
-  options: GetAdminStatusOptions = {},
+  options: { env?: NodeJS.ProcessEnv } = {},
 ): Promise<AdminStatusSummary> {
-  const env = options.env ?? process.env;
-  const config = getAdminStatusConfig(env);
+  const env = options.env || process.env;
 
-  if (!config) {
+  if (!getAdminStatusConfig(env)) {
     return createFallbackStatus(
       "not-configured",
-      "Admin API non configurata in questa shell Next.",
+      "Admin API non configurata: servono SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY lato server.",
     );
   }
 
-  const fetchImpl = options.fetchImpl ?? fetch;
-
   try {
-    const response = await fetchImpl(`${config.baseUrl}/api/admin/status`, {
-      cache: "no-store",
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-      },
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      return createFallbackStatus(
-        "error",
-        `Admin API non disponibile (${response.status}).`,
-      );
-    }
-
-    const payload = (await response.json()) as AdminStatusPayload;
-    const normalized = normalizeAdminStatusPayload(payload);
-
-    return {
-      ...normalized,
-      apiState: "configured",
-      message: "Admin API read-only collegata lato server.",
-      source: "endpoint",
-    };
-  } catch {
+    const payload = await readAdminStatus(getServerEnv(env));
+    return normalizeAdminStatusPayload(payload);
+  } catch (error) {
     return createFallbackStatus(
       "error",
-      "Admin API non raggiungibile dalla shell Next.",
+      error instanceof Error && error.message
+        ? error.message
+        : "Admin API non disponibile.",
     );
   }
 }
