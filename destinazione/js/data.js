@@ -1,0 +1,147 @@
+﻿import { todayISO } from "./utils.js";
+
+export const INVENTORY_STORAGE_KEY = "no-cap-inventory-v1";
+export const FEATURED_CUT_STORAGE_KEY = "no-cap-fresh-cut-v1";
+export const MONTHLY_CUTS_STORAGE_KEY = "no-cap-monthly-cuts-v1";
+export const PRODUCTS_STORAGE_KEY = "no-cap-products-v1";
+
+export const products = [
+  {
+    id: "aftershave",
+    name: "Aftershave",
+    category: "hair",
+    label: "Aftershave",
+    description: "Aftershave rinfrescante con finitura pulita da barber shop.",
+    badge: "Novità",
+    price: 15,
+    stock: 10,
+    restock: 10,
+    colors: ["#d7f4ee", "#c9935a", "#111111"],
+    shape: "bottle",
+    images: {
+      packshot: "Img/products/aftershave-packshot-opt.webp",
+      lifestyle: "Img/products/aftershave-lifestyle-opt.webp",
+    },
+  },
+  {
+    id: "black-wax",
+    name: "Black Wax",
+    category: "styling",
+    label: "Styling",
+    description:
+      "Tenuta forte con shine controllato per look precisi tutto il giorno.",
+    badge: "Best seller",
+    price: 17,
+    stock: 6,
+    restock: 8,
+    colors: ["#0d0d0d", "#f4f4f4", "#d40f19"],
+    shape: "jar",
+    images: {
+      packshot: "Img/products/black-wax-packshot-opt.webp",
+      lifestyle: "Img/products/black-wax-lifestyle-opt.webp",
+    },
+  },
+  {
+    id: "clay-pomade",
+    name: "Clay Pomade",
+    category: "styling",
+    label: "Styling",
+    description: "Texture opaca, flessibile e naturale per volume definito.",
+    badge: "Novità",
+    price: 16,
+    stock: 3,
+    restock: 8,
+    colors: ["#161616", "#8b4fd1", "#f2d5ff"],
+    shape: "jar",
+    images: {
+      packshot: "Img/products/clay-pomade-packshot-opt.webp",
+      lifestyle: "Img/products/clay-pomade-lifestyle-opt.webp",
+    },
+  },
+  {
+    id: "dust-wax",
+    name: "Dust Wax",
+    category: "styling",
+    label: "Styling",
+    description: "Volume asciutto e texture dry per styling moderno.",
+    badge: "Ultimi pezzi",
+    price: 20,
+    stock: 2,
+    restock: 7,
+    colors: ["#111111", "#f5f5f5", "#d40f19"],
+    shape: "spray",
+    images: {
+      packshot: "Img/products/dust-wax-packshot-opt.webp",
+      lifestyle: "Img/products/dust-wax-lifestyle-opt.webp",
+    },
+  },
+  {
+    id: "fade-dlc",
+    name: "Fade DLC + Shallow DLC",
+    category: "tools",
+    label: "Tools",
+    description: "Lama DLC professionale per sfumature pulite e veloci.",
+    badge: "",
+    price: 39.95,
+    stock: 4,
+    restock: 6,
+    colors: ["#080808", "#2c2c2c", "#ffffff"],
+    shape: "blade",
+    images: {
+      packshot: "Img/products/fade-dlc-packshot-opt.webp",
+      lifestyle: "Img/products/fade-dlc-lifestyle-opt.webp",
+    },
+  },
+  {
+    id: "fade-gold",
+    name: "Fade Gold + Slim Deep Gold",
+    category: "tools",
+    label: "Tools",
+    description: "Set gold premium per precisione elevata in ogni passata.",
+    badge: "Best seller",
+    price: 39.95,
+    stock: 7,
+    restock: 9,
+    colors: ["#d6a61f", "#ffe37a", "#111111"],
+    shape: "blade",
+    images: {
+      packshot: "Img/products/fade-gold-packshot-opt.webp",
+      lifestyle: "Img/products/fade-gold-lifestyle-opt.webp",
+    },
+  },
+  {
+    id: "faper-dlc",
+    name: "Faper DLC + Slim Deep DLC",
+    category: "tools",
+    label: "Tools",
+    description: "Kit DLC avanzato per barber esperti e rifiniture tecniche.",
+    badge: "Ultimi pezzi",
+    price: 39.95,
+    stock: 1,
+    restock: 6,
+    colors: ["#111111", "#333333", "#f1f1f1"],
+    shape: "blade",
+  },
+  {
+    id: "comb-kit",
+    name: "No Cap Comb Kit",
+    category: "accessories",
+    label: "Accessories",
+    description: "Kit pettini No Cap per lavoro quotidiano in postazione.",
+    badge: "",
+    price: 24,
+    stock: 0,
+    restock: 5,
+    colors: ["#0a0a0a", "#d40f19", "#ffffff"],
+    shape: "comb",
+  },
+];
+
+export const defaultFreshCut = {
+  id: "default-cut",
+  name: "Skin fade crop",
+  description:
+    "Sfumatura pulita, texture naturale e finish opaco. Il taglio del giorno pronto per homepage, social e vetrina shop.",
+  image: "Img/wallpaper/5-opt.webp",
+  date: todayISO(),
+};
