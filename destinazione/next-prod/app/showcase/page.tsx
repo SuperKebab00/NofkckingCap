@@ -35,7 +35,7 @@ export default function ShowcasePage() {
   return (
     <>
       <SiteHeader />
-      <main className="page-shell">
+      <main className="page-shell route-shell route-shell--showcase">
         <section className="page-banner page-banner--showcase">
           <p className="eyebrow">Showcase</p>
           <h1>Questo mese</h1>

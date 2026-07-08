@@ -83,25 +83,25 @@ export function ShopProductGrid({
             </div>
             <div className="product-card__meta">
               <span>{product.category}</span>
-              {showStock ? <small>{stockLabel(product.stock)}</small> : null}
+              <small>{showStock ? stockLabel(product.stock) : "Disponibile"}</small>
             </div>
             <h3>{product.name}</h3>
-            <p>{product.description}</p>
-            <strong className="product-card__price">{formatPrice(product.price)}</strong>
+            <p className="product-card__copy">{product.description}</p>
+            <div className="product-card__price">{formatPrice(product.price)}</div>
             <div className="product-card__actions">
+              <span className="stock-badge">
+                {showStock ? stockLabel(product.stock) : "Disponibile"}
+              </span>
               <Link
                 className="primary-button"
                 href={product.checkoutHref || buildShopCheckoutHref(product.name)}
               >
                 Aggiungi
               </Link>
-              <Link
-                className="outline-button"
-                href={product.checkoutHref || buildShopCheckoutHref(product.name)}
-              >
-                Vedi risultato
-              </Link>
             </div>
+            <button className="product-media-toggle" disabled={!hasLifestyle} type="button">
+              {hasLifestyle ? "Vedi risultato" : "Solo prodotto"}
+            </button>
           </article>
         );
       })}

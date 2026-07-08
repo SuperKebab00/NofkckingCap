@@ -19,6 +19,9 @@ export type AdminClientAuthResult = {
   state: AdminClientAuthState;
 };
 
+export const ADMIN_ACCESS_TOKEN_STORAGE_KEY = "no-cap-admin-access-token-v1";
+export const ADMIN_AUTH_CHANGED_EVENT = "no-cap-admin-auth-changed";
+
 type LoginPayload = {
   access_token?: unknown;
 };

@@ -122,51 +122,46 @@ export function ContactForm({ initialContext }: ContactFormProps) {
   }
 
   return (
-    <form className="spotlight-card" noValidate onSubmit={handleSubmit}>
+    <form className="contact-form" noValidate onSubmit={handleSubmit}>
       <input
         autoComplete="off"
+        className="contact-honeypot"
         name="website"
         onChange={(event) =>
           setValues((current) => ({ ...current, website: event.target.value }))
         }
-        style={{ left: "-9999px", position: "absolute" }}
         tabIndex={-1}
         type="text"
         value={values.website}
       />
 
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Contattaci</p>
+          <h2>Scrivici</h2>
+        </div>
+        <p>Lascia i tuoi dati e il messaggio: ti ricontatteremo il prima possibile.</p>
+      </div>
+
       {contactFormMode !== "live" ? (
-        <p className="admin-inline-note" style={{ marginTop: 0 }}>
+        <p className="admin-inline-note">
           {getContactFormModeMessage(contactFormMode)}
         </p>
       ) : null}
 
       {initialContext?.product ? (
-        <div
-          className="spotlight-card"
-          style={{ marginBottom: "1rem", padding: "1rem" }}
-        >
-          <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>
-            {CONTACT_FLOW_COPY.contextualBoxLabel}
-          </p>
-          <h3 style={{ marginTop: 0 }}>{initialContext.product}</h3>
-          <p style={{ marginBottom: 0 }}>{CONTACT_FLOW_COPY.contextualBoxBody}</p>
+        <div className="contact-context">
+          <p className="eyebrow">{CONTACT_FLOW_COPY.contextualBoxLabel}</p>
+          <h3>{initialContext.product}</h3>
+          <p>{CONTACT_FLOW_COPY.contextualBoxBody}</p>
         </div>
       ) : (
-        <p className="admin-inline-note" style={{ marginTop: 0 }}>
-          {CONTACT_FLOW_COPY.genericHelper}
-        </p>
+        <p className="admin-inline-note">{CONTACT_FLOW_COPY.genericHelper}</p>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        }}
-      >
-        <label style={{ display: "grid", gap: "0.35rem" }}>
-          <span>Email per la risposta</span>
+      <div className="contact-form__grid">
+        <label>
+          Email
           <input
             className="contact-form__input"
             name="email"
@@ -178,12 +173,12 @@ export function ContactForm({ initialContext }: ContactFormProps) {
             value={values.email}
           />
           {fieldErrors.email ? (
-            <span className="admin-inline-note">{fieldErrors.email}</span>
+            <span className="field-error">{fieldErrors.email}</span>
           ) : null}
         </label>
 
-        <label style={{ display: "grid", gap: "0.35rem" }}>
-          <span>Telefono per disponibilita o ritiro</span>
+        <label>
+          Numero di telefono
           <input
             className="contact-form__input"
             name="phone"
@@ -195,53 +190,48 @@ export function ContactForm({ initialContext }: ContactFormProps) {
             value={values.phone}
           />
           {fieldErrors.phone ? (
-            <span className="admin-inline-note">{fieldErrors.phone}</span>
+            <span className="field-error">{fieldErrors.phone}</span>
           ) : null}
         </label>
       </div>
 
-      <label style={{ display: "grid", gap: "0.35rem", marginTop: "1rem" }}>
-        <span>Oggetto della richiesta</span>
+      <label>
+        Oggetto
         <input
           className="contact-form__input"
           name="subject"
           onChange={(event) =>
             setValues((current) => ({ ...current, subject: event.target.value }))
           }
-          placeholder="Disponibilita, ritiro in shop o richiesta generale"
+          placeholder="Prenotazione, prodotti, informazioni"
           type="text"
           value={values.subject}
         />
         {fieldErrors.subject ? (
-          <span className="admin-inline-note">{fieldErrors.subject}</span>
+          <span className="field-error">{fieldErrors.subject}</span>
         ) : null}
       </label>
 
-      <label style={{ display: "grid", gap: "0.35rem", marginTop: "1rem" }}>
-        <span>Messaggio</span>
+      <label>
+        Messaggio
         <textarea
           className="contact-form__input"
           name="message"
           onChange={(event) =>
             setValues((current) => ({ ...current, message: event.target.value }))
           }
-          placeholder="Scrivi se vuoi chiedere disponibilita, passare in negozio o fare una domanda generale."
+          placeholder="Scrivi qui il tuo messaggio..."
           rows={5}
           value={values.message}
         />
         {fieldErrors.message ? (
-          <span className="admin-inline-note">{fieldErrors.message}</span>
+          <span className="field-error">{fieldErrors.message}</span>
         ) : null}
       </label>
 
-      <p className="admin-inline-note" style={{ marginTop: "1rem" }}>
-        {CONTACT_FLOW_COPY.noAutomaticOrderNote}
-      </p>
+      <p className="admin-inline-note">{CONTACT_FLOW_COPY.noAutomaticOrderNote}</p>
 
-      <label
-        className="checkout-radio checkout-option contact-consent"
-        style={{ marginTop: "1rem" }}
-      >
+      <label className="checkout-radio checkout-option contact-consent">
         <input
           checked={values.privacy}
           name="privacy"
@@ -251,23 +241,28 @@ export function ContactForm({ initialContext }: ContactFormProps) {
           type="checkbox"
         />
         <span className="checkout-option__body">
-          Accetto la <a href="/privacy">Privacy Policy</a>.
+          <strong>Privacy Policy</strong>
+          <small>
+            Accetto il trattamento dati per essere ricontattato come da{" "}
+            <a href="/privacy">Privacy Policy</a>.
+          </small>
         </span>
       </label>
       {fieldErrors.privacy ? (
-        <span className="admin-inline-note">{fieldErrors.privacy}</span>
+        <span className="field-error">{fieldErrors.privacy}</span>
       ) : null}
 
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.75rem",
-          marginTop: "1rem",
-        }}
-      >
+      <div className="contact-form__actions">
+        <a
+          className="ghost-button"
+          href="https://wa.me/393208839692"
+          rel="noreferrer"
+          target="_blank"
+        >
+          Scrivici su WhatsApp
+        </a>
         <button
+          className="primary-button"
           disabled={
             submitState === "submitting" ||
             !isContactFormSubmissionEnabled(contactFormMode)
@@ -280,23 +275,13 @@ export function ContactForm({ initialContext }: ContactFormProps) {
               ? "Invia richiesta"
               : "Invio disabilitato"}
         </button>
-        <a
-          className="ghost-button"
-          href="https://wa.me/393208839692"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Scrivi su WhatsApp
-        </a>
       </div>
 
       {formMessage ? (
         <p
-          className="admin-inline-note"
-          style={{
-            color: submitState === "success" ? "#c7f0d3" : undefined,
-            marginTop: "1rem",
-          }}
+          className={`admin-inline-note contact-form__message ${
+            submitState === "success" ? "contact-form__message--success" : ""
+          }`}
         >
           {formMessage}
         </p>

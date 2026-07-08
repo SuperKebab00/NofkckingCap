@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import {
+  ADMIN_ACCESS_TOKEN_STORAGE_KEY,
+  ADMIN_AUTH_CHANGED_EVENT,
   getAdminClientConfig,
   signInAdminWithPassword,
   verifyAdminAccessToken,
@@ -23,6 +25,22 @@ export function AdminLoginPanel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const config = getAdminClientConfig();
+
+  function publishAdminToken(accessToken: string | null) {
+    if (typeof window === "undefined") return;
+
+    if (accessToken) {
+      sessionStorage.setItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY, accessToken);
+    } else {
+      sessionStorage.removeItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY);
+    }
+
+    window.dispatchEvent(
+      new CustomEvent(ADMIN_AUTH_CHANGED_EVENT, {
+        detail: { accessToken },
+      }),
+    );
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,11 +68,13 @@ export function AdminLoginPanel() {
       const loginResult = await signInAdminWithPassword(email, password);
       if (!loginResult.accessToken) {
         setResult(loginResult);
+        publishAdminToken(null);
         return;
       }
 
       const verified = await verifyAdminAccessToken(loginResult.accessToken);
       setResult(verified);
+      publishAdminToken(verified.admin ? verified.accessToken : null);
     } finally {
       setIsSubmitting(false);
     }
@@ -63,20 +83,13 @@ export function AdminLoginPanel() {
   return (
     <section className="missing-panel" aria-labelledby="admin-login-panel">
       <h2 id="admin-login-panel">Login admin minimo</h2>
-      <p style={{ marginTop: "0.5rem" }}>
+      <p>
         Questo pannello serve solo a ottenere un JWT Supabase lato client e far
         verificare lo stato admin a Cloudflare. Non abilita CRUD o write.
       </p>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "grid",
-          gap: "1rem",
-          marginTop: "1rem",
-        }}
-      >
-        <label style={{ display: "grid", gap: "0.35rem" }}>
+      <form className="admin-login-form" onSubmit={handleSubmit}>
+        <label>
           <span>Email admin</span>
           <input
             className="contact-form__input"
@@ -87,7 +100,7 @@ export function AdminLoginPanel() {
           />
         </label>
 
-        <label style={{ display: "grid", gap: "0.35rem" }}>
+        <label>
           <span>Password</span>
           <input
             className="contact-form__input"
@@ -98,14 +111,7 @@ export function AdminLoginPanel() {
           />
         </label>
 
-        <div
-          style={{
-            alignItems: "center",
-            display: "flex",
-            gap: "0.75rem",
-            justifyContent: "space-between",
-          }}
-        >
+        <div className="admin-form-actions">
           <button className="ghost-button" disabled={isSubmitting} type="submit">
             {isSubmitting ? "Verifica in corso..." : "Verifica sessione admin"}
           </button>
@@ -125,30 +131,23 @@ export function AdminLoginPanel() {
         </div>
       </form>
 
-      <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          marginTop: "1rem",
-        }}
-      >
+      <div className="admin-metric-grid admin-metric-grid--compact">
         <article className="status-card">
-          <h3 style={{ margin: 0 }}>Authenticated</h3>
-          <p style={{ fontSize: "1.5rem", margin: "0.25rem 0" }}>
+          <h3>Authenticated</h3>
+          <p className="admin-metric-value admin-metric-value--text">
             {result.authenticated ? "true" : "false"}
           </p>
         </article>
 
         <article className="status-card">
-          <h3 style={{ margin: 0 }}>Admin</h3>
-          <p style={{ fontSize: "1.5rem", margin: "0.25rem 0" }}>
+          <h3>Admin</h3>
+          <p className="admin-metric-value admin-metric-value--text">
             {result.admin ? "true" : "false"}
           </p>
         </article>
       </div>
 
-      <p className="admin-inline-note" style={{ marginTop: "1rem" }}>
+      <p className="admin-inline-note">
         {result.message}
       </p>
     </section>

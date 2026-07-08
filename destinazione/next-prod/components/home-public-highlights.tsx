@@ -18,7 +18,7 @@ const highlights = [
 
 export function HomePublicHighlights() {
   return (
-    <section className="section">
+    <section className="section route-highlights">
       <div className="section-heading">
         <div>
           <p className="eyebrow">No Cap Barbershop</p>
@@ -31,17 +31,13 @@ export function HomePublicHighlights() {
       </div>
 
       <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        }}
+        className="route-pillars"
       >
         {highlights.map((item) => (
-          <article key={item.title} className="spotlight-card">
+          <article key={item.title} className="route-pillars__card">
             <p className="eyebrow">{item.eyebrow}</p>
             <h3>{item.title}</h3>
-            <p style={{ marginTop: "0.75rem" }}>{item.body}</p>
+            <p>{item.body}</p>
           </article>
         ))}
       </div>

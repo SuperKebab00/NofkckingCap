@@ -28,75 +28,54 @@ export function AdminProductsSummaryPanel({
 }: AdminProductsSummaryPanelProps) {
   return (
     <section className="missing-panel" aria-labelledby="admin-products-summary">
-      <div
-        style={{
-          alignItems: "start",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "1rem",
-          justifyContent: "space-between",
-        }}
-      >
+      <div className="admin-panel-heading">
         <div>
-          <h2 id="admin-products-summary" style={{ marginBottom: "0.5rem" }}>
+          <h2 id="admin-products-summary">
             Prodotti admin summary
           </h2>
-          <p style={{ margin: 0 }}>{summary.message}</p>
+          <p>{summary.message}</p>
         </div>
         <span className="status-badge">{formatStateBadge(summary.state)}</span>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          marginTop: "1rem",
-        }}
-      >
+      <div className="admin-metric-grid admin-metric-grid--compact">
         <article className="status-card">
-          <h3 style={{ margin: 0 }}>Totale prodotti</h3>
-          <p style={{ fontSize: "1.75rem", margin: "0.25rem 0" }}>
+          <h3>Totale prodotti</h3>
+          <p className="admin-metric-value">
             {summary.total}
           </p>
-          <p style={{ margin: 0 }}>Sorgente: {summary.source}</p>
+          <p>Sorgente: {summary.source}</p>
         </article>
 
         <article className="status-card">
-          <h3 style={{ margin: 0 }}>Mode</h3>
-          <p style={{ fontSize: "1.5rem", margin: "0.25rem 0" }}>
+          <h3>Mode</h3>
+          <p className="admin-metric-value admin-metric-value--text">
             {summary.mode}
           </p>
-          <p style={{ margin: 0 }}>Writes: {summary.writes}</p>
+          <p>Writes: {summary.writes}</p>
         </article>
       </div>
 
       {summary.products.length ? (
-        <div style={{ marginTop: "1rem", overflowX: "auto" }}>
-          <table
-            style={{
-              borderCollapse: "collapse",
-              minWidth: "100%",
-              width: "100%",
-            }}
-          >
+        <div className="admin-table-wrap">
+          <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ padding: "0.75rem", textAlign: "left" }}>Nome</th>
-                <th style={{ padding: "0.75rem", textAlign: "left" }}>
+                <th>Nome</th>
+                <th>
                   Categoria
                 </th>
-                <th style={{ padding: "0.75rem", textAlign: "left" }}>Prezzo</th>
+                <th>Prezzo</th>
               </tr>
             </thead>
             <tbody>
               {summary.products.map((product) => (
                 <tr key={product.id}>
-                  <td style={{ padding: "0.75rem" }}>{product.name}</td>
-                  <td style={{ padding: "0.75rem" }}>
+                  <td>{product.name}</td>
+                  <td>
                     {product.category || "n/d"}
                   </td>
-                  <td style={{ padding: "0.75rem" }}>
+                  <td>
                     {formatPrice(product.price)}
                   </td>
                 </tr>
@@ -105,7 +84,7 @@ export function AdminProductsSummaryPanel({
           </table>
         </div>
       ) : (
-        <p style={{ marginTop: "1rem" }}>
+        <p>
           Nessun prodotto disponibile nel riepilogo prodotti.
         </p>
       )}

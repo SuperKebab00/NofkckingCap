@@ -53,8 +53,8 @@ export async function LiveShopSections() {
 
   if (visibleSections.length === 0) {
     return (
-      <section className="section" aria-labelledby="live-shop-sections-title">
-        <div className="panel">
+      <section className="section route-crosslinks" aria-labelledby="live-shop-sections-title">
+        <div className="panel panel--route">
           <div className="panel-heading">
             <h2 id="live-shop-sections-title">Sezioni shop</h2>
             <span className="status-badge">Fallback statico</span>
@@ -69,8 +69,8 @@ export async function LiveShopSections() {
   }
 
   return (
-    <section className="section" aria-labelledby="live-shop-sections-title">
-      <div className="panel">
+    <section className="section route-crosslinks" aria-labelledby="live-shop-sections-title">
+      <div className="panel panel--route">
         <div className="panel-heading">
           <h2 id="live-shop-sections-title">Sezioni live shop</h2>
           <span className="status-badge">Supabase live</span>
@@ -80,11 +80,7 @@ export async function LiveShopSections() {
           carrello o checkout da questa area.
         </p>
         <div
-          style={{
-            display: "grid",
-            gap: "1rem",
-            marginTop: "1.25rem",
-          }}
+          className="route-pillars"
         >
           {visibleSections.map((section) => {
             const previews = (groupedItems.get(section.key) || []).slice(0, 2);
@@ -92,33 +88,21 @@ export async function LiveShopSections() {
             return (
               <article
                 key={section.key}
-                style={{
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: "18px",
-                  padding: "1rem",
-                }}
+                className="route-pillars__card route-pillars__card--compact"
               >
-                <div
-                  style={{
-                    alignItems: "center",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "0.75rem",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <h3 style={{ margin: 0 }}>
+                <div className="route-pillars__head">
+                  <h3>
                     {section.title || section.key}
                   </h3>
                   <span className="status-badge">{section.key}</span>
                 </div>
                 {section.subtitle ? (
-                  <p style={{ marginBottom: 0, marginTop: "0.5rem" }}>
+                  <p className="route-pillars__body">
                     {section.subtitle}
                   </p>
                 ) : null}
                 {previews.length > 0 ? (
-                  <ul style={{ marginBottom: 0, marginTop: "0.85rem" }}>
+                  <ul className="route-pillars__list">
                     {previews.map((item) => (
                       <li key={item.item_key}>
                         {item.title || item.label || "Contenuto live disponibile"}
@@ -130,7 +114,7 @@ export async function LiveShopSections() {
                     ))}
                   </ul>
                 ) : (
-                  <p style={{ marginBottom: 0, marginTop: "0.85rem" }}>
+                  <p className="route-pillars__body">
                     Contenuti live disponibili per questa sezione
                     stringa sicura.
                   </p>

@@ -23,8 +23,8 @@ const futureActions = [
 
 export function AdminFutureActions() {
   return (
-    <section className="section">
-      <div className="spotlight-card">
+    <section className="admin-section-panel">
+      <div className="missing-panel missing-panel--wide">
         <p className="eyebrow">Azioni future</p>
         <h2>CRUD e operativita amministrativa ancora disabilitati</h2>
         <p>
@@ -33,7 +33,7 @@ export function AdminFutureActions() {
         </p>
       </div>
 
-      <div className="checkout-panels">
+      <div className="admin-split-grid">
         <section className="missing-panel" aria-labelledby="admin-future-crud">
           <p className="eyebrow">CRUD futuro</p>
           <h2 id="admin-future-crud">Azioni amministrative previste</h2>

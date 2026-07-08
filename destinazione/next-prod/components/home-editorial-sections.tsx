@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { homeEditorialSections } from "../lib/static-content";
 
 export function HomeEditorialSections() {
@@ -5,31 +6,29 @@ export function HomeEditorialSections() {
 
   return (
     <>
-      <section id="fresh-cut" className="section" aria-labelledby="fresh-cut-title">
-        <div
-          style={{
-            display: "grid",
-            gap: "1.5rem",
-            gridTemplateColumns: "minmax(0, 1.05fr) minmax(280px, 0.95fr)",
-            alignItems: "center",
-          }}
-        >
-          <div className="hero__media" style={{ minHeight: "420px" }}>
+      <section className="section route-preview route-preview--fresh" aria-labelledby="fresh-cut-title">
+        <div className="route-preview__grid">
+          <div className="hero__media route-preview__media">
             <img src={freshCut.image} alt={freshCut.title} />
           </div>
-          <div className="spotlight-card">
+          <div className="spotlight-card route-preview__copy">
             <p className="eyebrow">{freshCut.eyebrow}</p>
             <h2 id="fresh-cut-title">{freshCut.title}</h2>
-            <p style={{ marginTop: "1rem" }}>{freshCut.description}</p>
-            <a className="ghost-button" href={freshCut.ctaHref} style={{ marginTop: "1rem" }}>
-              {freshCut.ctaLabel}
-            </a>
+            <p>{freshCut.description}</p>
+            <div className="route-preview__actions">
+              <Link className="primary-button" href="/taglio-fresco">
+                Apri Fresh Cut
+              </Link>
+              <Link className="ghost-button" href={freshCut.ctaHref}>
+                {freshCut.ctaLabel}
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="showcase" className="section" aria-labelledby="showcase-title">
-        <div className="section-heading">
+      <section className="section route-preview route-preview--showcase" aria-labelledby="showcase-title">
+        <div className="section-heading section-heading--preview">
           <div>
             <p className="eyebrow">{showcase.eyebrow}</p>
             <h2 id="showcase-title">{showcase.title}</h2>
@@ -37,33 +36,28 @@ export function HomeEditorialSections() {
           <p>{showcase.description}</p>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gap: "1rem",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          }}
-        >
-          {showcase.items.map((item) => (
-            <article key={item.title} className="spotlight-card">
-              <div
-                style={{
-                  borderRadius: "18px",
-                  overflow: "hidden",
-                  aspectRatio: "4 / 5",
-                  marginBottom: "1rem",
-                }}
-              >
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
+        <div className="route-teaser-grid">
+          {showcase.items.slice(0, 2).map((item) => (
+            <article key={item.title} className="route-teaser-card">
+              <div className="route-teaser-card__media">
+                <img src={item.image} alt={item.title} />
               </div>
               <h3>{item.title}</h3>
-              <p style={{ marginTop: "0.75rem" }}>{item.body}</p>
+              <p>{item.body}</p>
             </article>
           ))}
+        </div>
+
+        <div className="route-preview__actions route-preview__actions--wide">
+          <Link className="primary-button" href="/showcase">
+            Apri Showcase
+          </Link>
+          <Link className="ghost-button" href="/contact">
+            Contattaci
+          </Link>
+          <a className="ghost-button" href={freshCut.ctaHref}>
+              {freshCut.ctaLabel}
+          </a>
         </div>
       </section>
     </>

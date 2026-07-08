@@ -72,9 +72,7 @@ export async function handleContactCreate(
 
     await supabaseRequest(env, "leads", {
       body: JSON.stringify({
-        created_at: new Date().toISOString(),
         email,
-        id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         message,
         phone: phone || null,
         privacy_accepted: true,

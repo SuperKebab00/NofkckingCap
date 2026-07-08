@@ -13,7 +13,7 @@ export default function FreshCutPage() {
   return (
     <>
       <SiteHeader />
-      <main className="page-shell">
+      <main className="page-shell route-shell route-shell--fresh">
         <section className="page-banner page-banner--fresh">
           <p className="eyebrow">Daily highlight</p>
           <h1>Taglio fresco del giorno</h1>

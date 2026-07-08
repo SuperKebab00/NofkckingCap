@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { LiveShopSections } from "../../components/live-shop-sections";
 import { SiteHeader } from "../../components/site-header";
 import { ShopCatalog } from "../../components/shop-catalog";
 import type { ShopProductCard } from "../../components/shop-product-grid";
@@ -20,9 +19,13 @@ export const metadata: Metadata = {
 function mapPublicProductToCard(product: PublicProduct): ShopProductCard {
   return {
     category: product.category,
+    checkoutHref: undefined,
     description: product.description,
     image: product.packshotUrl || product.lifestyleUrl,
+    lifestyleUrl: product.lifestyleUrl,
     name: product.name,
+    packshotUrl: product.packshotUrl,
+    price: product.price,
     stock: product.stock,
   };
 }
@@ -72,68 +75,14 @@ export default async function ShopPage() {
       ? shopCategories
       : buildFallbackCategories(products);
 
-  const usingSupabaseProducts = shopProducts.products.length > 0;
-  const usingSupabaseCategories = shopCategories.length > 0;
-  const dataBadge = usingSupabaseProducts
-    ? "Prodotti disponibili"
-    : "Catalogo di backup";
-  const categoryBadge = usingSupabaseCategories
-    ? "Categorie disponibili"
-    : "Categorie di backup";
-
   return (
     <>
       <SiteHeader />
-      <main className="page-shell">
-        <section className="page-hero">
+      <main className="page-shell route-shell route-shell--shop">
+        <section className="page-banner page-banner--shop">
           <p className="eyebrow">{shopPageContent.eyebrow}</p>
-          <div className="page-title-row">
-            <h1>{shopPageContent.title}</h1>
-            <span className="status-badge">{shopPageContent.badge}</span>
-          </div>
+          <h1>Prodotti No Cap</h1>
           <p>{shopPageContent.description}</p>
-          <div
-            aria-label="Catalog source"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.75rem",
-              marginTop: "1rem",
-            }}
-          >
-            <span className="status-badge">{dataBadge}</span>
-            <span className="status-badge">{categoryBadge}</span>
-          </div>
-        </section>
-
-        <section className="panel" aria-labelledby="shop-categories-title">
-          <div className="panel-heading">
-            <h2 id="shop-categories-title">Categorie</h2>
-            <p>
-              Read-only. Le categorie restano informative e guidano il filtro
-              locale del catalogo.
-            </p>
-          </div>
-          {categories.length > 0 ? (
-            <ul
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "0.75rem",
-                listStyle: "none",
-                margin: 0,
-                padding: 0,
-              }}
-            >
-              {categories.map((category) => (
-                <li key={category.value}>
-                  <span className="status-badge">{category.label}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Nessuna categoria disponibile nel fallback statico.</p>
-          )}
         </section>
 
         <ShopCatalog
@@ -141,24 +90,6 @@ export default async function ShopPage() {
           products={products}
           showStock={shopProducts.showStock}
         />
-
-        <LiveShopSections />
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>{shopPageContent.missingTitle}</h2>
-          </div>
-          <ul>
-            {shopPageContent.missingItems.map((item: string) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <div style={{ marginTop: "1rem" }}>
-            <a href={shopPageContent.homeAction.href}>
-              {shopPageContent.homeAction.label}
-            </a>
-          </div>
-        </section>
       </main>
     </>
   );

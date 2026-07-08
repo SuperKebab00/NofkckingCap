@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { PublicShopCategory } from "../lib/supabase-public";
 import type { ShopProductCard } from "./shop-product-grid";
@@ -121,134 +120,87 @@ export function ShopCatalog({
   const hasActiveFilters = query.trim().length > 0 || activeCategory.trim().length > 0;
 
   return (
-    <section className="section" aria-labelledby="shop-catalog-title">
-      <div className="section-heading">
-        <p className="eyebrow">Catalogo pubblico</p>
-        <h2 id="shop-catalog-title">Prodotti consultabili in sola lettura</h2>
-        <p>
-          Cerca per nome, filtra per categoria e scorri il catalogo senza
-          attivare carrello o checkout.
-        </p>
+    <>
+      <div className="category-bar" aria-label="Categorie prodotti">
+        <button
+          className={`category-pill ${activeCategory ? "" : "is-active"}`}
+          onClick={() => setActiveCategory("")}
+          type="button"
+        >
+          All products
+        </button>
+        {availableCategories.map((category) => {
+          const isActive = activeCategory === category.value;
+
+          return (
+            <button
+              className={`category-pill ${isActive ? "is-active" : ""}`}
+              key={category.value}
+              onClick={() => setActiveCategory(isActive ? "" : category.value)}
+              type="button"
+            >
+              {category.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div
-        className="spotlight-card"
-        style={{ display: "grid", gap: "1rem", marginBottom: "1.5rem" }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gap: "0.75rem",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          }}
-        >
-          <label style={{ display: "grid", gap: "0.35rem" }}>
-            <span className="eyebrow" style={{ margin: 0 }}>
-              Cerca
-            </span>
+      <section className="shop-section" aria-labelledby="shop-catalog-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Prodotti</p>
+            <h2 id="shop-catalog-title">Catalogo professionale</h2>
+          </div>
+          <p>
+            Scopri prodotti, disponibilita e ultimi pezzi con un&apos;esperienza
+            e-commerce pensata per barber shop.
+          </p>
+        </div>
+
+        <div className="shop-tools">
+          <label>
+            Cerca
             <input
               aria-label="Cerca un prodotto"
-              className="contact-form__input"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Es. matte, pomade, shampoo"
+              placeholder="Cerca prodotto..."
               type="search"
               value={query}
             />
           </label>
 
-          <label style={{ display: "grid", gap: "0.35rem" }}>
-            <span className="eyebrow" style={{ margin: 0 }}>
-              Ordina
-            </span>
+          <label>
+            Ordina
             <select
               aria-label="Ordina catalogo"
-              className="contact-form__input"
               onChange={(event) => setSortMode(event.target.value as SortMode)}
               value={sortMode}
             >
-              <option value="featured">In evidenza</option>
-              <option value="name-asc">Nome A-Z</option>
-              <option value="name-desc">Nome Z-A</option>
+              <option value="featured">Consigliati</option>
               <option value="price-asc">Prezzo crescente</option>
               <option value="price-desc">Prezzo decrescente</option>
               <option value="available">Solo disponibili</option>
               <option value="low-stock">Ultimi pezzi</option>
+              <option value="name-asc">Nome A-Z</option>
+              <option value="name-desc">Nome Z-A</option>
             </select>
           </label>
         </div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-          <button
-            className={activeCategory ? "ghost-button" : "status-badge"}
-            onClick={() => setActiveCategory("")}
-            type="button"
-          >
-            Tutte le categorie
-          </button>
-          {availableCategories.map((category) => {
-            const isActive = activeCategory === category.value;
-
-            return (
-              <button
-                className={isActive ? "status-badge" : "ghost-button"}
-                key={category.value}
-                onClick={() => setActiveCategory(isActive ? "" : category.value)}
-                type="button"
-              >
-                {category.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-            justifyContent: "space-between",
-          }}
-        >
-          <p style={{ margin: 0 }}>
-            {hasProducts
-              ? `${filteredProducts.length} prodotti visibili su ${products.length}.`
-              : "Catalogo pubblico in aggiornamento."}
-          </p>
-          {!availableCategories.length ? (
-            <span className="admin-inline-note">
-              Categorie live non disponibili: fallback pubblico attivo.
-            </span>
-          ) : null}
-        </div>
-      </div>
-
       {!hasProducts ? (
-        <div className="spotlight-card">
+        <div className="showcase-empty">
           <p className="eyebrow">Catalogo</p>
-          <h3 style={{ marginTop: 0 }}>Prodotti non disponibili al momento</h3>
-          <p>
-            Il catalogo pubblico non ha ancora restituito elementi. Puoi
-            continuare a esplorare lo shop piu tardi oppure scriverci per una
-            richiesta diretta.
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-            <Link href="/contact">Contattaci</Link>
-            <Link className="ghost-button" href="/">
-              Torna alla home
-            </Link>
-          </div>
+          <strong>Prodotti non disponibili al momento</strong>
+          <span>Il catalogo pubblico non ha ancora restituito elementi.</span>
         </div>
       ) : hasVisibleProducts ? (
         <ShopProductGrid products={filteredProducts} showStock={showStock} />
       ) : (
-        <div className="spotlight-card">
+        <div className="showcase-empty">
           <p className="eyebrow">Nessun risultato</p>
-          <h3 style={{ marginTop: 0 }}>Nessun prodotto corrisponde ai filtri attivi</h3>
-          <p>
-            Prova a cambiare categoria oppure semplifica la ricerca per tornare
-            ai prodotti disponibili nello shop pubblico.
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+          <strong>Nessun prodotto corrisponde ai filtri attivi</strong>
+          <span>Modifica ricerca, filtri o ordinamento.</span>
+          <div className="shop-reset-actions">
             <button className="ghost-button" onClick={() => setQuery("")} type="button">
               Azzera ricerca
             </button>
@@ -265,13 +217,11 @@ export function ShopCatalog({
             </button>
           </div>
           {hasActiveFilters ? (
-            <p className="admin-inline-note" style={{ marginTop: "0.75rem" }}>
-              Nessun errore tecnico: il catalogo e attivo, ma i filtri correnti non
-              restituiscono match.
-            </p>
+            <span>Nessun errore tecnico: i filtri correnti non restituiscono match.</span>
           ) : null}
         </div>
       )}
-    </section>
+      </section>
+    </>
   );
 }

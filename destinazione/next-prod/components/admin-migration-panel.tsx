@@ -15,7 +15,7 @@ const adminSections = [
 
 export function AdminMigrationPanel() {
   return (
-    <section className="section">
+    <section className="admin-section-panel">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Area admin</p>
@@ -27,17 +27,11 @@ export function AdminMigrationPanel() {
         </p>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        }}
-      >
+      <div className="admin-metric-grid">
         {adminSections.map((section) => (
-          <article key={section.title} className="spotlight-card">
+          <article key={section.title} className="status-card">
             <h3>{section.title}</h3>
-            <p style={{ marginTop: "0.75rem" }}>{section.body}</p>
+            <p>{section.body}</p>
           </article>
         ))}
       </div>

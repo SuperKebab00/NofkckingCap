@@ -17,46 +17,31 @@ export function AdminAuthStatusPanel({
 }: AdminAuthStatusPanelProps) {
   return (
     <section className="missing-panel" aria-labelledby="admin-auth-status">
-      <div
-        style={{
-          alignItems: "start",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "1rem",
-          justifyContent: "space-between",
-        }}
-      >
+      <div className="admin-panel-heading">
         <div>
-          <h2 id="admin-auth-status" style={{ marginBottom: "0.5rem" }}>
+          <h2 id="admin-auth-status">
             Verifica admin reale
           </h2>
-          <p style={{ margin: 0 }}>{authCheck.message}</p>
+          <p>{authCheck.message}</p>
         </div>
         <span className="status-badge">{getLabel(authCheck.state)}</span>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          marginTop: "1rem",
-        }}
-      >
+      <div className="admin-metric-grid admin-metric-grid--compact">
         <article className="status-card">
-          <h3 style={{ margin: 0 }}>Authenticated</h3>
-          <p style={{ fontSize: "1.5rem", margin: "0.25rem 0" }}>
+          <h3>Authenticated</h3>
+          <p className="admin-metric-value admin-metric-value--text">
             {authCheck.authenticated ? "true" : "false"}
           </p>
-          <p style={{ margin: 0 }}>Sorgente: {authCheck.source}</p>
+          <p>Sorgente: {authCheck.source}</p>
         </article>
 
         <article className="status-card">
-          <h3 style={{ margin: 0 }}>Admin</h3>
-          <p style={{ fontSize: "1.5rem", margin: "0.25rem 0" }}>
+          <h3>Admin</h3>
+          <p className="admin-metric-value admin-metric-value--text">
             {authCheck.admin ? "true" : "false"}
           </p>
-          <p style={{ margin: 0 }}>Nessuna operativita abilitata da questa UI.</p>
+          <p>Nessuna operativita abilitata da questa UI.</p>
         </article>
       </div>
     </section>

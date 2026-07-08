@@ -1,6 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { createOrderIdempotencyKey, createPublicOrder } from "../lib/orders-client";
 
 export type CheckoutInShopProduct = {
   id?: string;
@@ -10,8 +13,6 @@ export type CheckoutInShopProduct = {
   price: number | string | null;
   image: string | null;
   stock?: number | null;
-  checkoutHref?: string;
-  contactHref?: string;
 };
 
 export type CheckoutInShopProps = {
@@ -24,61 +25,63 @@ type CartItem = {
 };
 
 type FulfillmentMode = "pickup" | "shipping";
-type PaymentMode = "in-shop" | "paypal" | "stripe";
+type PaymentMode = "in-shop" | "paypal";
 
 type CheckoutFormState = {
-  name: string;
-  email: string;
-  phone: string;
   address: string;
   city: string;
+  email: string;
+  fullName: string;
+  phone: string;
   zip: string;
-  notes: string;
-  privacy: boolean;
 };
 
 type CheckoutOrder = {
-  orderNumber: string;
-  itemCount: number;
-  subtotal: number;
-  shipping: number;
-  total: number;
   fulfillment: FulfillmentMode;
+  orderNumber: string;
   paymentMode: PaymentMode;
+  serverOrderId?: string;
+  shipping: number;
+  status?: string;
+  subtotal: number;
+  total: number;
 };
 
 type NormalizedCheckoutProduct = {
-  id: string;
-  name: string;
   category: string;
-  description: string;
-  price: number;
+  id: string;
   image: string;
-  stock: number | null;
+  name: string;
+  price: number;
 };
 
 const CART_STORAGE_KEY = "no-cap-next-cart-v1";
 const ORDER_STORAGE_KEY = "no-cap-next-orders-v1";
-const SHIPPING_PRICE = 6.9;
+const SHIPPING_PRICE = 6;
 
 const emptyForm: CheckoutFormState = {
-  name: "",
-  email: "",
-  phone: "",
   address: "",
   city: "",
+  email: "",
+  fullName: "",
+  phone: "",
   zip: "",
-  notes: "",
-  privacy: false,
 };
 
 const currencyFormatter = new Intl.NumberFormat("it-IT", {
-  style: "currency",
   currency: "EUR",
+  style: "currency",
 });
 
 function formatCurrency(value: number) {
   return currencyFormatter.format(value);
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
 function readCart(): CartItem[] {
@@ -103,95 +106,116 @@ function writeCart(items: CartItem[]) {
   localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
 }
 
-function buildOrderNumber() {
-  return `NC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+function writeOrder(order: CheckoutOrder, form: CheckoutFormState, items: CartRow[]) {
+  const storedOrders = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || "[]");
+  const nextOrders = Array.isArray(storedOrders) ? storedOrders : [];
+
+  nextOrders.unshift({
+    ...order,
+    createdAt: new Date().toISOString(),
+    customer: {
+      email: form.email,
+      fullName: form.fullName,
+      phone: form.phone,
+    },
+    id: order.serverOrderId || `order-${Date.now()}`,
+    items: items.map((row) => ({
+      lineTotal: row.lineTotal,
+      productId: row.product.id,
+      productName: row.product.name,
+      quantity: row.quantity,
+      unitPrice: row.product.price,
+    })),
+    shippingAddress:
+      order.fulfillment === "shipping"
+        ? { address: form.address, city: form.city, zip: form.zip }
+        : null,
+    source: order.serverOrderId ? "orders-api" : "local-fallback",
+    status: order.status || "in-attesa",
+  });
+
+  localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(nextOrders.slice(0, 200)));
 }
 
 function validateForm(form: CheckoutFormState, fulfillment: FulfillmentMode) {
-  if (form.name.trim().length < 2) return "Inserisci nome e cognome.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-    return "Inserisci una email valida.";
-  }
-  if (form.phone.trim().length < 6) return "Inserisci un telefono valido.";
+  const errors: Partial<Record<keyof CheckoutFormState, string>> = {};
+
+  if (!form.fullName.trim()) errors.fullName = "Inserisci nome completo.";
+  if (!/\S+@\S+\.\S+/.test(form.email.trim())) errors.email = "Email non valida.";
+  if (form.phone.trim().length < 6) errors.phone = "Telefono non valido.";
 
   if (fulfillment === "shipping") {
-    if (form.address.trim().length < 5) return "Inserisci indirizzo di spedizione.";
-    if (form.city.trim().length < 2) return "Inserisci la citta.";
-    if (form.zip.trim().length < 4) return "Inserisci il CAP.";
+    if (!form.address.trim()) errors.address = "Inserisci indirizzo.";
+    if (!form.city.trim()) errors.city = "Inserisci citta.";
+    if (!form.zip.trim()) errors.zip = "Inserisci CAP.";
   }
 
-  if (!form.privacy) return "Accetta la privacy per continuare.";
-
-  return null;
+  return errors;
 }
 
+type CartRow = {
+  lineTotal: number;
+  product: NormalizedCheckoutProduct;
+  quantity: number;
+};
+
 export function CheckoutInShop({ products }: CheckoutInShopProps) {
+  const searchParams = useSearchParams();
+  const requestedProduct = searchParams.get("product");
+
   const catalogProducts = useMemo<NormalizedCheckoutProduct[]>(
     () =>
       products
         .map((product, index) => {
+          const fallbackId = product.id || slugify(product.name) || `product-${index}`;
           const price = Number(product.price || 0);
 
           return {
-            id:
-              product.id ||
-              product.name
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/(^-|-$)/g, "") ||
-              `product-${index}`,
-            name: product.name,
             category: product.category || "shop",
-            description:
-              product.description ||
-              "Prodotto No Cap disponibile per ordine simulato.",
-            price,
+            id: fallbackId,
             image: product.image || "/Img/products/black-wax-packshot-opt.webp",
-            stock: product.stock ?? null,
+            name: product.name,
+            price,
           };
         })
         .filter((product) => product.name && product.price > 0),
     [products],
   );
 
-  const availableProducts = useMemo(
-    () =>
-      catalogProducts.filter(
-        (product) => product.stock === null || product.stock > 0,
-      ),
-    [catalogProducts],
-  );
-
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState(
-    availableProducts[0]?.id || "",
-  );
   const [fulfillment, setFulfillment] = useState<FulfillmentMode>("pickup");
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("paypal");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("in-shop");
   const [form, setForm] = useState<CheckoutFormState>(emptyForm);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof CheckoutFormState, string>>
+  >({});
   const [message, setMessage] = useState<string | null>(null);
   const [successOrder, setSuccessOrder] = useState<CheckoutOrder | null>(null);
-  const [showPaypalModal, setShowPaypalModal] = useState(false);
+  const [confirmedRows, setConfirmedRows] = useState<CartRow[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingIdempotencyKey, setPendingIdempotencyKey] = useState<string | null>(null);
 
   useEffect(() => {
     const storedCart = readCart().filter((item) =>
       catalogProducts.some((product) => product.id === item.productId),
     );
+    const requested = requestedProduct
+      ? catalogProducts.find((product) => product.id === requestedProduct)
+      : null;
+
+    if (requested && !storedCart.some((item) => item.productId === requested.id)) {
+      setCart([...storedCart, { productId: requested.id, quantity: 1 }]);
+      return;
+    }
 
     setCart(storedCart);
-  }, [catalogProducts]);
-
-  useEffect(() => {
-    if (availableProducts.length && !selectedProductId) {
-      setSelectedProductId(availableProducts[0].id);
-    }
-  }, [availableProducts, selectedProductId]);
+  }, [catalogProducts, requestedProduct]);
 
   useEffect(() => {
     if (typeof window !== "undefined") writeCart(cart);
   }, [cart]);
 
-  const cartRows = useMemo(
+  const cartRows = useMemo<CartRow[]>(
     () =>
       cart
         .map((item) => {
@@ -199,430 +223,392 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
           if (!product) return null;
 
           return {
+            lineTotal: product.price * item.quantity,
             product,
             quantity: item.quantity,
-            lineTotal: product.price * item.quantity,
           };
         })
-        .filter((row): row is NonNullable<typeof row> => Boolean(row)),
+        .filter((row): row is CartRow => Boolean(row)),
     [cart, catalogProducts],
   );
 
   const subtotal = cartRows.reduce((total, row) => total + row.lineTotal, 0);
   const shipping = fulfillment === "shipping" && subtotal > 0 ? SHIPPING_PRICE : 0;
   const total = subtotal + shipping;
-  const itemCount = cartRows.reduce((count, row) => count + row.quantity, 0);
-  const selectedProduct = catalogProducts.find(
-    (product) => product.id === selectedProductId,
-  );
-
-  function updateCart(productId: string, quantity: number) {
-    setSuccessOrder(null);
-    setMessage(null);
-
-    setCart((items) => {
-      const existing = items.find((item) => item.productId === productId);
-      if (existing) {
-        return items.map((item) =>
-          item.productId === productId
-            ? { ...item, quantity: Math.max(1, item.quantity + quantity) }
-            : item,
-        );
-      }
-
-      return [...items, { productId, quantity: Math.max(1, quantity) }];
-    });
-  }
+  const activeRows = successOrder ? confirmedRows : cartRows;
+  const activeTotal = successOrder ? successOrder.total : total;
 
   function removeFromCart(productId: string) {
+    setSuccessOrder(null);
+    setMessage(null);
     setCart((items) => items.filter((item) => item.productId !== productId));
   }
 
-  function setItemQuantity(productId: string, quantity: number) {
-    setCart((items) =>
-      items.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: Math.max(1, quantity) }
-          : item,
-      ),
-    );
-  }
-
-  function submitOrder(event: FormEvent<HTMLFormElement>) {
+  async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
     setSuccessOrder(null);
 
     if (!cartRows.length) {
-      setMessage("Aggiungi almeno un prodotto al carrello.");
+      setMessage("Carrello vuoto.");
       return;
     }
 
-    const validationMessage = validateForm(form, fulfillment);
-    if (validationMessage) {
-      setMessage(validationMessage);
-      return;
-    }
+    const errors = validateForm(form, fulfillment);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
 
-    const order: CheckoutOrder = {
-      orderNumber: buildOrderNumber(),
-      itemCount,
-      subtotal,
-      shipping,
-      total,
-      fulfillment,
-      paymentMode,
-    };
+    setIsSubmitting(true);
 
-    const storedOrders = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || "[]");
-    const nextOrders = Array.isArray(storedOrders) ? storedOrders : [];
-    nextOrders.unshift({
-      ...order,
-      customer: form,
-      items: cartRows.map((row) => ({
-        id: row.product.id,
-        name: row.product.name,
-        quantity: row.quantity,
-        price: row.product.price,
-      })),
-      createdAt: new Date().toISOString(),
-      status: "in-attesa",
-    });
+    try {
+      const idempotencyKey = pendingIdempotencyKey || createOrderIdempotencyKey();
+      setPendingIdempotencyKey(idempotencyKey);
 
-    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(nextOrders.slice(0, 20)));
-    setSuccessOrder(order);
-    setCart([]);
-    setForm(emptyForm);
+      const serverOrder = await createPublicOrder({
+        customer: {
+          email: form.email.trim(),
+          fullName: form.fullName.trim(),
+          phone: form.phone.trim(),
+        },
+        fulfillment,
+        idempotency_key: idempotencyKey,
+        items: cartRows.map((row) => ({
+          product_id: row.product.id,
+          quantity: row.quantity,
+        })),
+        paymentMode,
+        shippingAddress:
+          fulfillment === "shipping"
+            ? {
+                address: form.address.trim(),
+                city: form.city.trim(),
+                zip: form.zip.trim(),
+              }
+            : undefined,
+      });
 
-    if (paymentMode === "paypal") {
-      setShowPaypalModal(true);
+      const order: CheckoutOrder = {
+        fulfillment: serverOrder.fulfillment || fulfillment,
+        orderNumber: serverOrder.order_number || "",
+        paymentMode: serverOrder.payment_mode || paymentMode,
+        serverOrderId: serverOrder.id,
+        shipping: Number(serverOrder.shipping ?? shipping),
+        status: serverOrder.status,
+        subtotal: Number(serverOrder.subtotal ?? subtotal),
+        total: Number(serverOrder.total ?? total),
+      };
+
+      writeOrder(order, form, cartRows);
+      setConfirmedRows(cartRows);
+      setSuccessOrder(order);
+      setCart([]);
+      setPendingIdempotencyKey(null);
+      setForm(emptyForm);
+      setFieldErrors({});
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Creazione ordine non disponibile. Riprova tra poco.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  return (
-    <section className="checkout-experience" aria-label="Checkout No Cap">
-      <div className="checkout-hero">
-        <div>
-          <p className="eyebrow">Checkout</p>
-          <h2>Carrello No Cap</h2>
+  if (successOrder) {
+    return (
+      <section className="checkout-success" aria-live="polite">
+        <p className="eyebrow">Ordine confermato</p>
+        <h2>Ordine ricevuto</h2>
+        <p>
+          Numero ordine: <strong>{successOrder.orderNumber}</strong>
+        </p>
+        <div className="checkout-success-summary">
           <p>
-            Esperienza ispirata al checkout originale: ordine simulato, riepilogo
-            immediato e pagamenti predisposti senza transazioni reali.
+            <strong>Totale:</strong> {formatCurrency(successOrder.total)}
           </p>
+          <p>
+            <strong>Pagamento:</strong>{" "}
+            {successOrder.paymentMode === "paypal" ? "PayPal" : "Pagamento in sede"}
+          </p>
+          <p>
+            <strong>Consegna:</strong>{" "}
+            {successOrder.fulfillment === "shipping" ? "Spedizione" : "Ritiro in shop"}
+          </p>
+          {successOrder.shipping ? (
+            <p>
+              <strong>Spedizione:</strong> {formatCurrency(successOrder.shipping)}
+            </p>
+          ) : null}
+          <p>
+            {successOrder.fulfillment === "shipping"
+              ? "Riceverai aggiornamenti spedizione dal team."
+              : "Ritiro disponibile in negozio durante gli orari di apertura."}
+          </p>
+          <p>Pagamento online non attivo: la modalita scelta resta informativa.</p>
         </div>
-        <div className="checkout-hero__meta">
-          <strong>{itemCount}</strong>
-          <span>articoli</span>
+        <CheckoutSummary rows={activeRows} total={activeTotal} />
+        <div className="hero__actions">
+          <Link className="primary-button" href="/shop">
+            Torna allo shop
+          </Link>
+          <Link className="ghost-button" href="/">
+            Torna alla home
+          </Link>
+          <button
+            className="outline-button"
+            type="button"
+            onClick={() =>
+              navigator.clipboard?.writeText(
+                `Ordine ${successOrder.orderNumber}\nTotale ${formatCurrency(successOrder.total)}`,
+              )
+            }
+          >
+            Copia riepilogo
+          </button>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => {
+              const payload = JSON.stringify({ ...successOrder, items: activeRows }, null, 2);
+              const blob = new Blob([payload], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `${successOrder.orderNumber}.json`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Scarica JSON ordine
+          </button>
         </div>
-      </div>
+      </section>
+    );
+  }
 
-      <div className="checkout-layout">
-        <section className="checkout-panel checkout-panel--catalog">
-          <div className="checkout-panel__heading">
-            <div>
-              <p className="eyebrow">Shop</p>
-              <h3>Aggiungi prodotti</h3>
-            </div>
-            <span>{availableProducts.length} disponibili</span>
-          </div>
+  return (
+    <section className="checkout-layout" aria-label="Checkout No Cap">
+      <form className="checkout-form" noValidate onSubmit={submitOrder}>
+        <div className="checkout-block">
+          <h2>Dati cliente</h2>
+          <CheckoutInput
+            error={fieldErrors.fullName}
+            label="Nome completo"
+            name="fullName"
+            onChange={(value) => setForm({ ...form, fullName: value })}
+            value={form.fullName}
+          />
+          <CheckoutInput
+            error={fieldErrors.email}
+            label="Email"
+            name="email"
+            onChange={(value) => setForm({ ...form, email: value })}
+            type="email"
+            value={form.email}
+          />
+          <CheckoutInput
+            error={fieldErrors.phone}
+            label="Telefono"
+            name="phone"
+            onChange={(value) => setForm({ ...form, phone: value })}
+            type="tel"
+            value={form.phone}
+          />
+        </div>
 
-          <div className="quick-add">
-            <select
-              aria-label="Seleziona prodotto"
-              value={selectedProductId}
-              onChange={(event) => setSelectedProductId(event.target.value)}
-            >
-              {availableProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} - {formatCurrency(product.price)}
-                </option>
-              ))}
-            </select>
-            <button
-              className="primary-button"
-              disabled={!selectedProduct}
-              type="button"
-              onClick={() => selectedProduct && updateCart(selectedProduct.id, 1)}
-            >
-              Aggiungi
-            </button>
-          </div>
-
-          <div className="checkout-product-list">
-            {availableProducts.slice(0, 6).map((product) => (
-              <article className="checkout-product-card" key={product.id}>
-                <img src={product.image} alt={product.name} loading="lazy" />
-                <div>
-                  <span>{product.category}</span>
-                  <h4>{product.name}</h4>
-                  <p>{product.description}</p>
-                  <div className="checkout-product-card__footer">
-                    <strong>{formatCurrency(product.price)}</strong>
-                    <button type="button" onClick={() => updateCart(product.id, 1)}>
-                      +
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="checkout-panel checkout-panel--cart">
-          <div className="checkout-panel__heading">
-            <div>
-              <p className="eyebrow">Riepilogo</p>
-              <h3>Il tuo carrello</h3>
-            </div>
-            <button className="ghost-button" type="button" onClick={() => setCart([])}>
-              Svuota
-            </button>
-          </div>
-
-          {cartRows.length ? (
-            <div className="cart-lines">
-              {cartRows.map(({ product, quantity, lineTotal }) => (
-                <article className="cart-line" key={product.id}>
-                  <img src={product.image} alt="" loading="lazy" />
-                  <div>
-                    <strong>{product.name}</strong>
-                    <span>{formatCurrency(product.price)}</span>
-                  </div>
-                  <input
-                    aria-label={`Quantita ${product.name}`}
-                    min="1"
-                    type="number"
-                    value={quantity}
-                    onChange={(event) =>
-                      setItemQuantity(product.id, Number(event.target.value))
-                    }
-                  />
-                  <strong>{formatCurrency(lineTotal)}</strong>
-                  <button type="button" onClick={() => removeFromCart(product.id)}>
-                    Rimuovi
-                  </button>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-cart">
-              <strong>Carrello vuoto</strong>
-              <p>Aggiungi un prodotto per simulare l&apos;ordine.</p>
-            </div>
-          )}
-
-          <div className="checkout-totals">
-            <span>
-              Subtotale <strong>{formatCurrency(subtotal)}</strong>
-            </span>
-            <span>
-              Spedizione <strong>{shipping ? formatCurrency(shipping) : "Gratis"}</strong>
-            </span>
-            <span className="checkout-total">
-              Totale <strong>{formatCurrency(total)}</strong>
-            </span>
-          </div>
-        </section>
-      </div>
-
-      <form className="checkout-form-grid" onSubmit={submitOrder}>
-        <section className="checkout-panel">
-          <div className="checkout-panel__heading">
-            <div>
-              <p className="eyebrow">Cliente</p>
-              <h3>Dati ordine</h3>
-            </div>
-          </div>
-
-          <div className="form-grid">
-            <label>
-              Nome e cognome
-              <input
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-                placeholder="Nome Cognome"
-              />
-            </label>
-            <label>
-              Email
-              <input
-                value={form.email}
-                onChange={(event) => setForm({ ...form, email: event.target.value })}
-                placeholder="nome@email.com"
-                type="email"
-              />
-            </label>
-            <label>
-              Telefono
-              <input
-                value={form.phone}
-                onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                placeholder="+39 320 000 0000"
-              />
-            </label>
-            <label>
-              Note
-              <textarea
-                value={form.notes}
-                onChange={(event) => setForm({ ...form, notes: event.target.value })}
-                placeholder="Taglie, preferenze ritiro o note per il team."
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="checkout-panel">
-          <div className="checkout-panel__heading">
-            <div>
-              <p className="eyebrow">Consegna</p>
-              <h3>Ritiro o spedizione</h3>
-            </div>
-          </div>
-
-          <div className="checkout-options">
-            <label className="checkout-radio">
+        <fieldset className="checkout-block">
+          <legend>Ritiro o consegna</legend>
+          <div className="checkout-options" role="radiogroup" aria-label="Ritiro o consegna">
+            <label className="checkout-radio checkout-option">
               <input
                 checked={fulfillment === "pickup"}
                 name="fulfillment"
+                onChange={() => setFulfillment("pickup")}
                 type="radio"
                 value="pickup"
-                onChange={() => setFulfillment("pickup")}
               />
-              <span>
+              <span className="checkout-option__body">
                 <strong>Ritiro in shop</strong>
-                <small>Pagamento o conferma finale in negozio.</small>
+                <small>Prepariamo l&apos;ordine per il ritiro in negozio.</small>
               </span>
             </label>
-            <label className="checkout-radio">
+            <label className="checkout-radio checkout-option">
               <input
                 checked={fulfillment === "shipping"}
                 name="fulfillment"
+                onChange={() => setFulfillment("shipping")}
                 type="radio"
                 value="shipping"
-                onChange={() => setFulfillment("shipping")}
               />
-              <span>
+              <span className="checkout-option__body">
                 <strong>Spedizione</strong>
-                <small>Placeholder con costo fisso {formatCurrency(SHIPPING_PRICE)}.</small>
+                <small>Ricevi l&apos;ordine all&apos;indirizzo indicato.</small>
               </span>
             </label>
           </div>
 
           {fulfillment === "shipping" ? (
-            <div className="form-grid">
-              <label>
-                Indirizzo
-                <input
-                  value={form.address}
-                  onChange={(event) => setForm({ ...form, address: event.target.value })}
-                  placeholder="Via e numero civico"
-                />
-              </label>
-              <label>
-                Citta
-                <input
-                  value={form.city}
-                  onChange={(event) => setForm({ ...form, city: event.target.value })}
-                  placeholder="Citta"
-                />
-              </label>
-              <label>
-                CAP
-                <input
-                  value={form.zip}
-                  onChange={(event) => setForm({ ...form, zip: event.target.value })}
-                  placeholder="00000"
-                />
-              </label>
+            <div className="shipping-fields">
+              <CheckoutInput
+                error={fieldErrors.address}
+                label="Indirizzo"
+                name="address"
+                onChange={(value) => setForm({ ...form, address: value })}
+                value={form.address}
+              />
+              <CheckoutInput
+                error={fieldErrors.city}
+                label="Citta"
+                name="city"
+                onChange={(value) => setForm({ ...form, city: value })}
+                value={form.city}
+              />
+              <CheckoutInput
+                error={fieldErrors.zip}
+                label="CAP"
+                name="zip"
+                onChange={(value) => setForm({ ...form, zip: value })}
+                value={form.zip}
+              />
             </div>
           ) : null}
-        </section>
+        </fieldset>
 
-        <section className="checkout-panel checkout-panel--payment">
-          <div className="checkout-panel__heading">
-            <div>
-              <p className="eyebrow">Pagamento</p>
-              <h3>Modalita</h3>
-            </div>
-          </div>
-
-          <div className="checkout-options">
-            <label className="checkout-radio">
+        <div className="checkout-block">
+          <h2>Pagamento</h2>
+          <p className="checkout-note">
+            La scelta pagamento viene registrata sull&apos;ordine, senza provider online
+            attivi.
+          </p>
+          <div className="checkout-options" role="radiogroup" aria-label="Tipo di pagamento">
+            <label className="checkout-radio checkout-option">
               <input
                 checked={paymentMode === "in-shop"}
                 name="paymentMode"
+                onChange={() => setPaymentMode("in-shop")}
                 type="radio"
                 value="in-shop"
-                onChange={() => setPaymentMode("in-shop")}
               />
-              <span>
-                <strong>In sede</strong>
-                <small>Ordine registrato, saldo gestito in shop.</small>
+              <span className="checkout-option__body">
+                <strong>Pagamento in sede</strong>
+                <small>Saldo al ritiro o alla consegna concordata.</small>
               </span>
             </label>
-            <label className="checkout-radio">
+            <label className="checkout-radio checkout-option">
               <input
                 checked={paymentMode === "paypal"}
                 name="paymentMode"
+                onChange={() => setPaymentMode("paypal")}
                 type="radio"
                 value="paypal"
-                onChange={() => setPaymentMode("paypal")}
               />
-              <span>
+              <span className="checkout-option__body">
                 <strong>PayPal</strong>
-                <small>Placeholder: nessuna transazione reale viene avviata.</small>
+                <small>Opzione informativa: nessun redirect o pagamento online.</small>
               </span>
             </label>
-            <label className="checkout-radio checkout-radio--disabled">
-              <input disabled name="paymentMode" type="radio" value="stripe" />
-              <span>
-                <strong>Stripe</strong>
-                <small>Predisposto per integrazione futura, non attivo.</small>
-              </span>
-            </label>
-          </div>
-
-          <label className="checkout-privacy">
-            <input
-              checked={form.privacy}
-              type="checkbox"
-              onChange={(event) => setForm({ ...form, privacy: event.target.checked })}
-            />
-            <span>Accetto privacy e trattamento dati per la gestione dell&apos;ordine.</span>
-          </label>
-
-          {message ? <p className="checkout-message checkout-message--error">{message}</p> : null}
-          {successOrder ? (
-            <div className="checkout-message checkout-message--success">
-              <strong>Ordine {successOrder.orderNumber} creato.</strong>
-              <span>
-                {successOrder.itemCount} articoli, totale {formatCurrency(successOrder.total)}.
-              </span>
-            </div>
-          ) : null}
-
-          <button className="primary-button checkout-submit" type="submit">
-            Conferma ordine simulato
-          </button>
-        </section>
-      </form>
-
-      {showPaypalModal ? (
-        <div className="payment-modal" role="dialog" aria-modal="true">
-          <div className="payment-modal__panel">
-            <p className="eyebrow">PayPal placeholder</p>
-            <h3>Pagamento non attivato</h3>
-            <p>
-              Nel progetto sorgente PayPal e predisposto come modalita checkout,
-              ma qui resta un placeholder sicuro: nessuna chiave reale e nessuna
-              transazione.
-            </p>
-            <button className="primary-button" type="button" onClick={() => setShowPaypalModal(false)}>
-              Ho capito
-            </button>
           </div>
         </div>
-      ) : null}
+
+        {message ? <p className="checkout-note checkout-note--error">{message}</p> : null}
+
+        <button
+          className="primary-button primary-button--wide"
+          disabled={isSubmitting}
+          type="submit"
+        >
+          {isSubmitting ? "Creazione ordine..." : "Conferma ordine"}
+        </button>
+      </form>
+
+      <CheckoutSummary
+        onRemove={removeFromCart}
+        rows={activeRows}
+        total={activeTotal}
+      />
     </section>
+  );
+}
+
+function CheckoutInput({
+  error,
+  label,
+  name,
+  onChange,
+  type = "text",
+  value,
+}: {
+  error?: string;
+  label: string;
+  name: keyof CheckoutFormState;
+  onChange: (value: string) => void;
+  type?: string;
+  value: string;
+}) {
+  return (
+    <>
+      <label>
+        {label}
+        <input
+          autoComplete={name === "fullName" ? "name" : name}
+          name={name}
+          onChange={(event) => onChange(event.target.value)}
+          type={type}
+          value={value}
+        />
+      </label>
+      <span className="field-error">{error || ""}</span>
+    </>
+  );
+}
+
+function CheckoutSummary({
+  onRemove,
+  rows,
+  total,
+}: {
+  onRemove?: (productId: string) => void;
+  rows: CartRow[];
+  total: number;
+}) {
+  return (
+    <aside className="checkout-summary" aria-label="Riepilogo ordine">
+      <h2>Riepilogo ordine</h2>
+      <div className="checkout-items">
+        {rows.length ? (
+          rows.map(({ product, quantity, lineTotal }) => (
+            <article className="checkout-summary-item" key={product.id}>
+              <div>
+                <strong>{product.name}</strong>
+                <p>
+                  {quantity} x {formatCurrency(product.price)}
+                </p>
+              </div>
+              <strong>{formatCurrency(lineTotal)}</strong>
+              {onRemove ? (
+                <button
+                  className="mini-button"
+                  type="button"
+                  onClick={() => onRemove(product.id)}
+                >
+                  -
+                </button>
+              ) : null}
+            </article>
+          ))
+        ) : (
+          <div className="cart-empty">
+            <strong>Carrello vuoto</strong>
+            <span>Aggiungi prodotti per procedere al checkout.</span>
+          </div>
+        )}
+      </div>
+      <div className="checkout-total">
+        <span>Totale</span>
+        <strong>{formatCurrency(total)}</strong>
+      </div>
+    </aside>
   );
 }
