@@ -55,6 +55,39 @@ assert.deepEqual(
   },
 );
 
+assert.deepEqual(
+  mod.__ordersCreateTest.buildRpcPayload(
+    mod.__ordersCreateTest.normalizePayload({
+      customer: {
+        email: "nested@example.com",
+        fullName: "Nested Client",
+        phone: "+39 333 7654321",
+      },
+      fulfillment: "shipping",
+      idempotency_key: "idem-nested-flat-1",
+      items: [{ productId: "black-wax", quantity: 1 }],
+      paymentMode: "paypal",
+      shippingAddress: {
+        address: "Via Flat 2",
+        city: "Roma",
+        zip: "00100",
+      },
+    }),
+  ),
+  {
+    address: "Via Flat 2",
+    city: "Roma",
+    customer_email: "nested@example.com",
+    customer_name: "Nested Client",
+    customer_phone: "+39 333 7654321",
+    fulfillment: "shipping",
+    items: [{ product_id: "black-wax", quantity: 1, slug: undefined }],
+    notes: null,
+    payment_mode: "paypal",
+    zip: "00100",
+  },
+);
+
 {
   const originalFetch = global.fetch;
   const requests = [];
@@ -73,12 +106,12 @@ assert.deepEqual(
       return new Response(
         JSON.stringify({
           order: {
-            id: "11111111-1111-1111-1111-111111111111",
+            id: "order-real-text-1",
             items: [{ id: "item-1", line_total: 40 }],
             order_number: "NC-2026-123456",
             payment_mode: "paypal",
             shipping: 6,
-            status: "in-attesa",
+            status: "prenotato",
             subtotal: 40,
             total: 46,
           },

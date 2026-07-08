@@ -55,9 +55,9 @@ function request(url, method, body, token = "admin-token") {
 
 assert.equal(
   mod.__adminOrdersCrudTest.buildOrdersListPath(
-    new Request("https://example.com/api/admin/orders?page=2&pageSize=10&status=spedito&search=Mario"),
+    new Request("https://example.com/api/admin/orders?page=2&pageSize=10&status=prenotato&search=Mario"),
   ),
-  "orders?limit=10&offset=10&order=created_at.desc&select=id%2Corder_number%2Ccustomer_name%2Ccustomer_email%2Ccustomer_phone%2Cfulfillment%2Cpayment_mode%2Cstatus%2Csubtotal%2Cshipping%2Ctotal%2Cnotes%2Csource%2Ccreated_at%2Cupdated_at&status=eq.spedito&or=%28order_number.ilike.*Mario*%2Ccustomer_email.ilike.*Mario*%2Ccustomer_name.ilike.*Mario*%29",
+  "orders?limit=10&offset=10&order=created_at.desc&select=id%2Corder_number%2Ccustomer_name%2Ccustomer_email%2Ccustomer_phone%2Cfulfillment%2Cpayment_mode%2Cstatus%2Csubtotal%2Cshipping%2Ctotal%2Cnotes%2Csource%2Ccreated_at%2Cupdated_at&status=eq.prenotato&or=%28order_number.ilike.*Mario*%2Ccustomer_email.ilike.*Mario*%2Ccustomer_name.ilike.*Mario*%29",
 );
 
 {
@@ -92,7 +92,7 @@ assert.equal(
   try {
     const response = await mod.handleAdminOrdersCollection(
       request(
-        "https://example.com/api/admin/orders?status=in-attesa",
+        "https://example.com/api/admin/orders?status=prenotato",
         "GET",
         undefined,
         token,
@@ -102,7 +102,7 @@ assert.equal(
 
     assert.equal(response.status, 200);
     assert.equal((await response.json()).orders[0].order_number, "NC-2026-0001");
-    assert.ok(requests.some((request) => request.url.includes("status=eq.in-attesa")));
+    assert.ok(requests.some((request) => request.url.includes("status=eq.prenotato")));
   } finally {
     global.fetch = originalFetch;
   }

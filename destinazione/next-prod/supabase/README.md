@@ -424,3 +424,29 @@ Smoke test manuale staging:
 - Shop structure: categories, sections e section items list/create/update/soft delete.
 - Orders: `POST /api/orders/create`, idempotency retry, conflict payload diverso, stock insufficiente, Admin Orders list/detail/status update.
 - Payments: confermare ancora nessun provider reale, con `payment_mode` solo informativo.
+
+## FINAL REAL SUPABASE VALIDATION
+
+Stato Supabase reale NOCAP:
+
+- Compatibility applicata in due parti:
+  - `legacy_compatibility_foundations_no_identity_sequence`;
+  - `legacy_order_rpc`.
+- `order_items.id` reale e `bigint GENERATED ALWAYS AS IDENTITY`; la migration locale `003_legacy_compatibility_plan.sql` non crea sequence/default manuale e lascia la identity column intatta.
+- `order_items.created_at` e la RPC `public.create_order_with_items(jsonb, text, text)` restano parte della compatibility.
+
+Validazione locale eseguita:
+
+- `npm run lint`: PASS con warning noti su `<img>`.
+- `npm run typecheck`: PASS.
+- `npm test`: PASS.
+- `npm run build`: PASS.
+
+Smoke test reali applicativi:
+
+- Non eseguiti da questo ambiente per assenza di `.env.local` e variabili reali Supabase/Admin.
+- Da completare manualmente su ambiente configurato: Contact/Leads, Checkout/Orders, Products CRUD, Shop Structure CRUD, Admin Orders e Admin Leads.
+
+Pagamenti reali:
+
+- OFF. Nessun provider Stripe/PayPal, nessun redirect e nessuna modal pagamento.

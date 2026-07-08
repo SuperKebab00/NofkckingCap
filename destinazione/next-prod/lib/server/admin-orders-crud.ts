@@ -18,6 +18,7 @@ const ORDER_SELECT =
 const ORDER_ITEM_SELECT =
   "id,order_id,product_id,product_name,product_sku_snapshot,quantity,unit_price,line_total,created_at";
 const ORDER_STATUSES = [
+  "prenotato",
   "in-attesa",
   "in-lavorazione",
   "pronto",

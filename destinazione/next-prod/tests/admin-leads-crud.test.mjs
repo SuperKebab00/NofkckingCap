@@ -30,7 +30,7 @@ async function createAdminToken() {
 }
 
 const adminTokenBundle = await createAdminToken();
-const leadId = "11111111-1111-4111-8111-111111111111";
+const leadId = "lead-real-1";
 
 function request(url, method, body, token = "admin-token") {
   return new Request(url, {

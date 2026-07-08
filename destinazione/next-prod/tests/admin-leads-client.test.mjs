@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { loadTsModule } from "./load-ts-module.mjs";
 
 const mod = await loadTsModule("lib/admin-leads-client.ts");
-const leadId = "11111111-1111-4111-8111-111111111111";
+const leadId = "lead-real-1";
 
 {
   const requests = [];

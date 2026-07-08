@@ -5,11 +5,13 @@ import { loadTsModule } from "./load-ts-module.mjs";
 
 const mod = await loadTsModule("lib/admin-orders-client.ts");
 
+assert.ok(mod.ADMIN_ORDER_STATUSES.includes("prenotato"));
+
 {
   const requests = [];
   const orders = await mod.listAdminOrders(
     "admin-token",
-    { page: 2, pageSize: 10, search: "Mario", status: "in-attesa" },
+    { page: 2, pageSize: 10, search: "Mario", status: "prenotato" },
     {
       fetchImpl: async (input, init) => {
         requests.push({ input: String(input), init });
@@ -20,7 +22,7 @@ const mod = await loadTsModule("lib/admin-orders-client.ts");
                 customer_name: "Mario Rossi",
                 id: "order-1",
                 order_number: "NC-2026-0001",
-                status: "in-attesa",
+                status: "prenotato",
                 total: 42,
               },
             ],
@@ -34,7 +36,7 @@ const mod = await loadTsModule("lib/admin-orders-client.ts");
   assert.equal(orders.length, 1);
   assert.equal(
     requests[0].input,
-    "/api/admin/orders?page=2&pageSize=10&status=in-attesa&search=Mario",
+    "/api/admin/orders?page=2&pageSize=10&status=prenotato&search=Mario",
   );
   assert.equal(requests[0].init.method, "GET");
   assert.equal(
@@ -68,10 +70,10 @@ const mod = await loadTsModule("lib/admin-orders-client.ts");
 
 {
   const requests = [];
-  const order = await mod.updateAdminOrderStatus(
+  await mod.updateAdminOrderStatus(
     "admin-token",
     "order-2",
-    { notes: "Pronto al ritiro", status: "pronto" },
+    { notes: "Prenotazione confermata", status: "prenotato" },
     {
       fetchImpl: async (input, init) => {
         requests.push({ input: String(input), init });
@@ -85,10 +87,9 @@ const mod = await loadTsModule("lib/admin-orders-client.ts");
     },
   );
 
-  assert.equal(order.status, "pronto");
+  assert.equal(JSON.parse(String(requests[0].init.body)).status, "prenotato");
   assert.equal(requests[0].input, "/api/admin/orders/order-2");
   assert.equal(requests[0].init.method, "PATCH");
-  assert.equal(JSON.parse(String(requests[0].init.body)).status, "pronto");
   assert.equal(
     new Headers(requests[0].init.headers).get("Content-Type"),
     "application/json",

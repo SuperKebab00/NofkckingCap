@@ -1,4 +1,5 @@
 export const ADMIN_ORDER_STATUSES = [
+  "prenotato",
   "in-attesa",
   "in-lavorazione",
   "pronto",

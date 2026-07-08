@@ -1437,3 +1437,97 @@ Stripe e PayPal provider restano disattivati/non implementati. Il valore `paymen
 3. Creare admin user in `admin_users`.
 4. Eseguire smoke test manuale completo: Contact, Admin Leads, Products CRUD, Shop Structure CRUD, Checkout Orders, Admin Orders.
 5. Eseguire advisors/security review Supabase.
+
+## DB migration compatibility - real NOCAP schema
+
+Le query read-only eseguite sul Supabase reale NOCAP hanno confermato che il database contiene dati reali e usa uno schema legacy misto.
+
+### Risultati reali importanti
+
+- `products`: 7 righe, `id text`.
+- `orders`: 1 riga, `id text`, status reale `prenotato`, `payment_mode = in-shop`, `fulfillment = pickup`.
+- `order_items`: 3 righe, `order_id text` FK verso `orders.id`; `product_id` da trattare come text legacy.
+- `leads`: 1 riga, `id text`, `source = contact-form`.
+- `admin_users`: 1 riga, `user_id uuid`.
+- `shop_categories`: 5 righe, `id uuid`.
+- `shop_sections`: 1 riga, `id uuid`.
+- `shop_section_items`: 1 riga, `id uuid`.
+- `cuts`: 0 righe, tabella legacy extra non coperta dallo schema prod-ready locale.
+
+### Decisione architetturale
+
+Strategia scelta: **C. layer di compatibilita progressivo**.
+
+Non convertire direttamente PK legacy `text` a UUID. I dati esistenti sono pochi ma presenti e non devono essere persi. Il codice deve trattare come stringhe opache:
+
+- `products.id`
+- `orders.id`
+- `leads.id`
+- `order_items.order_id`
+- `order_items.product_id`
+
+UUID resta valido per:
+
+- `shop_categories.id`
+- `shop_sections.id`
+- `shop_section_items.id`
+- `admin_users.user_id`
+
+### Aggiornamenti compatibility
+
+- `destinazione/next-prod/supabase/migrations/003_legacy_compatibility_plan.sql` e stata aggiornata come migration candidate additiva per il DB reale.
+- La migration 003 aggiunge default text sicuri per `leads.id`, `products.id`, `orders.id` e `order_items.id` solo quando le colonne sono text.
+- La migration 003 aggiunge `orders.notes` per coerenza con Admin Orders e RPC, dato che nel DB reale la colonna non esisteva.
+- La migration 003 aggiunge `order_items.created_at` per supportare il retry idempotente che restituisce righe ordine ordinate.
+- La migration 003 locale rispecchia l'applicazione reale NOCAP: `order_items.id` e `bigint GENERATED ALWAYS AS IDENTITY`, quindi non crea `public.order_items_id_seq` e non imposta default manuali con `nextval(...)`.
+- Su Supabase reale la compatibility e stata applicata in due parti: `legacy_compatibility_foundations_no_identity_sequence` e `legacy_order_rpc`.
+- La RPC candidate `create_order_with_items` e compatibile con `orders.id text`, `order_items.order_id text`, `order_items.product_id text` e inserisce status legacy `prenotato`.
+- `orders-create.ts` normalizza il payload checkout nested in payload flat prima di chiamare la RPC.
+- Admin Orders ora riconosce `prenotato` oltre agli stati prod-ready gia presenti.
+- Admin Leads e testato con ID text legacy (`lead-real-1`) come stringa opaca.
+
+### Cosa resta manuale
+
+- Applicare 003 prima su staging, non direttamente in produzione.
+- Verificare il check constraint reale di `orders.status` prima di aggiungere o sostituire stati.
+- Verificare RLS legacy prima di creare nuove policy.
+- Smoke test staging: Contact, Admin Leads, Products CRUD, Shop Structure, Checkout Orders, Admin Orders.
+
+## FINAL REAL SUPABASE VALIDATION
+
+### Test locali eseguiti
+
+- `npm run lint`: PASS con 7 warning noti `@next/next/no-img-element`.
+- `npm run typecheck`: PASS.
+- `npm test`: PASS, 21 test su 21.
+- `npm run build`: PASS con gli stessi warning noti su `<img>`.
+
+### Test reali Supabase
+
+- Migration reali confermate su Supabase NOCAP:
+  - `legacy_compatibility_foundations_no_identity_sequence`;
+  - `legacy_order_rpc`.
+- Il file locale `003_legacy_compatibility_plan.sql` e allineato alla versione realmente applicata: `order_items.id` resta `bigint GENERATED ALWAYS AS IDENTITY`, senza sequence/default manuale.
+
+### Non testato realmente da questo ambiente
+
+Smoke test runtime contro Supabase NOCAP non eseguiti da questa macchina per assenza di env locali:
+
+- `NEXT_PUBLIC_SUPABASE_URL`;
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`;
+- `SUPABASE_URL`;
+- `SUPABASE_SERVICE_ROLE_KEY`;
+- `SUPABASE_JWKS_URL`;
+- `ADMIN_API_TOKEN`;
+- `NEXT_PUBLIC_CONTACT_FORM_MODE`;
+- `APP_ENV`.
+
+`TURNSTILE_SECRET_KEY` resta opzionale e non presente.
+
+### Pagamenti
+
+Pagamenti reali OFF: non sono stati implementati Stripe, PayPal provider, redirect o modal di pagamento. `payment_mode` resta informativo.
+
+### Bug corretti
+
+Nessun bug bloccante emerso nei test locali finali. Non sono state aggiunte feature.
