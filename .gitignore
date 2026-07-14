@@ -14,9 +14,9 @@ build/
 .turbo/
 
 # env
-.env
-.env.local
-.env.*.local
+.env*
+!.env.example
+!**/.env.example
 
 # logs
 *.log
