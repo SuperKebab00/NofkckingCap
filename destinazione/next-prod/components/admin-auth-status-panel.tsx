@@ -20,7 +20,7 @@ export function AdminAuthStatusPanel({
       <div className="admin-panel-heading">
         <div>
           <h2 id="admin-auth-status">
-            Verifica admin reale
+            Stato accesso admin
           </h2>
           <p>{authCheck.message}</p>
         </div>
@@ -41,7 +41,7 @@ export function AdminAuthStatusPanel({
           <p className="admin-metric-value admin-metric-value--text">
             {authCheck.admin ? "true" : "false"}
           </p>
-          <p>Nessuna operativita abilitata da questa UI.</p>
+          <p>Le azioni disponibili richiedono una sessione verificata lato server.</p>
         </article>
       </div>
     </section>

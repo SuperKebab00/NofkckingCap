@@ -3789,6 +3789,54 @@ body,
   padding: 18px 0 0;
 }
 
+.route-shell--admin .admin-workspace {
+  display: grid;
+  gap: 14px;
+}
+
+.route-shell--admin .admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.route-shell--admin .admin-tab {
+  min-height: 46px;
+  padding: 0 18px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 0;
+  border-radius: 0;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.route-shell--admin .admin-tab:hover,
+.route-shell--admin .admin-tab:focus-visible {
+  color: var(--white);
+  background: rgba(212, 15, 25, 0.2);
+  outline: 0;
+}
+
+.route-shell--admin .admin-tab.is-active {
+  position: relative;
+  z-index: 1;
+  color: var(--white);
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.route-shell--admin .admin-workspace__panel {
+  display: grid;
+  gap: 14px;
+}
+
 .route-shell--admin .admin-dashboard-stack,
 .route-shell--admin .admin-section-panel {
   display: grid;
@@ -4149,6 +4197,19 @@ body,
   .route-shell--admin .admin-hero__actions > *,
   .route-shell--admin .admin-form-actions > * {
     width: 100%;
+  }
+
+  .route-shell--admin .admin-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    border-bottom: 0;
+  }
+
+  .route-shell--admin .admin-tab {
+    width: 100%;
+    padding-inline: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   }
 
   .route-shell--admin .admin-form-actions,

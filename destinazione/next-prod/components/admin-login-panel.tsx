@@ -82,10 +82,10 @@ export function AdminLoginPanel() {
 
   return (
     <section className="missing-panel" aria-labelledby="admin-login-panel">
-      <h2 id="admin-login-panel">Login admin minimo</h2>
+      <h2 id="admin-login-panel">Accesso gestore</h2>
       <p>
-        Questo pannello serve solo a ottenere un JWT Supabase lato client e far
-        verificare lo stato admin a Cloudflare. Non abilita CRUD o write.
+        Accedi con il tuo utente Supabase: il JWT viene verificato prima di
+        abilitare le API amministrative protette.
       </p>
 
       <form className="admin-login-form" onSubmit={handleSubmit}>
@@ -113,7 +113,7 @@ export function AdminLoginPanel() {
 
         <div className="admin-form-actions">
           <button className="ghost-button" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Verifica in corso..." : "Verifica sessione admin"}
+            {isSubmitting ? "Verifica in corso..." : "Accedi all'area admin"}
           </button>
           <span className="status-badge">
             {result.state === "admin"

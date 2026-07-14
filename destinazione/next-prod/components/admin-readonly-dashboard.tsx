@@ -19,7 +19,7 @@ const flowStatus = [
     status: "online",
   },
   {
-    description: "Checkout in-shop pubblico disponibile senza ordini reali o pagamenti.",
+    description: "Checkout pubblico collegato agli ordini server-side; nessun pagamento online attivo.",
     label: "Checkout in-shop",
     status: "consultazione",
   },
@@ -29,9 +29,9 @@ const flowStatus = [
     status: "same-origin",
   },
   {
-    description: "Scritture, CRUD e operazioni sensibili restano disabilitati in questa dashboard.",
+    description: "Prodotti, struttura shop, ordini e lead sono disponibili dopo verifica della sessione admin.",
     label: "CRUD admin",
-    status: "non disponibile",
+    status: "protetto",
   },
 ];
 
@@ -142,10 +142,10 @@ export function AdminReadonlyDashboard({
       <section className="missing-panel" aria-labelledby="admin-scope-limits">
         <h2 id="admin-scope-limits">Perimetro attuale</h2>
         <ul className="admin-note-list">
-          <li>Nessun inserimento, aggiornamento o rimozione prodotti da questa dashboard.</li>
-          <li>Nessun accesso a ordini, lead o dati sensibili.</li>
+          <li>Le operazioni CRUD sono disponibili solo dopo verifica lato server del Bearer JWT admin.</li>
+          <li>Ordini e lead restano accessibili esclusivamente dalle API admin protette.</li>
           <li>Nessun token admin o service role esposto al client.</li>
-          <li>Nessuna auth admin finale implementata in questo step.</li>
+          <li>Il service role resta confinato al server e non viene mai inviato al browser.</li>
         </ul>
       </section>
     </section>

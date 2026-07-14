@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminAuthStatusPanel } from "../../components/admin-auth-status-panel";
-import { AdminFutureActions } from "../../components/admin-future-actions";
 import { AdminLoginPanel } from "../../components/admin-login-panel";
-import { AdminMigrationPanel } from "../../components/admin-migration-panel";
 import { AdminLeadsPanel } from "../../components/admin-leads-panel";
 import { AdminOrdersPanel } from "../../components/admin-orders-panel";
 import { AdminProductsCrudPanel } from "../../components/admin-products-crud-panel";
 import { AdminProductsSummaryPanel } from "../../components/admin-products-summary-panel";
 import { AdminReadonlyDashboard } from "../../components/admin-readonly-dashboard";
 import { AdminShopStructurePanel } from "../../components/admin-shop-structure-panel";
+import { AdminWorkspace } from "../../components/admin-workspace";
 import { SiteHeader } from "../../components/site-header";
 import { getAdminAuthCheck } from "../../lib/admin-auth-check";
 import { getAdminProductsSummary } from "../../lib/admin-products-summary";
@@ -20,9 +19,9 @@ import {
 } from "../../lib/supabase-public";
 
 export const metadata: Metadata = {
-  title: "Admin Overview | No Cap Barbershop",
+  title: "Area Gestore | No Cap Barbershop",
   description:
-    "Area gestione Next in sola lettura, collegata in modo sicuro allo stato admin backend quando configurato.",
+    "Area gestione protetta per catalogo, ordini, richieste e struttura shop.",
 };
 
 export default async function AdminPage() {
@@ -53,13 +52,12 @@ export default async function AdminPage() {
       <SiteHeader />
       <main className="page-shell route-shell route-shell--admin">
         <section className="admin-hero">
-          <span className="eyebrow">Area admin</span>
-          <h1>Panoramica gestione</h1>
+          <span className="eyebrow">Area gestore</span>
+          <h1>Gestione prodotti</h1>
           <p>
-            L&apos;area admin resta protetta e limitata alla consultazione. Quando la
-            configurazione server-side e pronta, questa pagina legge in modo
-            sicuro lo stato dell&apos;endpoint Cloudflare protetto senza esporre
-            token al browser.
+            Dashboard operativa per catalogo, contenuti shop, ordini e richieste.
+            Le azioni amministrative richiedono una sessione Supabase verificata e
+            usano esclusivamente API protette.
           </p>
           <div className="admin-hero__actions">
             <Link className="ghost-button" href="/shop">
@@ -72,29 +70,40 @@ export default async function AdminPage() {
         </section>
 
         <div className="admin-hub">
-          <AdminReadonlyDashboard
-            adminApiMessage={adminStatus.message}
-            adminApiState={adminStatus.apiState}
-            adminCategoriesCount={adminStatus.categoriesCount}
-            adminMode={adminStatus.mode}
-            adminProductsCount={adminStatus.productsCount}
-            adminSource={adminStatus.source}
-            adminWrites={adminStatus.writes}
-            categoriesCount={categoriesCount}
-            productsCount={productsCount}
-            showStock={productsResult.showStock}
-            usesLiveReadOnlyData={usesLiveReadOnlyData}
+          <AdminWorkspace
+            authentication={
+              <>
+                <AdminAuthStatusPanel authCheck={adminAuthCheck} />
+                <AdminLoginPanel />
+              </>
+            }
+            data={
+              <>
+                <AdminReadonlyDashboard
+                  adminApiMessage={adminStatus.message}
+                  adminApiState={adminStatus.apiState}
+                  adminCategoriesCount={adminStatus.categoriesCount}
+                  adminMode={adminStatus.mode}
+                  adminProductsCount={adminStatus.productsCount}
+                  adminSource={adminStatus.source}
+                  adminWrites={adminStatus.writes}
+                  categoriesCount={categoriesCount}
+                  productsCount={productsCount}
+                  showStock={productsResult.showStock}
+                  usesLiveReadOnlyData={usesLiveReadOnlyData}
+                />
+                <AdminProductsSummaryPanel summary={adminProductsSummary} />
+              </>
+            }
+            leads={<AdminLeadsPanel />}
+            manage={
+              <>
+                <AdminProductsCrudPanel />
+                <AdminShopStructurePanel />
+              </>
+            }
+            orders={<AdminOrdersPanel />}
           />
-
-          <AdminAuthStatusPanel authCheck={adminAuthCheck} />
-          <AdminLoginPanel />
-          <AdminProductsCrudPanel />
-          <AdminShopStructurePanel />
-          <AdminOrdersPanel />
-          <AdminLeadsPanel />
-          <AdminProductsSummaryPanel summary={adminProductsSummary} />
-          <AdminMigrationPanel />
-          <AdminFutureActions />
         </div>
       </main>
     </>
