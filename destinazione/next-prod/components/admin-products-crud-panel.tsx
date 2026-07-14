@@ -9,10 +9,6 @@ import {
   type AdminProduct,
   type AdminProductPayload,
 } from "../lib/admin-products-client";
-import {
-  ADMIN_ACCESS_TOKEN_STORAGE_KEY,
-  ADMIN_AUTH_CHANGED_EVENT,
-} from "../lib/admin-login";
 
 type ProductFormState = {
   badge: string;
@@ -88,19 +84,13 @@ function buildPayload(form: ProductFormState): AdminProductPayload {
   };
 }
 
-function readStoredToken() {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY);
-}
-
 export function AdminProductsCrudPanel() {
-  const [token, setToken] = useState<string | null>(null);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductFormState>(emptyForm);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("Login admin richiesto per abilitare il CRUD prodotti.");
+  const [message, setMessage] = useState("Caricamento prodotti amministrativi.");
   const [error, setError] = useState<string | null>(null);
 
   const selectedProduct = useMemo(
@@ -108,18 +98,12 @@ export function AdminProductsCrudPanel() {
     [products, selectedProductId],
   );
 
-  const refreshProducts = useCallback(async (nextToken = token) => {
-    if (!nextToken) {
-      setProducts([]);
-      setMessage("Login admin richiesto per abilitare il CRUD prodotti.");
-      return;
-    }
-
+  const refreshProducts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const nextProducts = await listAdminProducts(nextToken);
+      const nextProducts = await listAdminProducts();
       setProducts(nextProducts);
       setMessage(`Prodotti admin caricati: ${nextProducts.length}.`);
     } catch (caught) {
@@ -128,27 +112,10 @@ export function AdminProductsCrudPanel() {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    const storedToken = readStoredToken();
-    setToken(storedToken);
-    void refreshProducts(storedToken);
-
-    function handleAuthChanged(event: Event) {
-      const detail = (event as CustomEvent<{ accessToken?: string | null }>).detail;
-      const nextToken = detail?.accessToken || readStoredToken();
-      setToken(nextToken || null);
-      setSelectedProductId(null);
-      setForm(emptyForm);
-      void refreshProducts(nextToken || null);
-    }
-
-    window.addEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
-
-    return () => {
-      window.removeEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
-    };
+    void refreshProducts();
   }, [refreshProducts]);
 
   function updateField<K extends keyof ProductFormState>(
@@ -177,21 +144,16 @@ export function AdminProductsCrudPanel() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token) {
-      setError("Sessione admin mancante.");
-      return;
-    }
-
     setIsSaving(true);
     setError(null);
 
     try {
       const payload = buildPayload(form);
       const savedProduct = selectedProduct
-        ? await updateAdminProduct(token, selectedProduct.id, payload)
-        : await createAdminProduct(token, payload);
+        ? await updateAdminProduct(undefined, selectedProduct.id, payload)
+        : await createAdminProduct(undefined, payload);
 
-      await refreshProducts(token);
+      await refreshProducts();
       setSelectedProductId(savedProduct.id);
       setForm(productToForm(savedProduct));
       setMessage(selectedProduct ? "Prodotto aggiornato." : "Prodotto creato.");
@@ -203,7 +165,7 @@ export function AdminProductsCrudPanel() {
   }
 
   async function handleSoftDelete() {
-    if (!token || !selectedProduct) return;
+    if (!selectedProduct) return;
 
     const confirmed = window.confirm(
       `Disattivare ${selectedProduct.name}? Il prodotto restera nello storico ma sparira dal pubblico.`,
@@ -214,8 +176,8 @@ export function AdminProductsCrudPanel() {
     setError(null);
 
     try {
-      const deletedProduct = await deleteAdminProduct(token, selectedProduct.id);
-      await refreshProducts(token);
+      const deletedProduct = await deleteAdminProduct(undefined, selectedProduct.id);
+      await refreshProducts();
       setSelectedProductId(deletedProduct.id);
       setForm(productToForm(deletedProduct));
       setMessage("Prodotto disattivato.");
@@ -232,27 +194,17 @@ export function AdminProductsCrudPanel() {
         <div>
           <h2 id="admin-products-crud-title">Products CRUD</h2>
           <p>
-            Gestione prodotti collegata alle API admin Next. Richiede JWT Supabase
-            admin verificato.
+            Gestione prodotti collegata alle API admin Next con sessione server-side.
           </p>
         </div>
         <span className="status-badge">
-          {token ? "CRUD abilitato" : "Login richiesto"}
+          CRUD abilitato
         </span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
 
-      {!token ? (
-        <div className="status-card">
-          <h3>Sessione mancante</h3>
-          <p>
-            Verifica la sessione nel pannello login admin. Nessuna API products
-            viene chiamata senza Bearer JWT.
-          </p>
-        </div>
-      ) : (
-        <div className="admin-crud-grid">
+      <div className="admin-crud-grid">
           <div className="admin-products-list">
             <div className="admin-form-actions">
               <button className="ghost-button" disabled={isLoading} onClick={() => refreshProducts()} type="button">
@@ -458,8 +410,7 @@ export function AdminProductsCrudPanel() {
               </button>
             </div>
           </form>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

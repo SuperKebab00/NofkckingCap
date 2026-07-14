@@ -23,6 +23,28 @@ assert.throws(
   /Payload ordine non valido/,
 );
 
+assert.throws(
+  () => mod.__ordersCreateTest.normalizePayload({
+    customer: { email: "client@example.com", fullName: "Mario Rossi", phone: "+393331234567" },
+    fulfillment: "shipping",
+    idempotency_key: "idem-shipping-off-1",
+    items: [{ productId: "black-wax", quantity: 1 }],
+    paymentMode: "in-shop",
+  }),
+  /ritiro in negozio/,
+);
+
+assert.throws(
+  () => mod.__ordersCreateTest.normalizePayload({
+    customer: { email: "client@example.com", fullName: "Mario Rossi", phone: "+393331234567" },
+    fulfillment: "pickup",
+    idempotency_key: "idem-payment-off-1",
+    items: [{ productId: "black-wax", quantity: 1 }],
+    paymentMode: "paypal",
+  }),
+  /pagamento in sede/,
+);
+
 assert.deepEqual(
   mod.__ordersCreateTest.normalizePayload({
     customer: {
@@ -30,28 +52,20 @@ assert.deepEqual(
       fullName: " Mario Rossi ",
       phone: " +39 333 1234567 ",
     },
-    fulfillment: "delivery",
+    fulfillment: "pickup",
     idempotency_key: "idem-123456789",
     items: [{ productId: "black-wax", quantity: "2" }],
-    paymentMode: "in_shop",
-    shippingAddress: {
-      address: "Via Roma 1",
-      city: "Napoli",
-      zip: "80100",
-    },
+    paymentMode: "in-shop",
   }),
   {
-    city: "Napoli",
     customerEmail: "client@example.com",
     customerName: "Mario Rossi",
     customerPhone: "+39 333 1234567",
-    fulfillment: "shipping",
+    fulfillment: "pickup",
     idempotencyKey: "idem-123456789",
     items: [{ productId: "black-wax", quantity: 2, slug: undefined }],
     notes: null,
     paymentMode: "in-shop",
-    shippingAddress: "Via Roma 1",
-    zip: "80100",
   },
 );
 
@@ -63,28 +77,20 @@ assert.deepEqual(
         fullName: "Nested Client",
         phone: "+39 333 7654321",
       },
-      fulfillment: "shipping",
+      fulfillment: "pickup",
       idempotency_key: "idem-nested-flat-1",
       items: [{ productId: "black-wax", quantity: 1 }],
-      paymentMode: "paypal",
-      shippingAddress: {
-        address: "Via Flat 2",
-        city: "Roma",
-        zip: "00100",
-      },
+      paymentMode: "in-shop",
     }),
   ),
   {
-    address: "Via Flat 2",
-    city: "Roma",
     customer_email: "nested@example.com",
     customer_name: "Nested Client",
     customer_phone: "+39 333 7654321",
-    fulfillment: "shipping",
+    fulfillment: "pickup",
     items: [{ product_id: "black-wax", quantity: 1, slug: undefined }],
     notes: null,
-    payment_mode: "paypal",
-    zip: "00100",
+    payment_mode: "in-shop",
   },
 );
 
@@ -109,11 +115,11 @@ assert.deepEqual(
             id: "order-real-text-1",
             items: [{ id: "item-1", line_total: 40 }],
             order_number: "NC-2026-123456",
-            payment_mode: "paypal",
-            shipping: 6,
+            payment_mode: "in-shop",
+            shipping: 0,
             status: "prenotato",
             subtotal: 40,
-            total: 46,
+            total: 40,
           },
         }),
         { status: 201 },
@@ -138,22 +144,17 @@ assert.deepEqual(
           fullName: "Mario Rossi",
           phone: "+393331234567",
         },
-        fulfillment: "shipping",
+        fulfillment: "pickup",
         idempotency_key: "idem-rpc-success-1",
         items: [{ productId: "black-wax", quantity: 2, unitPrice: 999 }],
-        paymentMode: "paypal",
-        shippingAddress: {
-          address: "Via Roma 1",
-          city: "Napoli",
-          zip: "80100",
-        },
+        paymentMode: "in-shop",
       }),
       env,
     );
 
     assert.equal(response.status, 201);
     const json = await response.json();
-    assert.equal(json.order.total, 46);
+    assert.equal(json.order.total, 40);
     assert.equal(json.order.order_number, "NC-2026-123456");
     assert.ok(requests.some((request) => request.url.endsWith("/rest/v1/admin_audit_log")));
   } finally {

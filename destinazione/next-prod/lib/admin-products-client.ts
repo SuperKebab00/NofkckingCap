@@ -46,8 +46,8 @@ export class AdminProductsClientError extends Error {
   }
 }
 
-function assertToken(token: string) {
-  if (!token.trim()) {
+function assertExplicitToken(token: string | undefined) {
+  if (token !== undefined && !token.trim()) {
     throw new AdminProductsClientError("Sessione admin mancante.", 401);
   }
 }
@@ -71,15 +71,14 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
 }
 
 async function adminProductsRequest<T>(
-  token: string,
+  token: string | undefined,
   path: string,
   init: RequestInit = {},
   options: FetchOptions = {},
 ): Promise<T> {
-  assertToken(token);
-
+  assertExplicitToken(token);
   const headers = new Headers(init.headers || {});
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token?.trim()) headers.set("Authorization", `Bearer ${token}`);
 
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -95,7 +94,7 @@ async function adminProductsRequest<T>(
 }
 
 export async function listAdminProducts(
-  token: string,
+  token?: string,
   options: FetchOptions = {},
 ): Promise<AdminProduct[]> {
   const payload = await adminProductsRequest<{ products?: AdminProduct[] }>(
@@ -111,7 +110,7 @@ export async function listAdminProducts(
 }
 
 export async function createAdminProduct(
-  token: string,
+  token: string | undefined,
   payload: AdminProductPayload,
   options: FetchOptions = {},
 ): Promise<AdminProduct> {
@@ -129,7 +128,7 @@ export async function createAdminProduct(
 }
 
 export async function updateAdminProduct(
-  token: string,
+  token: string | undefined,
   id: string,
   payload: Partial<AdminProductPayload>,
   options: FetchOptions = {},
@@ -148,7 +147,7 @@ export async function updateAdminProduct(
 }
 
 export async function deleteAdminProduct(
-  token: string,
+  token: string | undefined,
   id: string,
   options: FetchOptions = {},
 ): Promise<AdminProduct> {

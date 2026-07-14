@@ -46,8 +46,8 @@ export class AdminLeadsClientError extends Error {
   }
 }
 
-function assertToken(token: string) {
-  if (!token.trim()) {
+function assertExplicitToken(token: string | undefined) {
+  if (token !== undefined && !token.trim()) {
     throw new AdminLeadsClientError("Sessione admin mancante.", 401);
   }
 }
@@ -70,15 +70,14 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
 }
 
 async function adminLeadsRequest<T>(
-  token: string,
+  token: string | undefined,
   path: string,
   init: RequestInit = {},
   options: FetchOptions = {},
 ): Promise<T> {
-  assertToken(token);
-
+  assertExplicitToken(token);
   const headers = new Headers(init.headers || {});
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token?.trim()) headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -98,7 +97,7 @@ function buildListPath(filters: AdminLeadsFilters = {}) {
 }
 
 export async function listAdminLeads(
-  token: string,
+  token?: string,
   filters: AdminLeadsFilters = {},
   options: FetchOptions = {},
 ): Promise<AdminLead[]> {
@@ -112,7 +111,7 @@ export async function listAdminLeads(
 }
 
 export async function getAdminLead(
-  token: string,
+  token: string | undefined,
   id: string,
   options: FetchOptions = {},
 ): Promise<AdminLead> {
@@ -126,7 +125,7 @@ export async function getAdminLead(
 }
 
 export async function updateAdminLeadStatus(
-  token: string,
+  token: string | undefined,
   id: string,
   payload: AdminLeadStatusPayload,
   options: FetchOptions = {},
@@ -144,7 +143,7 @@ export async function updateAdminLeadStatus(
 }
 
 export async function archiveAdminLead(
-  token: string,
+  token: string | undefined,
   id: string,
   options: FetchOptions = {},
 ): Promise<AdminLead> {

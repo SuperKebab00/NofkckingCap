@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 function mapPublicProductToCard(product: PublicProduct): ShopProductCard {
   return {
     category: product.category,
-    checkoutHref: undefined,
+    checkoutHref: `/checkout?product=${encodeURIComponent(product.id)}`,
     description: product.description,
     image: product.packshotUrl || product.lifestyleUrl,
     lifestyleUrl: product.lifestyleUrl,
@@ -65,15 +65,19 @@ export default async function ShopPage() {
     getPublicShopCategories(),
   ]);
 
-  const products =
-    shopProducts.products.length > 0
-      ? shopProducts.products.map(mapPublicProductToCard)
-      : productTeasers;
+  const allowDevelopmentFallback = process.env.APP_ENV !== "production";
+  const products = shopProducts.products.length > 0
+    ? shopProducts.products.map(mapPublicProductToCard)
+    : allowDevelopmentFallback
+      ? productTeasers
+      : [];
 
   const categories =
     shopCategories.length > 0
       ? shopCategories
-      : buildFallbackCategories(products);
+      : allowDevelopmentFallback
+        ? buildFallbackCategories(products)
+        : [];
 
   return (
     <>

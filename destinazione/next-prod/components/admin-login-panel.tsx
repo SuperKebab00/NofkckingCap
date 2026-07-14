@@ -2,18 +2,11 @@
 
 import { useState } from "react";
 import {
-  ADMIN_ACCESS_TOKEN_STORAGE_KEY,
-  ADMIN_AUTH_CHANGED_EVENT,
-  getAdminClientConfig,
   signInAdminWithPassword,
-  verifyAdminAccessToken,
   type AdminClientAuthResult,
 } from "../lib/admin-login";
 
 const initialResult: AdminClientAuthResult = {
-  accessToken: null,
-  admin: false,
-  authenticated: false,
   message: "Login admin richiesto per verificare una sessione reale.",
   state: "idle",
 };
@@ -24,38 +17,8 @@ export function AdminLoginPanel() {
   const [result, setResult] = useState<AdminClientAuthResult>(initialResult);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const config = getAdminClientConfig();
-
-  function publishAdminToken(accessToken: string | null) {
-    if (typeof window === "undefined") return;
-
-    if (accessToken) {
-      sessionStorage.setItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY, accessToken);
-    } else {
-      sessionStorage.removeItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY);
-    }
-
-    window.dispatchEvent(
-      new CustomEvent(ADMIN_AUTH_CHANGED_EVENT, {
-        detail: { accessToken },
-      }),
-    );
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!config) {
-      setResult({
-        accessToken: null,
-        admin: false,
-        authenticated: false,
-        message:
-          "Config client admin non disponibile: servono NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-        state: "not-configured",
-      });
-      return;
-    }
 
     setIsSubmitting(true);
     setResult((current) => ({
@@ -66,15 +29,10 @@ export function AdminLoginPanel() {
 
     try {
       const loginResult = await signInAdminWithPassword(email, password);
-      if (!loginResult.accessToken) {
-        setResult(loginResult);
-        publishAdminToken(null);
-        return;
+      setResult(loginResult);
+      if (loginResult.state !== "error") {
+        window.location.assign("/admin");
       }
-
-      const verified = await verifyAdminAccessToken(loginResult.accessToken);
-      setResult(verified);
-      publishAdminToken(verified.admin ? verified.accessToken : null);
     } finally {
       setIsSubmitting(false);
     }
@@ -84,8 +42,8 @@ export function AdminLoginPanel() {
     <section className="missing-panel" aria-labelledby="admin-login-panel">
       <h2 id="admin-login-panel">Accesso gestore</h2>
       <p>
-        Accedi con il tuo utente Supabase: il JWT viene verificato prima di
-        abilitare le API amministrative protette.
+        Accedi con il tuo utente Supabase. La sessione viene verificata lato server
+        e conservata esclusivamente in cookie sicuri HttpOnly.
       </p>
 
       <form className="admin-login-form" onSubmit={handleSubmit}>
@@ -116,13 +74,7 @@ export function AdminLoginPanel() {
             {isSubmitting ? "Verifica in corso..." : "Accedi all'area admin"}
           </button>
           <span className="status-badge">
-            {result.state === "admin"
-              ? "Admin verificato"
-              : result.state === "non-admin"
-                ? "Non admin"
-                : result.state === "not-configured"
-                  ? "Non configurata"
-                  : result.state === "submitting"
+            {result.state === "submitting"
                     ? "In corso"
                     : result.state === "error"
                       ? "Errore"
@@ -130,22 +82,6 @@ export function AdminLoginPanel() {
           </span>
         </div>
       </form>
-
-      <div className="admin-metric-grid admin-metric-grid--compact">
-        <article className="status-card">
-          <h3>Authenticated</h3>
-          <p className="admin-metric-value admin-metric-value--text">
-            {result.authenticated ? "true" : "false"}
-          </p>
-        </article>
-
-        <article className="status-card">
-          <h3>Admin</h3>
-          <p className="admin-metric-value admin-metric-value--text">
-            {result.admin ? "true" : "false"}
-          </p>
-        </article>
-      </div>
 
       <p className="admin-inline-note">
         {result.message}

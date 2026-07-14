@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 const schema = readFileSync("supabase/migrations/001_prod_ready_schema.sql", "utf8");
 const ordersMigration = readFileSync("supabase/migrations/002_orders_idempotency_stock.sql", "utf8");
 const legacyCompatibilityMigration = readFileSync("supabase/migrations/003_legacy_compatibility_plan.sql", "utf8");
+const authorizationMigration = readFileSync("supabase/migrations/004_admin_authorization_and_pickup_only.sql", "utf8");
+const rpcExecutionMigration = readFileSync("supabase/migrations/005_restrict_internal_rpc_execution.sql", "utf8");
 const legacyCompatibilitySql = legacyCompatibilityMigration
   .split("\n")
   .filter((line) => !line.trim().startsWith("--"))
@@ -57,5 +59,19 @@ assert.ok(ordersMigration.includes("set stock = stock - v_quantity"));
 assert.ok(ordersCreate.includes("rpc/create_order_with_items"));
 assert.ok(!ordersCreate.includes("stock_quantity:"));
 assert.ok(ordersCreate.includes("product_id: item.productId"));
+assert.ok(authorizationMigration.includes("enable row level security"));
+assert.ok(authorizationMigration.includes("admin_audit_log_admin_read"));
+assert.ok(authorizationMigration.includes("fulfillment = 'pickup'"));
+assert.ok(authorizationMigration.includes("payment_mode = 'in-shop'"));
+assert.ok(!authorizationMigration.includes("delete from"));
+assert.ok(!authorizationMigration.includes("truncate"));
+assert.ok(!authorizationMigration.includes("drop table"));
+assert.ok(rpcExecutionMigration.includes("revoke all on function public.create_order_with_items(jsonb, text, text) from public, anon, authenticated"));
+assert.ok(rpcExecutionMigration.includes("revoke all on function public.apply_order_inventory_on_final_status() from public, anon, authenticated"));
+assert.ok(rpcExecutionMigration.includes("revoke all on function public.apply_order_inventory_on_status_change() from public, anon, authenticated"));
+assert.equal((rpcExecutionMigration.match(/grant execute on function/g) ?? []).length, 3);
+assert.ok(!rpcExecutionMigration.toLowerCase().includes("delete from"));
+assert.ok(!rpcExecutionMigration.toLowerCase().includes("truncate"));
+assert.ok(!rpcExecutionMigration.toLowerCase().includes("drop table"));
 
 console.log("Schema/API consistency tests passed.");

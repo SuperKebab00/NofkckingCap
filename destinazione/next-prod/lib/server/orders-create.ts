@@ -21,17 +21,14 @@ type NormalizedOrderItem = {
 };
 
 type NormalizedOrderPayload = {
-  city?: string | null;
   customerEmail: string;
   customerName: string;
   customerPhone: string;
-  fulfillment: "pickup" | "shipping";
+  fulfillment: "pickup";
   idempotencyKey: string;
   items: NormalizedOrderItem[];
   notes?: string | null;
-  paymentMode: "in-shop" | "paypal";
-  shippingAddress?: string | null;
-  zip?: string | null;
+  paymentMode: "in-shop";
 };
 
 const optionalText = (maxLength: number) =>
@@ -66,8 +63,6 @@ const orderItemSchema = z
 
 const orderCreateSchema = z
   .object({
-    address: optionalText(240),
-    city: optionalText(120),
     customer: z
       .object({
         email: optionalText(160),
@@ -88,14 +83,6 @@ const orderCreateSchema = z
     notes: optionalText(1000),
     paymentMode: optionalText(40),
     payment_mode: optionalText(40),
-    shippingAddress: z
-      .object({
-        address: optionalText(240),
-        city: optionalText(120),
-        zip: optionalText(20),
-      })
-      .optional(),
-    zip: optionalText(20),
   })
   .transform((payload) => {
     const fulfillmentValue = String(
@@ -103,15 +90,16 @@ const orderCreateSchema = z
     )
       .trim()
       .toLowerCase();
-    const fulfillment =
-      fulfillmentValue === "shipping" || fulfillmentValue === "delivery"
-        ? "shipping"
-        : "pickup";
+    if (fulfillmentValue !== "pickup") {
+      throw new Error("CLIENT: E disponibile solo il ritiro in negozio.");
+    }
     const paymentValue = String(payload.payment_mode || payload.paymentMode || "in-shop")
       .trim()
       .toLowerCase()
       .replace("_", "-");
-    const paymentMode = paymentValue === "paypal" ? "paypal" : "in-shop";
+    if (paymentValue !== "in-shop") {
+      throw new Error("CLIENT: E disponibile solo il pagamento in sede.");
+    }
     const customerName =
       payload.customer_name || payload.customer.fullName || payload.customer.name || "";
     const customerEmail = payload.customer_email || payload.customer.email || "";
@@ -119,17 +107,14 @@ const orderCreateSchema = z
     const idempotencyKey = payload.idempotency_key || payload.idempotencyKey || "";
 
     return {
-      city: payload.shippingAddress?.city || payload.city,
       customerEmail,
       customerName,
       customerPhone,
-      fulfillment,
+      fulfillment: "pickup",
       idempotencyKey,
       items: payload.items,
       notes: payload.notes,
-      paymentMode,
-      shippingAddress: payload.shippingAddress?.address || payload.address,
-      zip: payload.shippingAddress?.zip || payload.zip,
+      paymentMode: "in-shop",
     } satisfies NormalizedOrderPayload;
   })
   .refine((value) => value.customerName.length >= 2, {
@@ -144,14 +129,9 @@ const orderCreateSchema = z
   .refine((value) => value.idempotencyKey.length >= 12, {
     message: "Idempotency key obbligatoria.",
   })
-  .refine(
-    (value) =>
-      value.fulfillment === "pickup" ||
-      Boolean(value.shippingAddress && value.city && value.zip),
-    {
-      message: "Indirizzo, citta e CAP sono obbligatori per la spedizione.",
-    },
-  );
+  .refine((value) => value.fulfillment === "pickup", {
+    message: "E disponibile solo il ritiro in negozio.",
+  });
 
 function normalizePayload(payload: unknown): NormalizedOrderPayload {
   const result = orderCreateSchema.safeParse(payload);
@@ -215,8 +195,6 @@ function stableStringify(value: unknown): string {
 
 function buildRpcPayload(orderPayload: NormalizedOrderPayload) {
   return {
-    address: orderPayload.fulfillment === "shipping" ? orderPayload.shippingAddress : null,
-    city: orderPayload.fulfillment === "shipping" ? orderPayload.city : null,
     customer_email: orderPayload.customerEmail,
     customer_name: orderPayload.customerName,
     customer_phone: orderPayload.customerPhone,
@@ -228,7 +206,6 @@ function buildRpcPayload(orderPayload: NormalizedOrderPayload) {
     })),
     notes: orderPayload.notes,
     payment_mode: orderPayload.paymentMode,
-    zip: orderPayload.fulfillment === "shipping" ? orderPayload.zip : null,
   };
 }
 

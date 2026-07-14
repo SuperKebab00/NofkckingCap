@@ -57,7 +57,7 @@ assert.equal(
   mod.__adminOrdersCrudTest.buildOrdersListPath(
     new Request("https://example.com/api/admin/orders?page=2&pageSize=10&status=prenotato&search=Mario"),
   ),
-  "orders?limit=10&offset=10&order=created_at.desc&select=id%2Corder_number%2Ccustomer_name%2Ccustomer_email%2Ccustomer_phone%2Cfulfillment%2Cpayment_mode%2Cstatus%2Csubtotal%2Cshipping%2Ctotal%2Cnotes%2Csource%2Ccreated_at%2Cupdated_at&status=eq.prenotato&or=%28order_number.ilike.*Mario*%2Ccustomer_email.ilike.*Mario*%2Ccustomer_name.ilike.*Mario*%29",
+  "orders?limit=10&offset=10&order=created_at.desc&select=id%2Corder_number%2Ccustomer_name%2Ccustomer_email%2Ccustomer_phone%2Cfulfillment%2Cpayment_mode%2Cstatus%2Csubtotal%2Ctotal%2Cnotes%2Csource%2Ccreated_at%2Cupdated_at&status=eq.prenotato&or=%28order_number.ilike.*Mario*%2Ccustomer_email.ilike.*Mario*%2Ccustomer_name.ilike.*Mario*%29",
 );
 
 {
@@ -166,10 +166,10 @@ assert.equal(
 
     if (url.includes("/rest/v1/orders?select=") && init.method === "PATCH") {
       const body = JSON.parse(String(init.body));
-      assert.equal(body.status, "spedito");
-      assert.equal(body.notes, "Tracking inviato");
+      assert.equal(body.status, "pronto-al-ritiro");
+      assert.equal(body.notes, "Pronto per il ritiro");
       return new Response(
-        JSON.stringify([{ id: "order-1", status: "spedito", notes: "Tracking inviato" }]),
+        JSON.stringify([{ id: "order-1", status: "pronto-al-ritiro", notes: "Pronto per il ritiro" }]),
         { status: 200 },
       );
     }
@@ -189,7 +189,7 @@ assert.equal(
       request(
         "https://example.com/api/admin/orders/order-1",
         "PATCH",
-        { notes: " Tracking inviato ", status: "spedito" },
+        { notes: " Pronto per il ritiro ", status: "pronto-al-ritiro" },
         token,
       ),
       env,
@@ -197,7 +197,7 @@ assert.equal(
     );
 
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).order.status, "spedito");
+    assert.equal((await response.json()).order.status, "pronto-al-ritiro");
   } finally {
     global.fetch = originalFetch;
   }

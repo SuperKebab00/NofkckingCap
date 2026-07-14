@@ -12,6 +12,8 @@ const uiAndClientSource = [
   read("components/admin-products-summary-panel.tsx"),
   read("lib/admin-login.ts"),
 ].join("\n");
+const adminPageSource = read("app/admin/page.tsx");
+const adminMiddlewareSource = read("middleware.ts");
 
 const serverHelperSource = [
   read("lib/admin-status.ts"),
@@ -33,17 +35,26 @@ for (const token of [
 
 assert.ok(!uiAndClientSource.includes("NEXT_PUBLIC_ADMIN_API_BASE_URL"));
 assert.ok(!serverHelperSource.includes("ADMIN_API_BASE_URL"));
-assert.ok(uiAndClientSource.includes("/api/admin/auth/check"));
+assert.ok(uiAndClientSource.includes("/api/admin/session"));
+assert.ok(!uiAndClientSource.includes("sessionStorage"));
+assert.ok(!uiAndClientSource.includes("ADMIN_ACCESS_TOKEN_STORAGE_KEY"));
 assert.ok(!uiAndClientSource.includes("is_admin=true"));
 assert.ok(!uiAndClientSource.includes("Delete product"));
 assert.ok(!uiAndClientSource.includes("Aggiorna prodotto"));
 assert.ok(!uiAndClientSource.includes("Salva prodotto"));
+assert.ok(adminPageSource.indexOf("verifyAdminAccessToken") < adminPageSource.indexOf("Promise.all"));
+assert.ok(adminPageSource.includes("if (!verification.ok)"));
+assert.ok(adminPageSource.includes("<AdminLoginPanel />"));
+assert.ok(adminMiddlewareSource.includes("httpOnly: true"));
+assert.ok(adminMiddlewareSource.includes("sameSite: \"lax\""));
+assert.ok(adminMiddlewareSource.includes("no-cap-admin-refresh"));
 
 for (const requiredRoute of [
   "app/api/contact/create/route.ts",
   "app/api/admin/status/route.ts",
   "app/api/admin/products/summary/route.ts",
   "app/api/admin/auth/check/route.ts",
+  "app/api/admin/session/route.ts",
 ]) {
   const source = read(requiredRoute);
   assert.ok(source.includes("getServerEnv"));
@@ -53,7 +64,7 @@ const nextEnvExample = read(".env.example");
 assert.ok(nextEnvExample.includes("SUPABASE_JWKS_URL"));
 assert.ok(nextEnvExample.includes("SUPABASE_SERVICE_ROLE_KEY"));
 assert.ok(nextEnvExample.includes("SUPABASE_URL"));
-assert.ok(nextEnvExample.includes("ADMIN_API_TOKEN"));
+assert.ok(!nextEnvExample.includes("ADMIN_API_TOKEN"));
 assert.ok(!nextEnvExample.includes("ADMIN_API_BASE_URL"));
 assert.ok(!nextEnvExample.includes("NEXT_PUBLIC_ADMIN_API_BASE_URL"));
 assert.ok(!nextEnvExample.includes("NEXT_PUBLIC_ADMIN_API_TOKEN"));

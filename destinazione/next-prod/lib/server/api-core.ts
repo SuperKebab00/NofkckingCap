@@ -9,8 +9,8 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const LOCAL_RATE_LIMITS = new Map<string, { count: number; resetAt: number }>();
 
 export type ServerEnv = {
-  ADMIN_API_TOKEN?: string;
   APP_ENV?: string;
+  NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
   SUPABASE_JWKS_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   SUPABASE_URL?: string;
@@ -21,8 +21,8 @@ export function getServerEnv(
   source: NodeJS.ProcessEnv = process.env,
 ): ServerEnv {
   return {
-    ADMIN_API_TOKEN: source.ADMIN_API_TOKEN,
     APP_ENV: source.APP_ENV,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_JWKS_URL: source.SUPABASE_JWKS_URL,
     SUPABASE_SERVICE_ROLE_KEY: source.SUPABASE_SERVICE_ROLE_KEY,
     SUPABASE_URL: source.SUPABASE_URL,
@@ -279,13 +279,4 @@ export function normalizePhone(value: unknown): string {
 export function getBearerToken(request: Request): string {
   const header = String(request.headers.get("Authorization") || "").trim();
   return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-}
-
-export function requireAdminApiToken(
-  request: Request,
-  env: ServerEnv,
-): boolean {
-  const expectedToken = String(env.ADMIN_API_TOKEN || "").trim();
-  const providedToken = getBearerToken(request);
-  return Boolean(expectedToken && providedToken && expectedToken === providedToken);
 }

@@ -63,8 +63,8 @@ export class AdminShopStructureClientError extends Error {
   }
 }
 
-function assertToken(token: string) {
-  if (!token.trim()) {
+function assertExplicitToken(token: string | undefined) {
+  if (token !== undefined && !token.trim()) {
     throw new AdminShopStructureClientError("Sessione admin mancante.", 401);
   }
 }
@@ -84,15 +84,14 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
 }
 
 async function request<T>(
-  token: string,
+  token: string | undefined,
   path: string,
   init: RequestInit = {},
   options: FetchOptions = {},
 ) {
-  assertToken(token);
-
+  assertExplicitToken(token);
   const headers = new Headers(init.headers || {});
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token?.trim()) headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -101,7 +100,7 @@ async function request<T>(
   return parseApiResponse<T>(response);
 }
 
-export async function listAdminShopCategories(token: string, options: FetchOptions = {}) {
+export async function listAdminShopCategories(token?: string, options: FetchOptions = {}) {
   const payload = await request<{ categories?: AdminShopCategory[] }>(
     token,
     "/api/admin/shop-categories",
@@ -111,7 +110,7 @@ export async function listAdminShopCategories(token: string, options: FetchOptio
   return Array.isArray(payload.categories) ? payload.categories : [];
 }
 
-export async function createAdminShopCategory(token: string, payload: AdminShopCategoryPayload, options: FetchOptions = {}) {
+export async function createAdminShopCategory(token: string | undefined, payload: AdminShopCategoryPayload, options: FetchOptions = {}) {
   const response = await request<{ category: AdminShopCategory }>(
     token,
     "/api/admin/shop-categories",
@@ -121,7 +120,7 @@ export async function createAdminShopCategory(token: string, payload: AdminShopC
   return response.category;
 }
 
-export async function updateAdminShopCategory(token: string, id: string, payload: Partial<AdminShopCategoryPayload>, options: FetchOptions = {}) {
+export async function updateAdminShopCategory(token: string | undefined, id: string, payload: Partial<AdminShopCategoryPayload>, options: FetchOptions = {}) {
   const response = await request<{ category: AdminShopCategory }>(
     token,
     `/api/admin/shop-categories/${encodeURIComponent(id)}`,
@@ -131,7 +130,7 @@ export async function updateAdminShopCategory(token: string, id: string, payload
   return response.category;
 }
 
-export async function deleteAdminShopCategory(token: string, id: string, options: FetchOptions = {}) {
+export async function deleteAdminShopCategory(token: string | undefined, id: string, options: FetchOptions = {}) {
   const response = await request<{ category: AdminShopCategory }>(
     token,
     `/api/admin/shop-categories/${encodeURIComponent(id)}`,
@@ -141,7 +140,7 @@ export async function deleteAdminShopCategory(token: string, id: string, options
   return response.category;
 }
 
-export async function listAdminShopSections(token: string, options: FetchOptions = {}) {
+export async function listAdminShopSections(token?: string, options: FetchOptions = {}) {
   const payload = await request<{ sections?: AdminShopSection[] }>(
     token,
     "/api/admin/shop-sections",
@@ -151,7 +150,7 @@ export async function listAdminShopSections(token: string, options: FetchOptions
   return Array.isArray(payload.sections) ? payload.sections : [];
 }
 
-export async function createAdminShopSection(token: string, payload: AdminShopSectionPayload, options: FetchOptions = {}) {
+export async function createAdminShopSection(token: string | undefined, payload: AdminShopSectionPayload, options: FetchOptions = {}) {
   const response = await request<{ section: AdminShopSection }>(
     token,
     "/api/admin/shop-sections",
@@ -161,7 +160,7 @@ export async function createAdminShopSection(token: string, payload: AdminShopSe
   return response.section;
 }
 
-export async function updateAdminShopSection(token: string, id: string, payload: Partial<AdminShopSectionPayload>, options: FetchOptions = {}) {
+export async function updateAdminShopSection(token: string | undefined, id: string, payload: Partial<AdminShopSectionPayload>, options: FetchOptions = {}) {
   const response = await request<{ section: AdminShopSection }>(
     token,
     `/api/admin/shop-sections/${encodeURIComponent(id)}`,
@@ -171,7 +170,7 @@ export async function updateAdminShopSection(token: string, id: string, payload:
   return response.section;
 }
 
-export async function deleteAdminShopSection(token: string, id: string, options: FetchOptions = {}) {
+export async function deleteAdminShopSection(token: string | undefined, id: string, options: FetchOptions = {}) {
   const response = await request<{ section: AdminShopSection }>(
     token,
     `/api/admin/shop-sections/${encodeURIComponent(id)}`,

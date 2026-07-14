@@ -5,7 +5,6 @@ import { useId, useState, type ReactNode } from "react";
 type AdminView = "data" | "manage" | "orders" | "leads";
 
 type AdminWorkspaceProps = {
-  authentication: ReactNode;
   data: ReactNode;
   leads: ReactNode;
   manage: ReactNode;
@@ -20,7 +19,6 @@ const tabs: Array<{ id: AdminView; label: string }> = [
 ];
 
 export function AdminWorkspace({
-  authentication,
   data,
   leads,
   manage,
@@ -30,7 +28,7 @@ export function AdminWorkspace({
   const tabId = useId();
 
   const panels: Record<AdminView, ReactNode> = {
-    data: <>{data}{authentication}</>,
+    data,
     manage,
     orders,
     leads,

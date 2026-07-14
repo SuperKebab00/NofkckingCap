@@ -4352,7 +4352,6 @@ body,
 }
 
 .route-shell--checkout .checkout-options,
-.route-shell--checkout .shipping-fields,
 .route-shell--checkout .checkout-items {
   display: grid;
   gap: 10px;

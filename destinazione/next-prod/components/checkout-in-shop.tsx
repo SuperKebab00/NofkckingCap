@@ -24,24 +24,15 @@ type CartItem = {
   quantity: number;
 };
 
-type FulfillmentMode = "pickup" | "shipping";
-type PaymentMode = "in-shop" | "paypal";
-
 type CheckoutFormState = {
-  address: string;
-  city: string;
   email: string;
   fullName: string;
   phone: string;
-  zip: string;
 };
 
 type CheckoutOrder = {
-  fulfillment: FulfillmentMode;
   orderNumber: string;
-  paymentMode: PaymentMode;
   serverOrderId?: string;
-  shipping: number;
   status?: string;
   subtotal: number;
   total: number;
@@ -57,15 +48,10 @@ type NormalizedCheckoutProduct = {
 
 const CART_STORAGE_KEY = "no-cap-next-cart-v1";
 const ORDER_STORAGE_KEY = "no-cap-next-orders-v1";
-const SHIPPING_PRICE = 6;
-
 const emptyForm: CheckoutFormState = {
-  address: "",
-  city: "",
   email: "",
   fullName: "",
   phone: "",
-  zip: "",
 };
 
 const currencyFormatter = new Intl.NumberFormat("it-IT", {
@@ -126,29 +112,19 @@ function writeOrder(order: CheckoutOrder, form: CheckoutFormState, items: CartRo
       quantity: row.quantity,
       unitPrice: row.product.price,
     })),
-    shippingAddress:
-      order.fulfillment === "shipping"
-        ? { address: form.address, city: form.city, zip: form.zip }
-        : null,
-    source: order.serverOrderId ? "orders-api" : "local-fallback",
-    status: order.status || "in-attesa",
+    source: "orders-api",
+    status: order.status || "prenotato",
   });
 
   localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(nextOrders.slice(0, 200)));
 }
 
-function validateForm(form: CheckoutFormState, fulfillment: FulfillmentMode) {
+function validateForm(form: CheckoutFormState) {
   const errors: Partial<Record<keyof CheckoutFormState, string>> = {};
 
   if (!form.fullName.trim()) errors.fullName = "Inserisci nome completo.";
   if (!/\S+@\S+\.\S+/.test(form.email.trim())) errors.email = "Email non valida.";
   if (form.phone.trim().length < 6) errors.phone = "Telefono non valido.";
-
-  if (fulfillment === "shipping") {
-    if (!form.address.trim()) errors.address = "Inserisci indirizzo.";
-    if (!form.city.trim()) errors.city = "Inserisci citta.";
-    if (!form.zip.trim()) errors.zip = "Inserisci CAP.";
-  }
 
   return errors;
 }
@@ -183,8 +159,6 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
   );
 
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [fulfillment, setFulfillment] = useState<FulfillmentMode>("pickup");
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("in-shop");
   const [form, setForm] = useState<CheckoutFormState>(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof CheckoutFormState, string>>
@@ -233,8 +207,7 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
   );
 
   const subtotal = cartRows.reduce((total, row) => total + row.lineTotal, 0);
-  const shipping = fulfillment === "shipping" && subtotal > 0 ? SHIPPING_PRICE : 0;
-  const total = subtotal + shipping;
+  const total = subtotal;
   const activeRows = successOrder ? confirmedRows : cartRows;
   const activeTotal = successOrder ? successOrder.total : total;
 
@@ -254,7 +227,7 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
       return;
     }
 
-    const errors = validateForm(form, fulfillment);
+    const errors = validateForm(form);
     setFieldErrors(errors);
     if (Object.keys(errors).length) return;
 
@@ -270,29 +243,18 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
           fullName: form.fullName.trim(),
           phone: form.phone.trim(),
         },
-        fulfillment,
+        fulfillment: "pickup",
         idempotency_key: idempotencyKey,
         items: cartRows.map((row) => ({
           product_id: row.product.id,
           quantity: row.quantity,
         })),
-        paymentMode,
-        shippingAddress:
-          fulfillment === "shipping"
-            ? {
-                address: form.address.trim(),
-                city: form.city.trim(),
-                zip: form.zip.trim(),
-              }
-            : undefined,
+        paymentMode: "in-shop",
       });
 
       const order: CheckoutOrder = {
-        fulfillment: serverOrder.fulfillment || fulfillment,
         orderNumber: serverOrder.order_number || "",
-        paymentMode: serverOrder.payment_mode || paymentMode,
         serverOrderId: serverOrder.id,
-        shipping: Number(serverOrder.shipping ?? shipping),
         status: serverOrder.status,
         subtotal: Number(serverOrder.subtotal ?? subtotal),
         total: Number(serverOrder.total ?? total),
@@ -329,24 +291,12 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
             <strong>Totale:</strong> {formatCurrency(successOrder.total)}
           </p>
           <p>
-            <strong>Pagamento:</strong>{" "}
-            {successOrder.paymentMode === "paypal" ? "PayPal" : "Pagamento in sede"}
+            <strong>Pagamento:</strong> Pagamento in sede
           </p>
           <p>
-            <strong>Consegna:</strong>{" "}
-            {successOrder.fulfillment === "shipping" ? "Spedizione" : "Ritiro in shop"}
+            <strong>Consegna:</strong> Ritiro in shop
           </p>
-          {successOrder.shipping ? (
-            <p>
-              <strong>Spedizione:</strong> {formatCurrency(successOrder.shipping)}
-            </p>
-          ) : null}
-          <p>
-            {successOrder.fulfillment === "shipping"
-              ? "Riceverai aggiornamenti spedizione dal team."
-              : "Ritiro disponibile in negozio durante gli orari di apertura."}
-          </p>
-          <p>Pagamento online non attivo: la modalita scelta resta informativa.</p>
+          <p>Ritiro disponibile in negozio durante gli orari di apertura.</p>
         </div>
         <CheckoutSummary rows={activeRows} total={activeTotal} />
         <div className="hero__actions">
@@ -419,96 +369,27 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
         </div>
 
         <fieldset className="checkout-block">
-          <legend>Ritiro o consegna</legend>
-          <div className="checkout-options" role="radiogroup" aria-label="Ritiro o consegna">
-            <label className="checkout-radio checkout-option">
-              <input
-                checked={fulfillment === "pickup"}
-                name="fulfillment"
-                onChange={() => setFulfillment("pickup")}
-                type="radio"
-                value="pickup"
-              />
+          <legend>Modalita di ritiro</legend>
+          <div className="checkout-options" aria-label="Modalita di ritiro">
+            <div className="checkout-radio checkout-option">
               <span className="checkout-option__body">
                 <strong>Ritiro in shop</strong>
                 <small>Prepariamo l&apos;ordine per il ritiro in negozio.</small>
               </span>
-            </label>
-            <label className="checkout-radio checkout-option">
-              <input
-                checked={fulfillment === "shipping"}
-                name="fulfillment"
-                onChange={() => setFulfillment("shipping")}
-                type="radio"
-                value="shipping"
-              />
-              <span className="checkout-option__body">
-                <strong>Spedizione</strong>
-                <small>Ricevi l&apos;ordine all&apos;indirizzo indicato.</small>
-              </span>
-            </label>
-          </div>
-
-          {fulfillment === "shipping" ? (
-            <div className="shipping-fields">
-              <CheckoutInput
-                error={fieldErrors.address}
-                label="Indirizzo"
-                name="address"
-                onChange={(value) => setForm({ ...form, address: value })}
-                value={form.address}
-              />
-              <CheckoutInput
-                error={fieldErrors.city}
-                label="Citta"
-                name="city"
-                onChange={(value) => setForm({ ...form, city: value })}
-                value={form.city}
-              />
-              <CheckoutInput
-                error={fieldErrors.zip}
-                label="CAP"
-                name="zip"
-                onChange={(value) => setForm({ ...form, zip: value })}
-                value={form.zip}
-              />
             </div>
-          ) : null}
+          </div>
         </fieldset>
 
         <div className="checkout-block">
           <h2>Pagamento</h2>
-          <p className="checkout-note">
-            La scelta pagamento viene registrata sull&apos;ordine, senza provider online
-            attivi.
-          </p>
-          <div className="checkout-options" role="radiogroup" aria-label="Tipo di pagamento">
-            <label className="checkout-radio checkout-option">
-              <input
-                checked={paymentMode === "in-shop"}
-                name="paymentMode"
-                onChange={() => setPaymentMode("in-shop")}
-                type="radio"
-                value="in-shop"
-              />
+          <p className="checkout-note">Il pagamento avviene in sede al momento del ritiro.</p>
+          <div className="checkout-options" aria-label="Tipo di pagamento">
+            <div className="checkout-radio checkout-option">
               <span className="checkout-option__body">
                 <strong>Pagamento in sede</strong>
-                <small>Saldo al ritiro o alla consegna concordata.</small>
+                <small>Saldo al ritiro dell&apos;ordine.</small>
               </span>
-            </label>
-            <label className="checkout-radio checkout-option">
-              <input
-                checked={paymentMode === "paypal"}
-                name="paymentMode"
-                onChange={() => setPaymentMode("paypal")}
-                type="radio"
-                value="paypal"
-              />
-              <span className="checkout-option__body">
-                <strong>PayPal</strong>
-                <small>Opzione informativa: nessun redirect o pagamento online.</small>
-              </span>
-            </label>
+            </div>
           </div>
         </div>
 

@@ -2,12 +2,12 @@ import "server-only";
 
 import {
   jsonResponse,
-  requireAdminApiToken,
   safeError,
   statusFromError,
   supabaseRequest,
   type ServerEnv,
 } from "./api-core";
+import { verifyAdminJwt } from "./admin-auth";
 
 export type AdminProductSummaryItem = {
   category: string | null;
@@ -73,8 +73,9 @@ export async function handleAdminProductsSummary(
       return jsonResponse({ error: "Metodo non consentito." }, 405);
     }
 
-    if (!requireAdminApiToken(request, env)) {
-      return jsonResponse({ error: "Non autorizzato." }, 401);
+    const auth = await verifyAdminJwt(request, env);
+    if (!auth.ok) {
+      return jsonResponse({ error: auth.error }, auth.status);
     }
 
     return jsonResponse(await readAdminProductsSummary(env));

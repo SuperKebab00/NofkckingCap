@@ -1,10 +1,8 @@
 export const ADMIN_ORDER_STATUSES = [
   "prenotato",
-  "in-attesa",
   "in-lavorazione",
-  "pronto",
-  "spedito",
-  "completato",
+  "pronto-al-ritiro",
+  "ritirato",
   "annullato",
 ] as const;
 
@@ -22,7 +20,6 @@ export type AdminOrder = {
   notes?: string | null;
   order_number?: string | null;
   payment_mode?: string | null;
-  shipping?: number | string | null;
   source?: string | null;
   status?: AdminOrderStatus | string | null;
   subtotal?: number | string | null;
@@ -74,8 +71,8 @@ export class AdminOrdersClientError extends Error {
   }
 }
 
-function assertToken(token: string) {
-  if (!token.trim()) {
+function assertExplicitToken(token: string | undefined) {
+  if (token !== undefined && !token.trim()) {
     throw new AdminOrdersClientError("Sessione admin mancante.", 401);
   }
 }
@@ -99,15 +96,14 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
 }
 
 async function adminOrdersRequest<T>(
-  token: string,
+  token: string | undefined,
   path: string,
   init: RequestInit = {},
   options: FetchOptions = {},
 ): Promise<T> {
-  assertToken(token);
-
+  assertExplicitToken(token);
   const headers = new Headers(init.headers || {});
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token?.trim()) headers.set("Authorization", `Bearer ${token}`);
 
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -135,7 +131,7 @@ function buildListPath(filters: AdminOrdersFilters = {}) {
 }
 
 export async function listAdminOrders(
-  token: string,
+  token?: string,
   filters: AdminOrdersFilters = {},
   options: FetchOptions = {},
 ): Promise<AdminOrder[]> {
@@ -150,7 +146,7 @@ export async function listAdminOrders(
 }
 
 export async function getAdminOrder(
-  token: string,
+  token: string | undefined,
   id: string,
   options: FetchOptions = {},
 ): Promise<AdminOrder> {
@@ -165,7 +161,7 @@ export async function getAdminOrder(
 }
 
 export async function updateAdminOrderStatus(
-  token: string,
+  token: string | undefined,
   id: string,
   payload: AdminOrderStatusPayload,
   options: FetchOptions = {},

@@ -12,6 +12,8 @@ import {
 } from "./api-core";
 
 export const ADMIN_USERS_TABLE = "admin_users";
+export const ADMIN_SESSION_ACCESS_COOKIE = "no-cap-admin-session";
+export const ADMIN_SESSION_REFRESH_COOKIE = "no-cap-admin-refresh";
 
 type AdminJwtVerificationResult =
   | {
@@ -75,6 +77,25 @@ export function getAdminJwtVerificationState(env: ServerEnv) {
   };
 }
 
+export function getAdminSessionToken(request: Request): string {
+  const bearerToken = getBearerToken(request);
+  if (bearerToken) return bearerToken;
+
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookie = cookieHeader
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(`${ADMIN_SESSION_ACCESS_COOKIE}=`));
+
+  if (!cookie) return "";
+
+  try {
+    return decodeURIComponent(cookie.slice(ADMIN_SESSION_ACCESS_COOKIE.length + 1)).trim();
+  } catch {
+    return "";
+  }
+}
+
 async function readAdminUser(env: ServerEnv, userId: string) {
   const response = await supabaseRequest(
     env,
@@ -99,7 +120,13 @@ export async function verifyAdminJwt(
   request: Request,
   env: ServerEnv,
 ): Promise<AdminJwtVerificationResult> {
-  const token = getBearerToken(request);
+  return verifyAdminAccessToken(getAdminSessionToken(request), env);
+}
+
+export async function verifyAdminAccessToken(
+  token: string,
+  env: ServerEnv,
+): Promise<AdminJwtVerificationResult> {
   if (!token) {
     return {
       admin: false,

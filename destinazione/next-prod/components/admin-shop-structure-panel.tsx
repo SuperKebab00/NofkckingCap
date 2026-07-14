@@ -13,10 +13,6 @@ import {
   type AdminShopCategory,
   type AdminShopSection,
 } from "../lib/admin-shop-structure-client";
-import {
-  ADMIN_ACCESS_TOKEN_STORAGE_KEY,
-  ADMIN_AUTH_CHANGED_EVENT,
-} from "../lib/admin-login";
 
 type CategoryForm = {
   description: string;
@@ -52,11 +48,6 @@ const emptySection: SectionForm = {
   title: "",
 };
 
-function readStoredToken() {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY);
-}
-
 function categoryToForm(category: AdminShopCategory): CategoryForm {
   return {
     description: category.description || "",
@@ -79,7 +70,6 @@ function sectionToForm(section: AdminShopSection): SectionForm {
 }
 
 export function AdminShopStructurePanel() {
-  const [token, setToken] = useState<string | null>(null);
   const [categories, setCategories] = useState<AdminShopCategory[]>([]);
   const [sections, setSections] = useState<AdminShopSection[]>([]);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategory);
@@ -88,7 +78,7 @@ export function AdminShopStructurePanel() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("Login admin richiesto per gestire categorie e sezioni.");
+  const [message, setMessage] = useState("Caricamento struttura shop.");
   const [error, setError] = useState<string | null>(null);
 
   const selectedCategory = useMemo(
@@ -100,21 +90,14 @@ export function AdminShopStructurePanel() {
     [sections, selectedSectionId],
   );
 
-  const refreshStructure = useCallback(async (nextToken = token) => {
-    if (!nextToken) {
-      setCategories([]);
-      setSections([]);
-      setMessage("Login admin richiesto per gestire categorie e sezioni.");
-      return;
-    }
-
+  const refreshStructure = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
       const [nextCategories, nextSections] = await Promise.all([
-        listAdminShopCategories(nextToken),
-        listAdminShopSections(nextToken),
+        listAdminShopCategories(),
+        listAdminShopSections(),
       ]);
       setCategories(nextCategories);
       setSections(nextSections);
@@ -124,26 +107,10 @@ export function AdminShopStructurePanel() {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    const storedToken = readStoredToken();
-    setToken(storedToken);
-    void refreshStructure(storedToken);
-
-    function handleAuthChanged(event: Event) {
-      const detail = (event as CustomEvent<{ accessToken?: string | null }>).detail;
-      const nextToken = detail?.accessToken || readStoredToken();
-      setToken(nextToken || null);
-      setSelectedCategoryId(null);
-      setSelectedSectionId(null);
-      setCategoryForm(emptyCategory);
-      setSectionForm(emptySection);
-      void refreshStructure(nextToken || null);
-    }
-
-    window.addEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
-    return () => window.removeEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
+    void refreshStructure();
   }, [refreshStructure]);
 
   function startCategoryCreate() {
@@ -158,7 +125,6 @@ export function AdminShopStructurePanel() {
 
   async function saveCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token) return setError("Sessione admin mancante.");
     setIsSaving(true);
     setError(null);
     try {
@@ -170,9 +136,9 @@ export function AdminShopStructurePanel() {
         sort_order: Number(categoryForm.sort_order || 0),
       };
       const category = selectedCategory
-        ? await updateAdminShopCategory(token, selectedCategory.id, payload)
-        : await createAdminShopCategory(token, payload);
-      await refreshStructure(token);
+        ? await updateAdminShopCategory(undefined, selectedCategory.id, payload)
+        : await createAdminShopCategory(undefined, payload);
+      await refreshStructure();
       setSelectedCategoryId(category.id);
       setCategoryForm(categoryToForm(category));
       setMessage(selectedCategory ? "Categoria aggiornata." : "Categoria creata.");
@@ -185,7 +151,6 @@ export function AdminShopStructurePanel() {
 
   async function saveSection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token) return setError("Sessione admin mancante.");
     setIsSaving(true);
     setError(null);
     try {
@@ -198,9 +163,9 @@ export function AdminShopStructurePanel() {
         title: sectionForm.title.trim(),
       };
       const section = selectedSection
-        ? await updateAdminShopSection(token, selectedSection.id, payload)
-        : await createAdminShopSection(token, payload);
-      await refreshStructure(token);
+        ? await updateAdminShopSection(undefined, selectedSection.id, payload)
+        : await createAdminShopSection(undefined, payload);
+      await refreshStructure();
       setSelectedSectionId(section.id);
       setSectionForm(sectionToForm(section));
       setMessage(selectedSection ? "Sezione aggiornata." : "Sezione creata.");
@@ -212,12 +177,12 @@ export function AdminShopStructurePanel() {
   }
 
   async function softDeleteCategory() {
-    if (!token || !selectedCategory) return;
+    if (!selectedCategory) return;
     if (!window.confirm(`Disattivare categoria ${selectedCategory.label}?`)) return;
     setIsSaving(true);
     try {
-      const category = await deleteAdminShopCategory(token, selectedCategory.id);
-      await refreshStructure(token);
+      const category = await deleteAdminShopCategory(undefined, selectedCategory.id);
+      await refreshStructure();
       setSelectedCategoryId(category.id);
       setCategoryForm(categoryToForm(category));
       setMessage("Categoria disattivata.");
@@ -229,12 +194,12 @@ export function AdminShopStructurePanel() {
   }
 
   async function softDeleteSection() {
-    if (!token || !selectedSection) return;
+    if (!selectedSection) return;
     if (!window.confirm(`Disattivare sezione ${selectedSection.title}?`)) return;
     setIsSaving(true);
     try {
-      const section = await deleteAdminShopSection(token, selectedSection.id);
-      await refreshStructure(token);
+      const section = await deleteAdminShopSection(undefined, selectedSection.id);
+      await refreshStructure();
       setSelectedSectionId(section.id);
       setSectionForm(sectionToForm(section));
       setMessage("Sezione disattivata.");
@@ -252,18 +217,12 @@ export function AdminShopStructurePanel() {
           <h2 id="admin-shop-structure-title">Shop structure CRUD</h2>
           <p>Categorie e sezioni shop collegate alle API admin protette.</p>
         </div>
-        <span className="status-badge">{token ? "CRUD abilitato" : "Login richiesto"}</span>
+        <span className="status-badge">CRUD abilitato</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
 
-      {!token ? (
-        <div className="status-card">
-          <h3>Sessione mancante</h3>
-          <p>Nessuna API shop structure viene chiamata senza Bearer JWT admin.</p>
-        </div>
-      ) : (
-        <>
+      <>
           <div className="admin-form-actions">
             <button className="ghost-button" disabled={isLoading} onClick={() => refreshStructure()} type="button">
               {isLoading ? "Caricamento..." : "Refresh struttura"}
@@ -356,8 +315,7 @@ export function AdminShopStructurePanel() {
               </form>
             </div>
           </div>
-        </>
-      )}
+      </>
     </section>
   );
 }

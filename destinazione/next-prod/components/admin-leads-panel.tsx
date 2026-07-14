@@ -10,20 +10,11 @@ import {
   type AdminLead,
   type AdminLeadStatus,
 } from "../lib/admin-leads-client";
-import {
-  ADMIN_ACCESS_TOKEN_STORAGE_KEY,
-  ADMIN_AUTH_CHANGED_EVENT,
-} from "../lib/admin-login";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   dateStyle: "short",
   timeStyle: "short",
 });
-
-function readStoredToken() {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY);
-}
 
 function formatDate(value: unknown) {
   const raw = String(value || "");
@@ -40,7 +31,6 @@ function normalizeStatus(value: unknown): AdminLeadStatus {
 }
 
 export function AdminLeadsPanel() {
-  const [token, setToken] = useState<string | null>(null);
   const [leads, setLeads] = useState<AdminLead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<AdminLead | null>(null);
@@ -50,7 +40,7 @@ export function AdminLeadsPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("Login admin richiesto per visualizzare i lead.");
+  const [message, setMessage] = useState("Caricamento richieste reali.");
   const [error, setError] = useState<string | null>(null);
 
   const selectedFromList = useMemo(
@@ -59,19 +49,11 @@ export function AdminLeadsPanel() {
   );
 
   const refreshLeads = useCallback(
-    async (nextToken = token) => {
-      if (!nextToken) {
-        setLeads([]);
-        setSelectedLead(null);
-        setSelectedLeadId(null);
-        setMessage("Login admin richiesto per visualizzare i lead.");
-        return;
-      }
-
+    async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const nextLeads = await listAdminLeads(nextToken, {
+        const nextLeads = await listAdminLeads(undefined, {
           pageSize: 50,
           search,
           status: statusFilter,
@@ -85,17 +67,16 @@ export function AdminLeadsPanel() {
         setIsLoading(false);
       }
     },
-    [search, statusFilter, token],
+    [search, statusFilter],
   );
 
   const loadLeadDetail = useCallback(
-    async (leadId: string, nextToken = token) => {
-      if (!nextToken) return;
+    async (leadId: string) => {
       setSelectedLeadId(leadId);
       setIsDetailLoading(true);
       setError(null);
       try {
-        const lead = await getAdminLead(nextToken, leadId);
+        const lead = await getAdminLead(undefined, leadId);
         setSelectedLead(lead);
         setStatusDraft(normalizeStatus(lead.status));
         setMessage(`Dettaglio lead ${lead.subject || lead.email || lead.id} caricato.`);
@@ -106,41 +87,27 @@ export function AdminLeadsPanel() {
         setIsDetailLoading(false);
       }
     },
-    [token],
+    [],
   );
 
   useEffect(() => {
-    const storedToken = readStoredToken();
-    setToken(storedToken);
-    void refreshLeads(storedToken);
-
-    function handleAuthChanged(event: Event) {
-      const detail = (event as CustomEvent<{ accessToken?: string | null }>).detail;
-      const nextToken = detail?.accessToken || readStoredToken();
-      setToken(nextToken || null);
-      setSelectedLead(null);
-      setSelectedLeadId(null);
-      void refreshLeads(nextToken || null);
-    }
-
-    window.addEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
-    return () => window.removeEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
+    void refreshLeads();
   }, [refreshLeads]);
 
   async function handleSaveStatus() {
-    if (!token || !selectedLeadId) {
-      setError("Sessione admin o lead mancante.");
+    if (!selectedLeadId) {
+      setError("Lead mancante.");
       return;
     }
 
     setIsSaving(true);
     setError(null);
     try {
-      const updated = await updateAdminLeadStatus(token, selectedLeadId, {
+      const updated = await updateAdminLeadStatus(undefined, selectedLeadId, {
         status: statusDraft,
       });
-      await refreshLeads(token);
-      await loadLeadDetail(updated.id || selectedLeadId, token);
+      await refreshLeads();
+      await loadLeadDetail(updated.id || selectedLeadId);
       setMessage("Stato lead aggiornato.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Update lead non riuscito.");
@@ -150,14 +117,14 @@ export function AdminLeadsPanel() {
   }
 
   async function handleArchive() {
-    if (!token || !selectedLeadId) return;
+    if (!selectedLeadId) return;
     if (!window.confirm("Archiviare questo lead impostandolo a closed?")) return;
     setIsSaving(true);
     setError(null);
     try {
-      const archived = await archiveAdminLead(token, selectedLeadId);
-      await refreshLeads(token);
-      await loadLeadDetail(archived.id || selectedLeadId, token);
+      const archived = await archiveAdminLead(undefined, selectedLeadId);
+      await refreshLeads();
+      await loadLeadDetail(archived.id || selectedLeadId);
       setMessage("Lead archiviato.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Archiviazione lead non riuscita.");
@@ -175,18 +142,12 @@ export function AdminLeadsPanel() {
           <h2 id="admin-leads-title">Leads</h2>
           <p>Messaggi arrivati dal form contatti, letti tramite API admin protette.</p>
         </div>
-        <span className="status-badge">{token ? "Leads live" : "Login richiesto"}</span>
+        <span className="status-badge">Leads live</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
 
-      {!token ? (
-        <div className="status-card">
-          <h3>Sessione mancante</h3>
-          <p>Nessuna API leads viene chiamata senza Bearer JWT admin.</p>
-        </div>
-      ) : (
-        <div className="admin-crud-grid admin-leads-grid">
+      <div className="admin-crud-grid admin-leads-grid">
           <div className="admin-products-list">
             <div className="admin-form-actions">
               <button className="ghost-button" disabled={isLoading} onClick={() => refreshLeads()} type="button">
@@ -297,7 +258,6 @@ export function AdminLeadsPanel() {
             )}
           </div>
         </div>
-      )}
     </section>
   );
 }

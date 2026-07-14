@@ -11,25 +11,19 @@ export type PublicOrderPayload = {
     fullName: string;
     phone: string;
   };
-  fulfillment: "pickup" | "shipping";
+  fulfillment: "pickup";
   idempotency_key: string;
   items: PublicOrderItemPayload[];
-  paymentMode: "in-shop" | "paypal";
-  shippingAddress?: {
-    address: string;
-    city: string;
-    zip: string;
-  };
+  paymentMode: "in-shop";
 };
 
 export type PublicOrderResponse = {
   order: {
-    fulfillment?: "pickup" | "shipping";
+    fulfillment?: "pickup";
     id?: string;
     items?: unknown[];
     order_number?: string;
-    payment_mode?: "in-shop" | "paypal";
-    shipping?: number | string;
+    payment_mode?: "in-shop";
     status?: string;
     subtotal?: number | string;
     total?: number | string;

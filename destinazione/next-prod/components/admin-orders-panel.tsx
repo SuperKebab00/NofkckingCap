@@ -10,10 +10,6 @@ import {
   type AdminOrderItem,
   type AdminOrderStatus,
 } from "../lib/admin-orders-client";
-import {
-  ADMIN_ACCESS_TOKEN_STORAGE_KEY,
-  ADMIN_AUTH_CHANGED_EVENT,
-} from "../lib/admin-login";
 
 const currencyFormatter = new Intl.NumberFormat("it-IT", {
   currency: "EUR",
@@ -24,11 +20,6 @@ const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   dateStyle: "short",
   timeStyle: "short",
 });
-
-function readStoredToken() {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(ADMIN_ACCESS_TOKEN_STORAGE_KEY);
-}
 
 function formatCurrency(value: unknown) {
   const numeric = Number(value || 0);
@@ -43,21 +34,18 @@ function formatDate(value: unknown) {
 }
 
 function normalizeStatus(value: unknown): AdminOrderStatus {
-  const status = String(value || "in-attesa");
+  const status = String(value || "prenotato");
   return ADMIN_ORDER_STATUSES.includes(status as AdminOrderStatus)
     ? (status as AdminOrderStatus)
-    : "in-attesa";
+    : "prenotato";
 }
 
-function paymentLabel(value: unknown) {
-  return String(value || "in-shop") === "paypal"
-    ? "PayPal informativo"
-    : "Pagamento in sede";
+function paymentLabel() {
+  return "Pagamento in sede";
 }
 
-function fulfillmentLabel(order: AdminOrder) {
-  const value = String(order.fulfillment_mode || order.fulfillment || "pickup");
-  return value === "shipping" ? "Spedizione" : "Ritiro in shop";
+function fulfillmentLabel() {
+  return "Ritiro in shop";
 }
 
 function itemName(item: AdminOrderItem) {
@@ -73,11 +61,10 @@ function itemTotal(item: AdminOrderItem) {
 }
 
 export function AdminOrdersPanel() {
-  const [token, setToken] = useState<string | null>(null);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
-  const [statusDraft, setStatusDraft] = useState<AdminOrderStatus>("in-attesa");
+  const [statusDraft, setStatusDraft] = useState<AdminOrderStatus>("prenotato");
   const [notesDraft, setNotesDraft] = useState("");
   const [statusFilter, setStatusFilter] = useState<AdminOrderStatus | "">("");
   const [search, setSearch] = useState("");
@@ -85,7 +72,7 @@ export function AdminOrdersPanel() {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState(
-    "Login admin richiesto per visualizzare ordini reali.",
+    "Caricamento ordini reali.",
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -95,20 +82,12 @@ export function AdminOrdersPanel() {
   );
 
   const refreshOrders = useCallback(
-    async (nextToken = token) => {
-      if (!nextToken) {
-        setOrders([]);
-        setSelectedOrder(null);
-        setSelectedOrderId(null);
-        setMessage("Login admin richiesto per visualizzare ordini reali.");
-        return;
-      }
-
+    async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const nextOrders = await listAdminOrders(nextToken, {
+        const nextOrders = await listAdminOrders(undefined, {
           pageSize: 50,
           search,
           status: statusFilter,
@@ -122,19 +101,17 @@ export function AdminOrdersPanel() {
         setIsLoading(false);
       }
     },
-    [search, statusFilter, token],
+    [search, statusFilter],
   );
 
   const loadOrderDetail = useCallback(
-    async (orderId: string, nextToken = token) => {
-      if (!nextToken) return;
-
+    async (orderId: string) => {
       setSelectedOrderId(orderId);
       setIsDetailLoading(true);
       setError(null);
 
       try {
-        const order = await getAdminOrder(nextToken, orderId);
+        const order = await getAdminOrder(undefined, orderId);
         setSelectedOrder(order);
         setStatusDraft(normalizeStatus(order.status));
         setNotesDraft(order.notes || "");
@@ -146,30 +123,16 @@ export function AdminOrdersPanel() {
         setIsDetailLoading(false);
       }
     },
-    [token],
+    [],
   );
 
   useEffect(() => {
-    const storedToken = readStoredToken();
-    setToken(storedToken);
-    void refreshOrders(storedToken);
-
-    function handleAuthChanged(event: Event) {
-      const detail = (event as CustomEvent<{ accessToken?: string | null }>).detail;
-      const nextToken = detail?.accessToken || readStoredToken();
-      setToken(nextToken || null);
-      setSelectedOrder(null);
-      setSelectedOrderId(null);
-      void refreshOrders(nextToken || null);
-    }
-
-    window.addEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
-    return () => window.removeEventListener(ADMIN_AUTH_CHANGED_EVENT, handleAuthChanged);
+    void refreshOrders();
   }, [refreshOrders]);
 
   async function handleSaveStatus() {
-    if (!token || !selectedOrderId) {
-      setError("Sessione admin o ordine mancante.");
+    if (!selectedOrderId) {
+      setError("Ordine mancante.");
       return;
     }
 
@@ -177,12 +140,12 @@ export function AdminOrdersPanel() {
     setError(null);
 
     try {
-      const updated = await updateAdminOrderStatus(token, selectedOrderId, {
+      const updated = await updateAdminOrderStatus(undefined, selectedOrderId, {
         notes: notesDraft.trim() || null,
         status: statusDraft,
       });
-      await refreshOrders(token);
-      await loadOrderDetail(updated.id || selectedOrderId, token);
+      await refreshOrders();
+      await loadOrderDetail(updated.id || selectedOrderId);
       setMessage("Stato ordine aggiornato.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Update stato ordine non riuscito.");
@@ -201,21 +164,15 @@ export function AdminOrdersPanel() {
           <h2 id="admin-orders-title">Orders</h2>
           <p>
             Ordini reali creati dal checkout e letti tramite API admin protette.
-            Payment mode resta informativo.
+            Ritiro in sede e pagamento al ritiro.
           </p>
         </div>
-        <span className="status-badge">{token ? "Orders live" : "Login richiesto"}</span>
+        <span className="status-badge">Orders live</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
 
-      {!token ? (
-        <div className="status-card">
-          <h3>Sessione mancante</h3>
-          <p>Nessuna API orders viene chiamata senza Bearer JWT admin.</p>
-        </div>
-      ) : (
-        <div className="admin-crud-grid admin-orders-grid">
+      <div className="admin-crud-grid admin-orders-grid">
           <div className="admin-products-list">
             <div className="admin-form-actions">
               <button
@@ -276,13 +233,13 @@ export function AdminOrdersPanel() {
                       <tr key={order.id}>
                         <td>
                           <strong>{order.order_number || order.id}</strong>
-                          <small>{fulfillmentLabel(order)}</small>
+                          <small>{fulfillmentLabel()}</small>
                         </td>
                         <td>
                           {order.customer_name || "n/d"}
                           <small>{order.customer_email || order.customer_phone || ""}</small>
                         </td>
-                        <td>{order.status || "in-attesa"}</td>
+                        <td>{order.status || "prenotato"}</td>
                         <td>{formatCurrency(order.total)}</td>
                         <td>{formatDate(order.created_at)}</td>
                         <td>
@@ -337,8 +294,8 @@ export function AdminOrdersPanel() {
                   </article>
                   <article className="status-card">
                     <h3>Ordine</h3>
-                    <p>{fulfillmentLabel(detailOrder)}</p>
-                    <p>{paymentLabel(detailOrder.payment_mode)}</p>
+                    <p>{fulfillmentLabel()}</p>
+                    <p>{paymentLabel()}</p>
                     <p>{formatDate(detailOrder.created_at)}</p>
                   </article>
                 </div>
@@ -434,8 +391,7 @@ export function AdminOrdersPanel() {
               </div>
             )}
           </div>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

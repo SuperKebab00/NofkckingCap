@@ -25,20 +25,34 @@ Browser-safe variables: `NEXT_PUBLIC_SUPABASE_URL`,
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_CONTACT_FORM_MODE`.
 
 Server-only variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-`SUPABASE_JWKS_URL`, `ADMIN_API_TOKEN`, `TURNSTILE_SECRET_KEY`, `APP_ENV`.
+`SUPABASE_JWKS_URL`, `TURNSTILE_SECRET_KEY`, `APP_ENV`.
 
 Use `.env.example` as the placeholder reference. Real `.env*` files are ignored.
-`SUPABASE_SERVICE_ROLE_KEY` and `ADMIN_API_TOKEN` must never be exposed with a
-`NEXT_PUBLIC_` prefix.
+`SUPABASE_SERVICE_ROLE_KEY` must never be exposed with a `NEXT_PUBLIC_` prefix.
 
 The public shop, contact, checkout and protected admin APIs are included. Payments
 remain off: no Stripe or PayPal provider, redirect or capture flow is implemented.
 Supabase migrations and operating notes are in `supabase/`.
 
+## Admin session and orders
+
+`/admin` is rendered dynamically. Without a verified Supabase Auth user in
+`public.admin_users` with `is_admin = true`, it renders only the login panel and
+does not fetch dashboard data. Successful login is handled by
+`POST /api/admin/session`; access and refresh tokens stay in HttpOnly,
+`SameSite=Lax` cookies. Every `/api/admin/*` route verifies the JWT and role again.
+
+Checkout is pickup-only. `POST /api/orders/create` sends an idempotency key to the
+server-side atomic RPC, which recalculates product prices and stock. The supported
+order states are `prenotato`, `in-lavorazione`, `pronto-al-ritiro`, `ritirato` and
+`annullato`.
+
 ## API routes
 
 - `POST /api/contact/create`
 - `POST /api/orders/create`
+- `POST|DELETE /api/admin/session`
+- `POST /api/admin/session/refresh`
 - `GET|POST /api/admin/products`
 - `GET|PATCH|DELETE /api/admin/products/[id]`
 - `GET|POST /api/admin/shop-categories`

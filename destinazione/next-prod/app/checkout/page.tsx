@@ -5,7 +5,7 @@ import {
   type CheckoutInShopProduct,
 } from "../../components/checkout-in-shop";
 import { SiteHeader } from "../../components/site-header";
-import { productTeasers } from "../../lib/static-content";
+import { getPublicProducts, type PublicProduct } from "../../lib/supabase-public";
 
 export const metadata: Metadata = {
   title: "Checkout in Shop | No Cap Barbershop",
@@ -13,18 +13,20 @@ export const metadata: Metadata = {
     "Checkout in shop per confermare prodotto, dati cliente e preferenza di ritiro senza pagamenti online attivi.",
 };
 
-function getFallbackCheckoutProducts(): CheckoutInShopProduct[] {
-  return productTeasers.map((product) => ({
+function mapCheckoutProduct(product: PublicProduct): CheckoutInShopProduct {
+  return {
     category: product.category,
-    description: null,
-    id: product.checkoutHref.split("product=")[1] || undefined,
-    image: product.image,
+    description: product.description,
+    id: product.id,
+    image: product.packshotUrl || product.lifestyleUrl,
     name: product.name,
-    price: product.price ?? null,
-  }));
+    price: product.price,
+    stock: product.stock,
+  };
 }
 
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
+  const products = (await getPublicProducts()).products.map(mapCheckoutProduct);
   return (
     <>
       <SiteHeader />
@@ -32,7 +34,7 @@ export default function CheckoutPage() {
         <section className="page-banner page-banner--checkout">
           <p className="eyebrow">Checkout</p>
           <h1>Conferma ordine</h1>
-          <p>Inserisci i dati, scegli ritiro o consegna e conferma l&apos;ordine.</p>
+          <p>Inserisci i dati e conferma l&apos;ordine per il ritiro in negozio.</p>
         </section>
 
         <Suspense
@@ -46,7 +48,7 @@ export default function CheckoutPage() {
             </section>
           }
         >
-          <CheckoutInShop products={getFallbackCheckoutProducts()} />
+          <CheckoutInShop products={products} />
         </Suspense>
       </main>
     </>
