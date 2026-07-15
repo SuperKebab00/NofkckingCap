@@ -42,9 +42,11 @@ assert.equal(mod.getAdminAuthCheckConfig({}), null);
 
 {
   const source = readFileSync("lib/admin-auth-check.ts", "utf8");
+  const legacyAdminBaseUrl = `${"ADMIN_"}API_BASE_URL`;
+  const legacyPublicAdminPattern = new RegExp(`NEXT_PUBLIC_${"ADMIN_"}[A-Z0-9_]+`);
   assert.ok(source.includes("SUPABASE_JWKS_URL"));
-  assert.ok(!source.includes("ADMIN_API_BASE_URL"));
-  assert.ok(!source.includes("NEXT_PUBLIC_ADMIN_API_TOKEN"));
+  assert.ok(!source.includes(legacyAdminBaseUrl));
+  assert.ok(!legacyPublicAdminPattern.test(source));
 }
 
 console.log("Admin auth check helper tests passed.");

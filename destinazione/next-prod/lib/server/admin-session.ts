@@ -36,7 +36,9 @@ function getCookie(request: Request, name: string) {
 
 function getAuthConfig(env: ServerEnv) {
   const url = String(env.SUPABASE_URL || "").replace(/\/+$/, "");
-  const anonKey = String(env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+  const anonKey = String(
+    env.SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+  ).trim();
 
   if (!url || !anonKey) {
     throw new Error("Configurazione Supabase Auth non disponibile.");

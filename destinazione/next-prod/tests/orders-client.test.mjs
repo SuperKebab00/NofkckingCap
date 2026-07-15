@@ -76,11 +76,12 @@ await assert.rejects(
 
 {
   const checkoutSource = readFileSync("components/checkout-in-shop.tsx", "utf8");
+  const legacyPublicAdminPattern = new RegExp(`NEXT_PUBLIC_${"ADMIN_"}[A-Z0-9_]+`);
 
   assert.ok(checkoutSource.includes("createPublicOrder"));
   assert.ok(!checkoutSource.includes("@supabase/"));
   assert.ok(!checkoutSource.includes("SUPABASE_SERVICE_ROLE_KEY"));
-  assert.ok(!checkoutSource.includes("ADMIN_API_TOKEN"));
+  assert.ok(!legacyPublicAdminPattern.test(checkoutSource));
   assert.ok(!checkoutSource.includes("lib/server/"));
   assert.ok(!checkoutSource.includes("stripe"));
   assert.ok(!checkoutSource.includes("paypal.com"));

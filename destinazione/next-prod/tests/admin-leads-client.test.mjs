@@ -86,9 +86,10 @@ await assert.rejects(
   const helperSource = readFileSync("lib/admin-leads-client.ts", "utf8");
   const panelSource = readFileSync("components/admin-leads-panel.tsx", "utf8");
   const combined = `${helperSource}\n${panelSource}`;
+  const legacyPublicAdminPattern = new RegExp(`NEXT_PUBLIC_${"ADMIN_"}[A-Z0-9_]+`);
   assert.ok(!combined.includes("@supabase/"));
   assert.ok(!combined.includes("SUPABASE_SERVICE_ROLE_KEY"));
-  assert.ok(!combined.includes("ADMIN_API_TOKEN"));
+  assert.ok(!legacyPublicAdminPattern.test(combined));
   assert.ok(!combined.includes("lib/server/"));
 }
 

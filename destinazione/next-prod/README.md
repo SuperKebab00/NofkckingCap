@@ -12,23 +12,27 @@ npm run typecheck
 npm test
 npm run build
 npm run build:cloudflare
-npx wrangler deploy
+npm run deploy
 ```
 
 Cloudflare configuration: root directory `/destinazione/next-prod`, build command
-`npm run build:cloudflare`, deploy command `npx wrangler deploy`, production
+`npm run build:cloudflare`, deploy command `npm run deploy`, production
 branch `definitivo`.
 
 ## Environment
 
-Browser-safe variables: `NEXT_PUBLIC_SUPABASE_URL`,
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_CONTACT_FORM_MODE`.
+Browser-safe variables, required during `npm run build:cloudflare`:
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`NEXT_PUBLIC_CONTACT_FORM_MODE`.
 
-Server-only variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-`SUPABASE_JWKS_URL`, `TURNSTILE_SECRET_KEY`, `APP_ENV`.
+Runtime Worker variables/secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWKS_URL`, `TURNSTILE_SECRET_KEY`,
+`APP_ENV`.
 
 Use `.env.example` as the placeholder reference. Real `.env*` files are ignored.
 `SUPABASE_SERVICE_ROLE_KEY` must never be exposed with a `NEXT_PUBLIC_` prefix.
+`npm run deploy` uses `wrangler deploy --keep-vars` so dashboard-managed
+production variables are not deleted by a deploy.
 
 The public shop, contact, checkout and protected admin APIs are included. Payments
 remain off: no Stripe or PayPal provider, redirect or capture flow is implemented.

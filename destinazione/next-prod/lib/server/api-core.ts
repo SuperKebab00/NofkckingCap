@@ -11,6 +11,7 @@ const LOCAL_RATE_LIMITS = new Map<string, { count: number; resetAt: number }>();
 export type ServerEnv = {
   APP_ENV?: string;
   NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+  SUPABASE_ANON_KEY?: string;
   SUPABASE_JWKS_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   SUPABASE_URL?: string;
@@ -23,6 +24,7 @@ export function getServerEnv(
   return {
     APP_ENV: source.APP_ENV,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: source.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_ANON_KEY: source.SUPABASE_ANON_KEY,
     SUPABASE_JWKS_URL: source.SUPABASE_JWKS_URL,
     SUPABASE_SERVICE_ROLE_KEY: source.SUPABASE_SERVICE_ROLE_KEY,
     SUPABASE_URL: source.SUPABASE_URL,

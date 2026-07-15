@@ -17,24 +17,27 @@ npm run typecheck
 npm test
 npm run build
 npm run build:cloudflare
-npx wrangler deploy
+npm run deploy
 ```
 
 ## Cloudflare Workers
 
 - Root directory: `/destinazione/next-prod`
 - Build command: `npm run build:cloudflare`
-- Deploy command: `npx wrangler deploy`
-- Version command: `npx wrangler versions upload`
+- Deploy command: `npm run deploy`
+- Version command: `npm run versions:upload`
 - Production branch: `definitivo`
 
 ## Environment variables
 
-Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+Public build-time: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `NEXT_PUBLIC_CONTACT_FORM_MODE`.
 
-Server-only: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWKS_URL`,
-`ADMIN_API_TOKEN`, `TURNSTILE_SECRET_KEY`, `APP_ENV`.
+Runtime Worker: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWKS_URL`, `TURNSTILE_SECRET_KEY`,
+`APP_ENV`.
 
 Set production values in Cloudflare. Do not commit real `.env*` files or expose
-server-only variables through `NEXT_PUBLIC_*`. Payments remain disabled.
+server-only variables through `NEXT_PUBLIC_*`. `npm run deploy` and
+`npm run versions:upload` preserve dashboard-managed vars with `--keep-vars`.
+Payments remain disabled.

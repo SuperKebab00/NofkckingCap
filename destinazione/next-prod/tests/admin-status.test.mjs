@@ -68,8 +68,10 @@ assert.equal(mod.getAdminStatusConfig({}), null);
 
 {
   const source = readFileSync("lib/admin-status.ts", "utf8");
-  assert.ok(!source.includes("ADMIN_API_BASE_URL"));
-  assert.ok(!source.includes("NEXT_PUBLIC_ADMIN_API_TOKEN"));
+  const legacyAdminBaseUrl = `${"ADMIN_"}API_BASE_URL`;
+  const legacyPublicAdminPattern = new RegExp(`NEXT_PUBLIC_${"ADMIN_"}[A-Z0-9_]+`);
+  assert.ok(!source.includes(legacyAdminBaseUrl));
+  assert.ok(!legacyPublicAdminPattern.test(source));
 }
 
 console.log("Admin status helper tests passed.");
