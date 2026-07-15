@@ -214,10 +214,10 @@ export function AdminShopStructurePanel() {
     <section className="missing-panel admin-shop-structure" aria-labelledby="admin-shop-structure-title">
       <div className="admin-panel-heading">
         <div>
-          <h2 id="admin-shop-structure-title">Shop structure CRUD</h2>
-          <p>Categorie e sezioni shop collegate alle API admin protette.</p>
+          <h2 id="admin-shop-structure-title">Struttura shop</h2>
+          <p>Gestisci categorie e sezioni pubblicate nello shop.</p>
         </div>
-        <span className="status-badge">CRUD abilitato</span>
+        <span className="status-badge">Gestione attiva</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
@@ -225,7 +225,7 @@ export function AdminShopStructurePanel() {
       <>
           <div className="admin-form-actions">
             <button className="ghost-button" disabled={isLoading} onClick={() => refreshStructure()} type="button">
-              {isLoading ? "Caricamento..." : "Refresh struttura"}
+              {isLoading ? "Caricamento..." : "Aggiorna struttura"}
             </button>
           </div>
 
@@ -238,7 +238,7 @@ export function AdminShopStructurePanel() {
               <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead>
-                    <tr><th>Label</th><th>Slug</th><th>Ordine</th><th>Stato</th><th>Azione</th></tr>
+                    <tr><th>Nome</th><th>Slug</th><th>Ordine</th><th>Stato</th><th>Azione</th></tr>
                   </thead>
                   <tbody>
                     {categories.map((category) => (
@@ -247,7 +247,7 @@ export function AdminShopStructurePanel() {
                         <td>{category.value}</td>
                         <td>{category.sort_order ?? 0}</td>
                         <td>{category.is_active === false ? "Disattiva" : "Attiva"}</td>
-                        <td><button className="mini-button" onClick={() => { setSelectedCategoryId(category.id); setCategoryForm(categoryToForm(category)); }} type="button">Edit</button></td>
+                        <td><button className="mini-button" onClick={() => { setSelectedCategoryId(category.id); setCategoryForm(categoryToForm(category)); }} type="button">Modifica</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -261,12 +261,12 @@ export function AdminShopStructurePanel() {
                 <label><span>Slug</span><input className="contact-form__input" value={categoryForm.slug} onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))} /></label>
                 <label><span>Descrizione</span><textarea className="contact-form__input" rows={3} value={categoryForm.description} onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))} /></label>
                 <div className="admin-form-row">
-                  <label><span>Sort order</span><input className="contact-form__input" type="number" value={categoryForm.sort_order} onChange={(event) => setCategoryForm((current) => ({ ...current, sort_order: event.target.value }))} /></label>
+                  <label><span>Ordine</span><input className="contact-form__input" type="number" value={categoryForm.sort_order} onChange={(event) => setCategoryForm((current) => ({ ...current, sort_order: event.target.value }))} /></label>
                   <label className="admin-checkbox"><input checked={categoryForm.is_active} onChange={(event) => setCategoryForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" /><span>Attiva</span></label>
                 </div>
                 <div className="admin-form-actions">
                   <button className="primary-button" disabled={isSaving} type="submit">{isSaving ? "Salvataggio..." : "Salva categoria"}</button>
-                  <button className="ghost-button" onClick={startCategoryCreate} type="button">Annulla edit</button>
+                  <button className="ghost-button" onClick={startCategoryCreate} type="button">Annulla</button>
                   <button className="outline-button" disabled={!selectedCategory || isSaving} onClick={softDeleteCategory} type="button">Disattiva</button>
                 </div>
               </form>
@@ -289,7 +289,7 @@ export function AdminShopStructurePanel() {
                         <td>{section.key}</td>
                         <td>{section.sort_order ?? 0}</td>
                         <td>{section.is_active === false ? "Disattiva" : "Attiva"}</td>
-                        <td><button className="mini-button" onClick={() => { setSelectedSectionId(section.id); setSectionForm(sectionToForm(section)); }} type="button">Edit</button></td>
+                        <td><button className="mini-button" onClick={() => { setSelectedSectionId(section.id); setSectionForm(sectionToForm(section)); }} type="button">Modifica</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -301,15 +301,15 @@ export function AdminShopStructurePanel() {
                 <h3>{selectedSection ? "Modifica sezione" : "Crea sezione"}</h3>
                 <label><span>Titolo</span><input className="contact-form__input" required value={sectionForm.title} onChange={(event) => setSectionForm((current) => ({ ...current, title: event.target.value }))} /></label>
                 <label><span>Key</span><input className="contact-form__input" value={sectionForm.key} onChange={(event) => setSectionForm((current) => ({ ...current, key: event.target.value }))} /></label>
-                <label><span>Subtitle</span><input className="contact-form__input" value={sectionForm.subtitle} onChange={(event) => setSectionForm((current) => ({ ...current, subtitle: event.target.value }))} /></label>
-                <label><span>Body</span><textarea className="contact-form__input" rows={3} value={sectionForm.body} onChange={(event) => setSectionForm((current) => ({ ...current, body: event.target.value }))} /></label>
+                <label><span>Sottotitolo</span><input className="contact-form__input" value={sectionForm.subtitle} onChange={(event) => setSectionForm((current) => ({ ...current, subtitle: event.target.value }))} /></label>
+                <label><span>Testo</span><textarea className="contact-form__input" rows={3} value={sectionForm.body} onChange={(event) => setSectionForm((current) => ({ ...current, body: event.target.value }))} /></label>
                 <div className="admin-form-row">
-                  <label><span>Sort order</span><input className="contact-form__input" type="number" value={sectionForm.sort_order} onChange={(event) => setSectionForm((current) => ({ ...current, sort_order: event.target.value }))} /></label>
+                  <label><span>Ordine</span><input className="contact-form__input" type="number" value={sectionForm.sort_order} onChange={(event) => setSectionForm((current) => ({ ...current, sort_order: event.target.value }))} /></label>
                   <label className="admin-checkbox"><input checked={sectionForm.is_active} onChange={(event) => setSectionForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" /><span>Attiva</span></label>
                 </div>
                 <div className="admin-form-actions">
                   <button className="primary-button" disabled={isSaving} type="submit">{isSaving ? "Salvataggio..." : "Salva sezione"}</button>
-                  <button className="ghost-button" onClick={startSectionCreate} type="button">Annulla edit</button>
+                  <button className="ghost-button" onClick={startSectionCreate} type="button">Annulla</button>
                   <button className="outline-button" disabled={!selectedSection || isSaving} onClick={softDeleteSection} type="button">Disattiva</button>
                 </div>
               </form>

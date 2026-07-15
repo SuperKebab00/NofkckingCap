@@ -72,7 +72,7 @@ export function AdminOrdersPanel() {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState(
-    "Caricamento ordini reali.",
+    "Caricamento ordini.",
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -148,7 +148,7 @@ export function AdminOrdersPanel() {
       await loadOrderDetail(updated.id || selectedOrderId);
       setMessage("Stato ordine aggiornato.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Update stato ordine non riuscito.");
+        setError(caught instanceof Error ? caught.message : "Aggiornamento stato ordine non riuscito.");
     } finally {
       setIsSaving(false);
     }
@@ -161,13 +161,12 @@ export function AdminOrdersPanel() {
     <section className="missing-panel admin-orders-panel" aria-labelledby="admin-orders-title">
       <div className="admin-panel-heading">
         <div>
-          <h2 id="admin-orders-title">Orders</h2>
+          <h2 id="admin-orders-title">Ordini</h2>
           <p>
-            Ordini reali creati dal checkout e letti tramite API admin protette.
-            Ritiro in sede e pagamento al ritiro.
+            Ordini creati dal checkout con ritiro in sede e pagamento al banco.
           </p>
         </div>
-        <span className="status-badge">Orders live</span>
+        <span className="status-badge">Ordini attivi</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
@@ -181,7 +180,7 @@ export function AdminOrdersPanel() {
                 onClick={() => refreshOrders()}
                 type="button"
               >
-                {isLoading ? "Caricamento..." : "Refresh ordini"}
+                {isLoading ? "Caricamento..." : "Aggiorna ordini"}
               </button>
               <span className="status-badge">{orders.length} ordini</span>
             </div>
@@ -261,8 +260,8 @@ export function AdminOrdersPanel() {
                 <h3>{isLoading ? "Caricamento ordini" : "Lista vuota"}</h3>
                 <p>
                   {isLoading
-                    ? "Lettura ordini admin in corso..."
-                    : "Nessun ordine restituito dalle API admin."}
+                    ? "Caricamento ordini..."
+                    : "Nessun ordine trovato."}
                 </p>
               </div>
             )}

@@ -90,7 +90,7 @@ export function AdminProductsCrudPanel() {
   const [form, setForm] = useState<ProductFormState>(emptyForm);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("Caricamento prodotti amministrativi.");
+  const [message, setMessage] = useState("Caricamento prodotti.");
   const [error, setError] = useState<string | null>(null);
 
   const selectedProduct = useMemo(
@@ -105,7 +105,7 @@ export function AdminProductsCrudPanel() {
     try {
       const nextProducts = await listAdminProducts();
       setProducts(nextProducts);
-      setMessage(`Prodotti admin caricati: ${nextProducts.length}.`);
+      setMessage(`Prodotti caricati: ${nextProducts.length}.`);
     } catch (caught) {
       setProducts([]);
       setError(caught instanceof Error ? caught.message : "Impossibile caricare i prodotti.");
@@ -132,7 +132,7 @@ export function AdminProductsCrudPanel() {
     setSelectedProductId(null);
     setForm(emptyForm);
     setError(null);
-    setMessage("Nuovo prodotto: compila i campi minimi e salva.");
+    setMessage("Nuovo prodotto: compila i campi principali e salva.");
   }
 
   function startEdit(product: AdminProduct) {
@@ -192,13 +192,13 @@ export function AdminProductsCrudPanel() {
     <section className="missing-panel admin-products-crud" aria-labelledby="admin-products-crud-title">
       <div className="admin-panel-heading">
         <div>
-          <h2 id="admin-products-crud-title">Products CRUD</h2>
+          <h2 id="admin-products-crud-title">Prodotti</h2>
           <p>
-            Gestione prodotti collegata alle API admin Next con sessione server-side.
+            Crea, aggiorna e disattiva i prodotti pubblicati nello shop.
           </p>
         </div>
         <span className="status-badge">
-          CRUD abilitato
+          Gestione attiva
         </span>
       </div>
 
@@ -208,7 +208,7 @@ export function AdminProductsCrudPanel() {
           <div className="admin-products-list">
             <div className="admin-form-actions">
               <button className="ghost-button" disabled={isLoading} onClick={() => refreshProducts()} type="button">
-                {isLoading ? "Caricamento..." : "Refresh prodotti"}
+                {isLoading ? "Caricamento..." : "Aggiorna prodotti"}
               </button>
               <button className="primary-button" onClick={startCreate} type="button">
                 Nuovo prodotto
@@ -238,7 +238,7 @@ export function AdminProductsCrudPanel() {
                         <td>{product.is_active === false ? "Disattivo" : product.status || "active"}</td>
                         <td>
                           <button className="mini-button" onClick={() => startEdit(product)} type="button">
-                            Edit
+                            Modifica
                           </button>
                         </td>
                       </tr>
@@ -251,8 +251,8 @@ export function AdminProductsCrudPanel() {
                 <h3>Lista vuota</h3>
                 <p>
                   {isLoading
-                    ? "Caricamento prodotti admin..."
-                    : "Nessun prodotto restituito dalle API admin."}
+                    ? "Caricamento prodotti..."
+                    : "Nessun prodotto trovato."}
                 </p>
               </div>
             )}
@@ -262,7 +262,7 @@ export function AdminProductsCrudPanel() {
             <div className="admin-panel-heading">
               <div>
                 <h3>{selectedProduct ? "Modifica prodotto" : "Crea prodotto"}</h3>
-                <p>{selectedProduct ? selectedProduct.id : "Nuovo record products"}</p>
+                <p>{selectedProduct ? "Modifica il prodotto selezionato." : "Aggiungi un prodotto allo shop."}</p>
               </div>
               <span className="status-badge">
                 {form.is_active ? "Attivo" : "Disattivo"}
@@ -363,10 +363,10 @@ export function AdminProductsCrudPanel() {
                   onChange={(event) => updateField("status", event.target.value)}
                   value={form.status}
                 >
-                  <option value="active">active</option>
-                  <option value="draft">draft</option>
-                  <option value="archived">archived</option>
-                  <option value="sold_out">sold_out</option>
+                  <option value="active">Attivo</option>
+                  <option value="draft">Bozza</option>
+                  <option value="archived">Archiviato</option>
+                  <option value="sold_out">Esaurito</option>
                 </select>
               </label>
             </div>
@@ -398,7 +398,7 @@ export function AdminProductsCrudPanel() {
                 {isSaving ? "Salvataggio..." : selectedProduct ? "Salva modifiche" : "Crea prodotto"}
               </button>
               <button className="ghost-button" onClick={startCreate} type="button">
-                Annulla edit
+                Annulla
               </button>
               <button
                 className="outline-button"

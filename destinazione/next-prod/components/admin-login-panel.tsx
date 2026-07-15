@@ -7,7 +7,7 @@ import {
 } from "../lib/admin-login";
 
 const initialResult: AdminClientAuthResult = {
-  message: "Login admin richiesto per verificare una sessione reale.",
+  message: "Inserisci le credenziali del negozio per continuare.",
   state: "idle",
 };
 
@@ -42,8 +42,7 @@ export function AdminLoginPanel() {
     <section className="missing-panel" aria-labelledby="admin-login-panel">
       <h2 id="admin-login-panel">Accesso gestore</h2>
       <p>
-        Accedi con il tuo utente Supabase. La sessione viene verificata lato server
-        e conservata esclusivamente in cookie sicuri HttpOnly.
+        Accedi per gestire catalogo, ordini e richieste del negozio.
       </p>
 
       <form className="admin-login-form" onSubmit={handleSubmit}>
@@ -75,10 +74,10 @@ export function AdminLoginPanel() {
           </button>
           <span className="status-badge">
             {result.state === "submitting"
-                    ? "In corso"
-                    : result.state === "error"
-                      ? "Errore"
-                      : "Login richiesto"}
+              ? "In corso"
+              : result.state === "error"
+                ? "Errore"
+                : "Riservato"}
           </span>
         </div>
       </form>

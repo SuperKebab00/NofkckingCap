@@ -40,7 +40,7 @@ export function AdminLeadsPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("Caricamento richieste reali.");
+  const [message, setMessage] = useState("Caricamento richieste.");
   const [error, setError] = useState<string | null>(null);
 
   const selectedFromList = useMemo(
@@ -59,7 +59,7 @@ export function AdminLeadsPanel() {
           status: statusFilter,
         });
         setLeads(nextLeads);
-        setMessage(`Lead caricati: ${nextLeads.length}.`);
+        setMessage(`Richieste caricate: ${nextLeads.length}.`);
       } catch (caught) {
         setLeads([]);
         setError(caught instanceof Error ? caught.message : "Impossibile caricare i lead.");
@@ -79,7 +79,7 @@ export function AdminLeadsPanel() {
         const lead = await getAdminLead(undefined, leadId);
         setSelectedLead(lead);
         setStatusDraft(normalizeStatus(lead.status));
-        setMessage(`Dettaglio lead ${lead.subject || lead.email || lead.id} caricato.`);
+        setMessage(`Dettaglio richiesta ${lead.subject || lead.email || lead.id} caricato.`);
       } catch (caught) {
         setSelectedLead(null);
         setError(caught instanceof Error ? caught.message : "Dettaglio lead non disponibile.");
@@ -96,7 +96,7 @@ export function AdminLeadsPanel() {
 
   async function handleSaveStatus() {
     if (!selectedLeadId) {
-      setError("Lead mancante.");
+      setError("Richiesta mancante.");
       return;
     }
 
@@ -108,9 +108,9 @@ export function AdminLeadsPanel() {
       });
       await refreshLeads();
       await loadLeadDetail(updated.id || selectedLeadId);
-      setMessage("Stato lead aggiornato.");
+      setMessage("Stato richiesta aggiornato.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Update lead non riuscito.");
+      setError(caught instanceof Error ? caught.message : "Aggiornamento richiesta non riuscito.");
     } finally {
       setIsSaving(false);
     }
@@ -118,16 +118,16 @@ export function AdminLeadsPanel() {
 
   async function handleArchive() {
     if (!selectedLeadId) return;
-    if (!window.confirm("Archiviare questo lead impostandolo a closed?")) return;
+    if (!window.confirm("Archiviare questa richiesta?")) return;
     setIsSaving(true);
     setError(null);
     try {
       const archived = await archiveAdminLead(undefined, selectedLeadId);
       await refreshLeads();
       await loadLeadDetail(archived.id || selectedLeadId);
-      setMessage("Lead archiviato.");
+      setMessage("Richiesta archiviata.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Archiviazione lead non riuscita.");
+      setError(caught instanceof Error ? caught.message : "Archiviazione richiesta non riuscita.");
     } finally {
       setIsSaving(false);
     }
@@ -139,10 +139,10 @@ export function AdminLeadsPanel() {
     <section className="missing-panel admin-leads-panel" aria-labelledby="admin-leads-title">
       <div className="admin-panel-heading">
         <div>
-          <h2 id="admin-leads-title">Leads</h2>
-          <p>Messaggi arrivati dal form contatti, letti tramite API admin protette.</p>
+          <h2 id="admin-leads-title">Richieste</h2>
+          <p>Messaggi arrivati dal form contatti.</p>
         </div>
-        <span className="status-badge">Leads live</span>
+        <span className="status-badge">Richieste attive</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
@@ -151,9 +151,9 @@ export function AdminLeadsPanel() {
           <div className="admin-products-list">
             <div className="admin-form-actions">
               <button className="ghost-button" disabled={isLoading} onClick={() => refreshLeads()} type="button">
-                {isLoading ? "Caricamento..." : "Refresh lead"}
+                {isLoading ? "Caricamento..." : "Aggiorna richieste"}
               </button>
-              <span className="status-badge">{leads.length} lead</span>
+              <span className="status-badge">{leads.length} richieste</span>
             </div>
 
             <div className="admin-form-row">
@@ -192,7 +192,7 @@ export function AdminLeadsPanel() {
             ) : (
               <div className="status-card">
                 <h3>{isLoading ? "Caricamento lead" : "Lista vuota"}</h3>
-                <p>{isLoading ? "Lettura lead admin in corso..." : "Nessun lead restituito dalle API admin."}</p>
+                <p>{isLoading ? "Caricamento richieste..." : "Nessuna richiesta trovata."}</p>
               </div>
             )}
           </div>
@@ -200,8 +200,8 @@ export function AdminLeadsPanel() {
           <div className="admin-product-form admin-lead-detail">
             <div className="admin-panel-heading">
               <div>
-                <h3>Dettaglio lead</h3>
-                <p>{detailLead ? detailLead.subject || detailLead.email || detailLead.id : "Seleziona un lead dalla lista"}</p>
+                <h3>Dettaglio richiesta</h3>
+                <p>{detailLead ? detailLead.subject || detailLead.email || detailLead.id : "Seleziona una richiesta dalla lista"}</p>
               </div>
               <span className="status-badge">{isDetailLoading ? "Caricamento" : detailLead?.status || "n/d"}</span>
             </div>
@@ -218,8 +218,8 @@ export function AdminLeadsPanel() {
                   <article className="status-card">
                     <h3>Meta</h3>
                     <p>Privacy: {detailLead.privacy_accepted ? "si" : "no"}</p>
-                    <p>Source: {detailLead.source || "n/d"}</p>
-                    <p>ID: {detailLead.id}</p>
+                    <p>Origine: {detailLead.source || "n/d"}</p>
+                    <p>Riferimento: {detailLead.id}</p>
                   </article>
                 </div>
 
@@ -232,7 +232,7 @@ export function AdminLeadsPanel() {
                   <textarea className="contact-form__input" readOnly rows={6} value={detailLead.message || ""} />
                 </label>
                 <label>
-                  <span>Stato lead</span>
+                  <span>Stato richiesta</span>
                   <select className="contact-form__input" onChange={(event) => setStatusDraft(event.target.value as AdminLeadStatus)} value={statusDraft}>
                     {ADMIN_LEAD_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
@@ -253,7 +253,7 @@ export function AdminLeadsPanel() {
             ) : (
               <div className="status-card">
                 <h3>Nessun dettaglio</h3>
-                <p>Apri un lead per visualizzare messaggio e stato modificabile.</p>
+                <p>Apri una richiesta per visualizzare messaggio e stato modificabile.</p>
               </div>
             )}
           </div>

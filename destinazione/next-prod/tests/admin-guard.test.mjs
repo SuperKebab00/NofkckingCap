@@ -7,9 +7,13 @@ function read(path) {
 
 const uiAndClientSource = [
   read("app/admin/page.tsx"),
-  read("components/admin-auth-status-panel.tsx"),
+  read("components/admin-leads-panel.tsx"),
   read("components/admin-login-panel.tsx"),
+  read("components/admin-orders-panel.tsx"),
+  read("components/admin-products-crud-panel.tsx"),
   read("components/admin-products-summary-panel.tsx"),
+  read("components/admin-readonly-dashboard.tsx"),
+  read("components/admin-shop-structure-panel.tsx"),
   read("lib/admin-login.ts"),
 ].join("\n");
 const adminPageSource = read("app/admin/page.tsx");
