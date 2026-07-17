@@ -220,12 +220,6 @@ begin
     if exists (select 1 from cron.job where jobname = 'cuts-retention-daily') then
       perform cron.unschedule('cuts-retention-daily');
     end if;
-
-    perform cron.schedule(
-      'cuts-retention-daily',
-      '17 3 * * *',
-      'select app_private.run_cuts_retention();'
-    );
   end if;
 end;
 $$;
