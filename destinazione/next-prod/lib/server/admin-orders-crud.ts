@@ -25,6 +25,14 @@ const ORDER_STATUSES = [
   "annullato",
 ] as const;
 
+const ALLOWED_ORDER_TRANSITIONS: Record<(typeof ORDER_STATUSES)[number], Array<(typeof ORDER_STATUSES)[number]>> = {
+  "annullato": [],
+  "in-lavorazione": ["pronto-al-ritiro", "annullato"],
+  "prenotato": ["in-lavorazione", "annullato"],
+  "pronto-al-ritiro": ["ritirato", "annullato"],
+  "ritirato": [],
+};
+
 const statusUpdateSchema = z
   .object({
     notes: z
@@ -191,8 +199,19 @@ export async function updateAdminOrderStatus(
     );
   }
 
+  const currentOrder = await getAdminOrder(env, id);
+  const currentStatus = String(
+    (currentOrder as Record<string, unknown>).status || "prenotato",
+  ) as (typeof ORDER_STATUSES)[number];
+  const nextStatus = parsed.data.status;
+  if (currentStatus !== nextStatus && !ALLOWED_ORDER_TRANSITIONS[currentStatus]?.includes(nextStatus)) {
+    throw Object.assign(new Error("CLIENT: Transizione stato ordine non consentita."), {
+      status: 409,
+    });
+  }
+
   const row: Record<string, unknown> = {
-    status: parsed.data.status,
+    status: nextStatus,
   };
 
   if (parsed.data.notes !== undefined) {
@@ -214,7 +233,7 @@ export async function updateAdminOrderStatus(
   if (!order) throw notFound();
 
   await writeAuditLog(env, "order.status_update", id, admin, {
-    status: parsed.data.status,
+    status: nextStatus,
   });
 
   return order;

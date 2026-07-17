@@ -164,6 +164,17 @@ assert.equal(
       });
     }
 
+    if (url.includes("/rest/v1/orders?select=") && url.includes("id=eq.order-1") && init.method === "GET") {
+      return new Response(
+        JSON.stringify([{ id: "order-1", status: "in-lavorazione", order_number: "NC-2026-0001" }]),
+        { status: 200 },
+      );
+    }
+
+    if (url.includes("/rest/v1/order_items?select=")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+
     if (url.includes("/rest/v1/orders?select=") && init.method === "PATCH") {
       const body = JSON.parse(String(init.body));
       assert.equal(body.status, "pronto-al-ritiro");
@@ -198,6 +209,56 @@ assert.equal(
 
     assert.equal(response.status, 200);
     assert.equal((await response.json()).order.status, "pronto-al-ritiro");
+  } finally {
+    global.fetch = originalFetch;
+  }
+}
+
+{
+  const { jwk, token } = adminTokenBundle;
+  const originalFetch = global.fetch;
+
+  global.fetch = async (input, init = {}) => {
+    const url = String(input);
+
+    if (url === env.SUPABASE_JWKS_URL) {
+      return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
+    }
+
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) {
+      return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), {
+        status: 200,
+      });
+    }
+
+    if (url.includes("/rest/v1/orders?select=") && url.includes("id=eq.order-1") && init.method === "GET") {
+      return new Response(
+        JSON.stringify([{ id: "order-1", status: "ritirato", order_number: "NC-2026-0001" }]),
+        { status: 200 },
+      );
+    }
+
+    if (url.includes("/rest/v1/order_items?select=")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+
+  try {
+    const response = await mod.handleAdminOrderItem(
+      request(
+        "https://example.com/api/admin/orders/order-1",
+        "PATCH",
+        { status: "prenotato" },
+        token,
+      ),
+      env,
+      "order-1",
+    );
+
+    assert.equal(response.status, 409);
+    assert.match((await response.json()).error, /Transizione stato ordine non consentita/);
   } finally {
     global.fetch = originalFetch;
   }
