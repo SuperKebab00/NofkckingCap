@@ -22,7 +22,6 @@ export type AdminContext = {
 export type AdminProductPayload = {
   badge?: string | null;
   category?: string | null;
-  category_id?: string | null;
   colors?: unknown;
   code?: string | null;
   description?: string;
@@ -46,7 +45,6 @@ export type AdminProductPayload = {
 type ProductWriteRow = {
   badge?: string | null;
   category?: string | null;
-  category_id?: string | null;
   code?: string | null;
   colors?: unknown;
   description?: string;
@@ -132,7 +130,6 @@ const urlOrPathSchema = optionalText(400).refine(
 const productCreateSchema = z.object({
   badge: optionalText(80),
   category: optionalText(80),
-  category_id: optionalUuid(),
   code: optionalText(80),
   colors: z.unknown().optional(),
   description: z.string().optional().default(""),
@@ -159,16 +156,6 @@ const productUpdateSchema = productCreateSchema
   .refine((value) => Object.keys(value).length > 0, {
     message: "Payload update vuoto.",
   });
-
-function optionalUuid() {
-  return z
-    .union([z.string().uuid(), z.literal(""), z.null()])
-    .optional()
-    .transform((value) => {
-      if (!value) return null;
-      return value;
-    });
-}
 
 export function slugify(value: string) {
   return value
@@ -212,7 +199,6 @@ function normalizeProductWritePayload(
   for (const key of [
     "badge",
     "category",
-    "category_id",
     "code",
     "colors",
     "image_url",
