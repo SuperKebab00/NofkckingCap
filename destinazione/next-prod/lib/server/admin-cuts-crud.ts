@@ -241,6 +241,7 @@ export async function runCutRetention(env: ServerEnv, admin: AdminContext) {
     deleted_files: deletedFiles.length,
     deleted_records: ids.length,
     failed_files: failedFiles.length,
+    scheduler: "disabled",
   };
   await audit(env, "cut.retention_manual", null, admin, { result });
   return result;
