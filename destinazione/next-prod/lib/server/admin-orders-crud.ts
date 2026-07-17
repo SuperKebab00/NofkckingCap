@@ -16,7 +16,7 @@ import {
 const ORDER_SELECT =
   "id,order_number,customer_name,customer_email,customer_phone,fulfillment,payment_mode,status,subtotal,total,notes,source,created_at,updated_at";
 const ORDER_ITEM_SELECT =
-  "id,order_id,product_id,product_name,product_sku_snapshot,quantity,unit_price,line_total,created_at";
+  "id,order_id,product_id,product_name,quantity,unit_price,line_total,created_at";
 const ORDER_STATUSES = [
   "prenotato",
   "in-lavorazione",
