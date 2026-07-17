@@ -7,6 +7,7 @@ tsconfig.tsbuildinfo
 
 .env*
 !.env.example
+ADMIN_TEST_*.env
 
 tests/.tmp-ts-modules/
 

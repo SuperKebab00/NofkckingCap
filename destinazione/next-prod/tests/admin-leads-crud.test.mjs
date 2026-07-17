@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
@@ -61,7 +61,7 @@ assert.equal(
   global.fetch = async (input, init = {}) => {
     const url = String(input);
     if (url === env.SUPABASE_JWKS_URL) return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
-    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin")) return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), { status: 200 });
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), { status: 200 });
     if (url.includes("/rest/v1/leads?") && init.method === "GET") {
       return new Response(JSON.stringify([{ email: "mario@example.com", id: leadId, status: "new" }]), { status: 200 });
     }
@@ -85,7 +85,7 @@ assert.equal(
   global.fetch = async (input) => {
     const url = String(input);
     if (url === env.SUPABASE_JWKS_URL) return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
-    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin")) return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), { status: 200 });
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), { status: 200 });
     throw new Error(`Unexpected fetch: ${url}`);
   };
   try {
@@ -106,7 +106,7 @@ assert.equal(
   global.fetch = async (input, init = {}) => {
     const url = String(input);
     if (url === env.SUPABASE_JWKS_URL) return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
-    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin")) return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), { status: 200 });
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), { status: 200 });
     if (url.includes("/rest/v1/leads?select=") && init.method === "PATCH") {
       const body = JSON.parse(String(init.body));
       assert.equal(body.status, "contacted");

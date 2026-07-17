@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
-import { requireAdminFromRequest, type AdminContext } from "./admin-products-crud";
+import { requireSuperAdminFromRequest, type AdminContext } from "./admin-products-crud";
 import {
   jsonResponse,
   readJson,
@@ -360,7 +360,7 @@ export async function handleAdminShopSectionItem(request: Request, env: ServerEn
 }
 export async function handleAdminShopSectionItemsCollection(request: Request, env: ServerEnv, sectionId: string): Promise<Response> {
   try {
-    const admin = await requireAdminFromRequest(request, env);
+    const admin = await requireSuperAdminFromRequest(request, env);
     if (request.method === "GET") return jsonResponse({ items: await listAdminShopSectionItems(env, sectionId) });
     if (request.method === "POST") return jsonResponse({ item: await createAdminShopSectionItem(env, sectionId, await readJson(request), admin) }, 201);
     return jsonResponse({ error: "Metodo non consentito." }, 405);
@@ -370,7 +370,7 @@ export async function handleAdminShopSectionItemsCollection(request: Request, en
 }
 export async function handleAdminShopSectionItemCrud(request: Request, env: ServerEnv, id: string): Promise<Response> {
   try {
-    const admin = await requireAdminFromRequest(request, env);
+    const admin = await requireSuperAdminFromRequest(request, env);
     if (request.method === "PATCH") return jsonResponse({ item: await updateAdminShopSectionItem(env, id, await readJson(request), admin) });
     if (request.method === "DELETE") return jsonResponse({ item: await softDeleteAdminShopSectionItem(env, id, admin) });
     return jsonResponse({ error: "Metodo non consentito." }, 405);
@@ -381,7 +381,7 @@ export async function handleAdminShopSectionItemCrud(request: Request, env: Serv
 
 async function handleCollection(request: Request, env: ServerEnv, type: "categories" | "sections") {
   try {
-    const admin = await requireAdminFromRequest(request, env);
+    const admin = await requireSuperAdminFromRequest(request, env);
     if (request.method === "GET") return jsonResponse(type === "categories" ? { categories: await listAdminShopCategories(env) } : { sections: await listAdminShopSections(env) });
     if (request.method === "POST") {
       const payload = await readJson(request);
@@ -400,7 +400,7 @@ async function handleCollection(request: Request, env: ServerEnv, type: "categor
 
 async function handleItem(request: Request, env: ServerEnv, type: "categories" | "sections", id: string) {
   try {
-    const admin = await requireAdminFromRequest(request, env);
+    const admin = await requireSuperAdminFromRequest(request, env);
     if (request.method === "GET") return jsonResponse(type === "categories" ? { category: await getAdminShopCategory(env, id) } : { section: await getAdminShopSection(env, id) });
     if (request.method === "PATCH") {
       const payload = await readJson(request);

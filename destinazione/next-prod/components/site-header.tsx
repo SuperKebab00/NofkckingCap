@@ -7,7 +7,7 @@ export function SiteHeader() {
   return (
     <header className="site-header" data-elevated="false">
       <Link className="brand" href="/" aria-label="No Cap Barber Shop home">
-        <img src="/Img/Design/NO CAP LOGO_1.png" alt="No Cap Barber Shop" />
+        <img src="/Img/Design/no-cap-logo.webp" alt="No Cap Barber Shop" />
       </Link>
 
       <nav className="main-nav" aria-label="Navigazione principale">

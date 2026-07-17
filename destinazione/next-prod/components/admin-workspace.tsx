@@ -2,13 +2,16 @@
 
 import { useId, useState, type ReactNode } from "react";
 
-type AdminView = "data" | "manage" | "orders" | "leads";
+type AdminView = "data" | "manage" | "orders" | "leads" | "structure" | "super";
 
 type AdminWorkspaceProps = {
   data: ReactNode;
   leads: ReactNode;
   manage: ReactNode;
   orders: ReactNode;
+  structure?: ReactNode;
+  superAdmin?: ReactNode;
+  superAdminEnabled?: boolean;
 };
 
 const tabs: Array<{ id: AdminView; label: string }> = [
@@ -16,6 +19,8 @@ const tabs: Array<{ id: AdminView; label: string }> = [
   { id: "manage", label: "Gestione" },
   { id: "orders", label: "Ordini" },
   { id: "leads", label: "Richieste" },
+  { id: "structure", label: "Struttura" },
+  { id: "super", label: "Super admin" },
 ];
 
 export function AdminWorkspace({
@@ -23,21 +28,29 @@ export function AdminWorkspace({
   leads,
   manage,
   orders,
+  structure,
+  superAdmin,
+  superAdminEnabled = false,
 }: AdminWorkspaceProps) {
   const [activeView, setActiveView] = useState<AdminView>("data");
   const tabId = useId();
+  const availableTabs = tabs.filter((tab) =>
+    tab.id === "structure" || tab.id === "super" ? superAdminEnabled : true,
+  );
 
   const panels: Record<AdminView, ReactNode> = {
     data,
     manage,
     orders,
     leads,
+    structure,
+    super: superAdmin,
   };
 
   return (
     <section className="admin-workspace" aria-label="Workspace amministrativo">
       <div className="admin-tabs" role="tablist" aria-label="Sezioni admin">
-        {tabs.map((tab) => {
+        {availableTabs.map((tab) => {
           const isActive = tab.id === activeView;
           return (
             <button
@@ -56,7 +69,7 @@ export function AdminWorkspace({
         })}
       </div>
 
-      {tabs.map((tab) => {
+      {availableTabs.map((tab) => {
         const isActive = tab.id === activeView;
         return (
           <div

@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
-import { verifyAdminJwt } from "./admin-auth";
+import { verifyAdminJwt, type AdminRole } from "./admin-auth";
 import {
   jsonResponse,
   readJson,
@@ -14,6 +14,8 @@ import {
 } from "./api-core";
 
 export type AdminContext = {
+  role: AdminRole;
+  superAdmin: boolean;
   userId: string;
 };
 
@@ -345,8 +347,24 @@ export async function requireAdminFromRequest(
   }
 
   return {
+    role: result.role,
+    superAdmin: result.superAdmin,
     userId: result.userId,
   };
+}
+
+export async function requireSuperAdminFromRequest(
+  request: Request,
+  env: ServerEnv,
+): Promise<AdminContext> {
+  const admin = await requireAdminFromRequest(request, env);
+  if (!admin.superAdmin) {
+    const error = new Error("Funzione riservata al super admin.");
+    Object.assign(error, { status: 403 });
+    throw error;
+  }
+
+  return admin;
 }
 
 export async function listAdminProducts(env: ServerEnv) {

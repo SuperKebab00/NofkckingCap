@@ -15,11 +15,15 @@ export const ADMIN_USERS_TABLE = "admin_users";
 export const ADMIN_SESSION_ACCESS_COOKIE = "no-cap-admin-session";
 export const ADMIN_SESSION_REFRESH_COOKIE = "no-cap-admin-refresh";
 
+export type AdminRole = "admin" | "super_admin";
+
 type AdminJwtVerificationResult =
   | {
       admin: true;
       authenticated: true;
       ok: true;
+      role: AdminRole;
+      superAdmin: boolean;
       status: 200;
       userId: string;
     }
@@ -28,6 +32,8 @@ type AdminJwtVerificationResult =
       authenticated: boolean;
       error: string;
       ok: false;
+      role?: AdminRole;
+      superAdmin?: false;
       status: 401 | 403 | 503;
       userId?: string;
     };
@@ -99,7 +105,7 @@ export function getAdminSessionToken(request: Request): string {
 async function readAdminUser(env: ServerEnv, userId: string) {
   const response = await supabaseRequest(
     env,
-    `${ADMIN_USERS_TABLE}?select=user_id,is_admin&user_id=eq.${encodeURIComponent(
+    `${ADMIN_USERS_TABLE}?select=user_id,is_admin,role&user_id=eq.${encodeURIComponent(
       userId,
     )}&is_admin=eq.true&limit=1`,
     {
@@ -114,6 +120,10 @@ async function readAdminUser(env: ServerEnv, userId: string) {
       : [];
 
   return rows[0] || null;
+}
+
+function normalizeAdminRole(value: unknown): AdminRole {
+  return value === "super_admin" ? "super_admin" : "admin";
 }
 
 export async function verifyAdminJwt(
@@ -167,7 +177,9 @@ export async function verifyAdminAccessToken(
       };
     }
 
-    const adminRow = await readAdminUser(env, payload.sub);
+    const adminRow = await readAdminUser(env, payload.sub) as
+      | { role?: unknown }
+      | null;
     if (!adminRow) {
       return {
         admin: false,
@@ -183,6 +195,8 @@ export async function verifyAdminAccessToken(
       admin: true,
       authenticated: true,
       ok: true,
+      role: normalizeAdminRole(adminRow.role),
+      superAdmin: normalizeAdminRole(adminRow.role) === "super_admin",
       status: 200,
       userId: payload.sub,
     };
@@ -221,6 +235,8 @@ export async function handleAdminAuthCheck(
     return jsonResponse({
       admin: true,
       authenticated: true,
+      role: result.role,
+      superAdmin: result.superAdmin,
     });
   } catch (error) {
     return jsonResponse(

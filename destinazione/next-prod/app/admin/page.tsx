@@ -10,6 +10,7 @@ import { AdminProductsSummaryPanel } from "../../components/admin-products-summa
 import { AdminReadonlyDashboard } from "../../components/admin-readonly-dashboard";
 import { AdminSessionControls } from "../../components/admin-session-controls";
 import { AdminShopStructurePanel } from "../../components/admin-shop-structure-panel";
+import { AdminSuperPanel } from "../../components/admin-super-panel";
 import { AdminWorkspace } from "../../components/admin-workspace";
 import { SiteHeader } from "../../components/site-header";
 import { getAdminProductsSummary } from "../../lib/admin-products-summary";
@@ -65,8 +66,11 @@ export default async function AdminPage() {
           <AdminWorkspace
             data={<><AdminReadonlyDashboard adminApiMessage={adminStatus.message} adminApiState={adminStatus.apiState} adminCategoriesCount={adminStatus.categoriesCount} adminMode={adminStatus.mode} adminProductsCount={adminStatus.productsCount} adminSource={adminStatus.source} adminWrites={adminStatus.writes} categoriesCount={categoriesCount} productsCount={productsCount} showStock={productsResult.showStock} usesLiveReadOnlyData={usesLiveReadOnlyData} /><AdminProductsSummaryPanel summary={adminProductsSummary} /></>}
             leads={<AdminLeadsPanel />}
-            manage={<><AdminProductsCrudPanel /><AdminShopStructurePanel /></>}
+            manage={<AdminProductsCrudPanel />}
             orders={<AdminOrdersPanel />}
+            structure={<AdminShopStructurePanel />}
+            superAdmin={<AdminSuperPanel />}
+            superAdminEnabled={verification.superAdmin}
           />
         </div>
       </main>

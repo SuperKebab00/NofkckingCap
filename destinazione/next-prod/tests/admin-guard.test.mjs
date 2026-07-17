@@ -14,6 +14,7 @@ const uiAndClientSource = [
   read("components/admin-products-summary-panel.tsx"),
   read("components/admin-readonly-dashboard.tsx"),
   read("components/admin-shop-structure-panel.tsx"),
+  read("components/admin-super-panel.tsx"),
   read("lib/admin-login.ts"),
 ].join("\n");
 const adminPageSource = read("app/admin/page.tsx");
@@ -30,6 +31,7 @@ const serverHelperSource = [
   read("lib/admin-products-summary.ts"),
   read("lib/admin-auth-check.ts"),
   read("lib/server/admin-auth.ts"),
+  read("lib/server/admin-super-crud.ts"),
   read("lib/server/api-core.ts"),
 ].join("\n");
 
@@ -65,6 +67,8 @@ for (const requiredRoute of [
   "app/api/admin/products/summary/route.ts",
   "app/api/admin/auth/check/route.ts",
   "app/api/admin/session/route.ts",
+  "app/api/admin/users/route.ts",
+  "app/api/admin/audit-log/route.ts",
 ]) {
   const source = read(requiredRoute);
   assert.ok(source.includes("getServerEnv"));

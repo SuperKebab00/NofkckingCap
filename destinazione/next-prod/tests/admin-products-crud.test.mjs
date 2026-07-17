@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
@@ -104,7 +104,7 @@ assert.throws(
       return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
     }
 
-    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin")) {
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) {
       return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), {
         status: 200,
       });
@@ -175,7 +175,7 @@ assert.throws(
       return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
     }
 
-    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin")) {
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) {
       return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), {
         status: 200,
       });
@@ -249,7 +249,7 @@ assert.throws(
       return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
     }
 
-    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin")) {
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) {
       return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), {
         status: 200,
       });

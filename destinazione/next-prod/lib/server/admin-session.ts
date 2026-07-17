@@ -10,6 +10,7 @@ import {
   ADMIN_SESSION_ACCESS_COOKIE,
   ADMIN_SESSION_REFRESH_COOKIE,
   verifyAdminAccessToken,
+  type AdminRole,
 } from "./admin-auth";
 
 type AuthSession = {
@@ -91,8 +92,13 @@ async function requestSession(
   return { accessToken, expiresIn, refreshToken };
 }
 
-function sessionResponse(env: ServerEnv, session: { accessToken: string; expiresIn: number; refreshToken: string }) {
-  const response = jsonResponse({ admin: true, authenticated: true });
+function sessionResponse(
+  env: ServerEnv,
+  session: { accessToken: string; expiresIn: number; refreshToken: string },
+  role: AdminRole,
+  superAdmin: boolean,
+) {
+  const response = jsonResponse({ admin: true, authenticated: true, role, superAdmin });
   response.headers.set("Cache-Control", "private, no-store");
   const cookies = response.headers;
   const access = `${ADMIN_SESSION_ACCESS_COOKIE}=${encodeURIComponent(session.accessToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(session.expiresIn)}${env.APP_ENV === "production" ? "; Secure" : ""}`;
@@ -115,6 +121,8 @@ async function confirmAdmin(env: ServerEnv, accessToken: string) {
   if (!verification.ok) {
     throw Object.assign(new Error(`CLIENT: ${verification.error}`), { status: verification.status });
   }
+
+  return verification;
 }
 
 export async function handleAdminSessionCreate(request: Request, env: ServerEnv) {
@@ -127,8 +135,8 @@ export async function handleAdminSessionCreate(request: Request, env: ServerEnv)
     }
 
     const session = await requestSession(env, "password", { email, password });
-    await confirmAdmin(env, session.accessToken);
-    return sessionResponse(env, session);
+    const admin = await confirmAdmin(env, session.accessToken);
+    return sessionResponse(env, session, admin.role, admin.superAdmin);
   } catch (error) {
     return jsonResponse(
       { error: safeError(error, "Login admin non disponibile.", env.APP_ENV !== "production") },
@@ -145,8 +153,8 @@ export async function handleAdminSessionRefresh(request: Request, env: ServerEnv
     }
 
     const session = await requestSession(env, "refresh_token", { refresh_token: refreshToken });
-    await confirmAdmin(env, session.accessToken);
-    return sessionResponse(env, session);
+    const admin = await confirmAdmin(env, session.accessToken);
+    return sessionResponse(env, session, admin.role, admin.superAdmin);
   } catch {
     return clearSessionResponse(env);
   }

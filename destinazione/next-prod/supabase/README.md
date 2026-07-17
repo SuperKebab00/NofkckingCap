@@ -12,8 +12,9 @@ The production project uses the legacy-compatible schema in this directory. Appl
 ## Admin authorization
 
 - Supabase Auth authenticates the user.
-- `public.admin_users(user_id, is_admin)` is the role allowlist.
-- `app_private.is_admin()` checks `auth.uid()` against that table.
+- `public.admin_users(user_id, is_admin, role)` is the role allowlist. `role` is either `admin` or `super_admin`.
+- `app_private.is_admin()` checks `auth.uid()` against that table for both role levels.
+- `app_private.is_super_admin()` is reserved for advanced admin surfaces.
 - The Next server validates JWT signatures through `SUPABASE_JWKS_URL`, then verifies the allowlist using the service role server-side.
 - The browser never receives the service role or a static admin token. Admin session and refresh tokens are HttpOnly, `SameSite=Lax` cookies.
 

@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
@@ -74,7 +74,7 @@ assert.throws(
     const url = String(input);
     requests.push({ body: init.body, method: init.method || "GET", url });
     if (url === env.SUPABASE_JWKS_URL) return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
-    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin")) return new Response(JSON.stringify([{ is_admin: true, user_id: "admin-user-1" }]), { status: 200 });
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) return new Response(JSON.stringify([{ is_admin: true, role: "super_admin", user_id: "admin-user-1" }]), { status: 200 });
     if (url.includes("/rest/v1/shop_categories?select=") && init.method === "POST") {
       const body = JSON.parse(String(init.body));
       assert.equal(body.value, "new-category");
@@ -97,6 +97,34 @@ assert.throws(
     assert.equal(response.status, 201);
     assert.equal((await response.json()).category.id, "cat-uuid-1");
     assert.ok(requests.some((item) => item.url.endsWith("/rest/v1/admin_audit_log")));
+  } finally {
+    global.fetch = originalFetch;
+  }
+}
+
+{
+  const { jwk, token } = await createAdminToken();
+  const adminRoleEnv = {
+    ...env,
+    SUPABASE_JWKS_URL: "https://structure.supabase.co/auth/v1/.well-known/jwks-admin-role.json",
+  };
+  const originalFetch = global.fetch;
+
+  global.fetch = async (input) => {
+    const url = String(input);
+    if (url === adminRoleEnv.SUPABASE_JWKS_URL) return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
+    if (url.includes("/rest/v1/admin_users?select=user_id,is_admin,role")) {
+      return new Response(JSON.stringify([{ is_admin: true, role: "admin", user_id: "admin-user-1" }]), { status: 200 });
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+
+  try {
+    const response = await mod.handleAdminShopCategoriesCollection(
+      request("GET", undefined, token),
+      adminRoleEnv,
+    );
+    assert.equal(response.status, 403);
   } finally {
     global.fetch = originalFetch;
   }

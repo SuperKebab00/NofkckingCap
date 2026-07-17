@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getServerEnv } from "./server/api-core";
-import { verifyAdminJwt } from "./server/admin-auth";
+import { verifyAdminJwt, type AdminRole } from "./server/admin-auth";
 
 export type AdminAuthCheckState =
   | "not-configured"
@@ -14,14 +14,18 @@ export type AdminAuthCheckResult = {
   admin: boolean;
   authenticated: boolean;
   message: string;
+  role?: AdminRole;
   source: "endpoint" | "fallback";
   state: AdminAuthCheckState;
+  superAdmin?: boolean;
 };
 
 type AdminAuthCheckPayload = {
   admin?: unknown;
   authenticated?: unknown;
   error?: unknown;
+  role?: unknown;
+  superAdmin?: unknown;
 };
 
 type AdminAuthCheckConfig = {
@@ -56,8 +60,10 @@ export function normalizeAdminAuthCheckPayload(
       admin: true,
       authenticated: true,
       message: "Admin verificato.",
+      role: payload.role === "super_admin" ? "super_admin" : "admin",
       source: "endpoint",
       state: "admin",
+      superAdmin: payload.superAdmin === true,
     };
   }
 
@@ -133,8 +139,10 @@ export async function getAdminAuthCheck(
         admin: true,
         authenticated: true,
         message: "Admin verificato.",
+        role: result.role,
         source: "endpoint",
         state: "admin",
+        superAdmin: result.superAdmin,
       };
     }
 
