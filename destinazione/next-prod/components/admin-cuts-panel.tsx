@@ -41,7 +41,9 @@ function daysLeft(value?: string | null) {
   if (!value) return "Non pubblicato";
   const diff = new Date(value).getTime() - Date.now();
   if (!Number.isFinite(diff)) return "n/d";
-  return `${Math.max(0, Math.ceil(diff / 86400000))} giorni`;
+  const days = Math.ceil(diff / 86400000);
+  if (days <= 0) return "Scaduto";
+  return `${days} giorni`;
 }
 
 export function AdminCutsPanel() {
@@ -154,9 +156,9 @@ export function AdminCutsPanel() {
       <div className="admin-panel-heading">
         <div>
           <h2 id="admin-cuts-title">Tagli</h2>
-          <p>Gestisci Taglio fresco e Showcase pubblicato.</p>
+          <p>Gestisci Taglio fresco e Showcase.</p>
         </div>
-        <span className="status-badge">Retention 90 giorni</span>
+        <span className="status-badge">Contenuti pubblici</span>
       </div>
       <p className="admin-inline-note">{error || message}</p>
       <div className="admin-crud-grid">
@@ -175,7 +177,7 @@ export function AdminCutsPanel() {
                 <tr>
                   <th>Titolo</th>
                   <th>Pubblicato</th>
-                  <th>Featured</th>
+                  <th>In evidenza</th>
                   <th>Scade tra</th>
                   <th>Azione</th>
                 </tr>
@@ -184,8 +186,8 @@ export function AdminCutsPanel() {
                 {cuts.map((cut) => (
                   <tr key={cut.id}>
                     <td>{cut.title}</td>
-                    <td>{cut.is_published ? "Si" : "No"}</td>
-                    <td>{cut.is_featured ? "Si" : "No"}</td>
+                    <td>{cut.is_published ? "Pubblicato" : "Non pubblicato"}</td>
+                    <td>{cut.is_featured ? "Taglio fresco" : "-"}</td>
                     <td>{daysLeft(cut.expires_at)}</td>
                     <td><button className="mini-button" onClick={() => startEdit(cut)} type="button">Modifica</button></td>
                   </tr>
@@ -210,10 +212,7 @@ export function AdminCutsPanel() {
             <span>Immagine</span>
             <input accept="image/jpeg,image/png,image/webp" className="contact-form__input" onChange={(event) => void handleUpload(event.target.files?.[0])} type="file" />
           </label>
-          <label>
-            <span>Path immagine</span>
-            <input className="contact-form__input" onChange={(event) => setForm((current) => ({ ...current, image_path: event.target.value }))} placeholder="cuts/..." value={form.image_path} />
-          </label>
+          <p className="admin-inline-note">{form.image_path ? "Immagine pronta." : "Carica un'immagine prima di pubblicare il taglio."}</p>
           <div className="admin-form-row">
             <label className="admin-checkbox">
               <input checked={form.is_published} onChange={(event) => setForm((current) => ({ ...current, is_published: event.target.checked }))} type="checkbox" />

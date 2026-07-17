@@ -1,93 +1,59 @@
-"use client";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
-import { useId, useState, type ReactNode } from "react";
+import { AdminSessionControls } from "./admin-session-controls";
 
-type AdminView = "data" | "manage" | "orders" | "leads" | "cuts" | "structure" | "super";
+export type AdminSectionId =
+  | "data"
+  | "products"
+  | "orders"
+  | "contacts"
+  | "cuts"
+  | "site"
+  | "users"
+  | "audit"
+  | "maintenance";
 
-type AdminWorkspaceProps = {
-  data: ReactNode;
-  leads: ReactNode;
-  manage: ReactNode;
-  orders: ReactNode;
-  cuts: ReactNode;
-  structure?: ReactNode;
-  superAdmin?: ReactNode;
-  superAdminEnabled?: boolean;
+export type AdminSection = {
+  id: AdminSectionId;
+  label: string;
 };
 
-const tabs: Array<{ id: AdminView; label: string }> = [
-  { id: "data", label: "Dati" },
-  { id: "manage", label: "Gestione" },
-  { id: "orders", label: "Ordini" },
-  { id: "leads", label: "Richieste" },
-  { id: "cuts", label: "Tagli" },
-  { id: "structure", label: "Struttura" },
-  { id: "super", label: "Super admin" },
-];
+type AdminWorkspaceProps = {
+  activeSection: AdminSectionId;
+  children: ReactNode;
+  sections: AdminSection[];
+};
 
 export function AdminWorkspace({
-  data,
-  leads,
-  manage,
-  orders,
-  cuts,
-  structure,
-  superAdmin,
-  superAdminEnabled = false,
+  activeSection,
+  children,
+  sections,
 }: AdminWorkspaceProps) {
-  const [activeView, setActiveView] = useState<AdminView>("data");
-  const tabId = useId();
-  const availableTabs = tabs.filter((tab) =>
-    tab.id === "structure" || tab.id === "super" ? superAdminEnabled : true,
-  );
-
-  const panels: Record<AdminView, ReactNode> = {
-    data,
-    manage,
-    orders,
-    leads,
-    cuts,
-    structure,
-    super: superAdmin,
-  };
-
   return (
-    <section className="admin-workspace" aria-label="Workspace amministrativo">
-      <div className="admin-tabs" role="tablist" aria-label="Sezioni admin">
-        {availableTabs.map((tab) => {
-          const isActive = tab.id === activeView;
-          return (
-            <button
-              aria-controls={`${tabId}-${tab.id}`}
-              aria-selected={isActive}
-              className={`admin-tab${isActive ? " is-active" : ""}`}
-              id={`${tabId}-${tab.id}-tab`}
-              key={tab.id}
-              onClick={() => setActiveView(tab.id)}
-              role="tab"
-              type="button"
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+    <section className="admin-workspace" aria-label="Area gestione">
+      <nav className="admin-sidebar" aria-label="Sezioni area gestione">
+        <div className="admin-sidebar__links">
+          {sections.map((section) => {
+            const isActive = section.id === activeSection;
+            return (
+              <Link
+                aria-current={isActive ? "page" : undefined}
+                className={`admin-tab${isActive ? " is-active" : ""}`}
+                href={`/admin?section=${section.id}`}
+                key={section.id}
+              >
+                {section.label}
+              </Link>
+            );
+          })}
+        </div>
+        <div className="admin-sidebar__footer">
+          <AdminSessionControls />
+        </div>
+      </nav>
 
-      {availableTabs.map((tab) => {
-        const isActive = tab.id === activeView;
-        return (
-          <div
-            aria-labelledby={`${tabId}-${tab.id}-tab`}
-            className={`admin-workspace__panel${isActive ? " is-active" : ""}`}
-            hidden={!isActive}
-            id={`${tabId}-${tab.id}`}
-            key={tab.id}
-            role="tabpanel"
-          >
-            {panels[tab.id]}
-          </div>
-        );
-      })}
+      <div className="admin-workspace__panel">{children}</div>
     </section>
   );
 }

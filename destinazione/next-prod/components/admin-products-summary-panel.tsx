@@ -4,18 +4,6 @@ type AdminProductsSummaryPanelProps = {
   summary: AdminProductsSummaryResult;
 };
 
-function formatStateBadge(state: AdminProductsSummaryResult["state"]) {
-  if (state === "configured") {
-    return "Configurato";
-  }
-
-  if (state === "error") {
-    return "Errore";
-  }
-
-  return "Non configurato";
-}
-
 function formatPrice(price: number) {
   return new Intl.NumberFormat("it-IT", {
     currency: "EUR",
@@ -31,11 +19,11 @@ export function AdminProductsSummaryPanel({
       <div className="admin-panel-heading">
         <div>
           <h2 id="admin-products-summary">
-            Prodotti admin summary
+            Catalogo
           </h2>
-          <p>{summary.message}</p>
+          <p>Prodotti principali con prezzo e categoria.</p>
         </div>
-        <span className="status-badge">{formatStateBadge(summary.state)}</span>
+        <span className="status-badge">{summary.total} prodotti</span>
       </div>
 
       <div className="admin-metric-grid admin-metric-grid--compact">
@@ -44,15 +32,15 @@ export function AdminProductsSummaryPanel({
           <p className="admin-metric-value">
             {summary.total}
           </p>
-          <p>Sorgente: {summary.source}</p>
+          <p>Catalogo gestibile dalla sezione Prodotti.</p>
         </article>
 
         <article className="status-card">
-          <h3>Mode</h3>
+          <h3>Operativita</h3>
           <p className="admin-metric-value admin-metric-value--text">
-            {summary.mode}
+            {summary.state === "configured" ? "Pronta" : "Da verificare"}
           </p>
-          <p>Writes: {summary.writes}</p>
+          <p>{summary.state === "configured" ? "Modifiche abilitate." : "Non e stato possibile aggiornare il riepilogo."}</p>
         </article>
       </div>
 

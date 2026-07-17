@@ -30,6 +30,18 @@ function normalizeStatus(value: unknown): AdminLeadStatus {
     : "new";
 }
 
+function statusLabel(status: unknown) {
+  const value = normalizeStatus(status);
+  const labels: Record<AdminLeadStatus, string> = {
+    closed: "Completata",
+    contacted: "In gestione",
+    new: "Nuova",
+    open: "In gestione",
+    spam: "Archiviata",
+  };
+  return labels[value];
+}
+
 export function AdminLeadsPanel() {
   const [leads, setLeads] = useState<AdminLead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -142,7 +154,7 @@ export function AdminLeadsPanel() {
           <h2 id="admin-leads-title">Richieste</h2>
           <p>Messaggi arrivati dal form contatti.</p>
         </div>
-        <span className="status-badge">Richieste attive</span>
+        <span className="status-badge">Contatti</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
@@ -165,7 +177,7 @@ export function AdminLeadsPanel() {
                 <span>Stato</span>
                 <select className="contact-form__input" onChange={(event) => setStatusFilter(event.target.value as AdminLeadStatus | "")} value={statusFilter}>
                   <option value="">Tutti</option>
-                  {ADMIN_LEAD_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                  {ADMIN_LEAD_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
                 </select>
               </label>
             </div>
@@ -179,9 +191,9 @@ export function AdminLeadsPanel() {
                   <tbody>
                     {leads.map((lead) => (
                       <tr key={lead.id}>
-                        <td><strong>{lead.subject || "Richiesta"}</strong><small>{lead.source || "contact-form"}</small></td>
+                        <td><strong>{lead.subject || "Richiesta"}</strong></td>
                         <td>{lead.email || "n/d"}<small>{lead.phone || ""}</small></td>
-                        <td>{lead.status || "new"}</td>
+                        <td>{statusLabel(lead.status)}</td>
                         <td>{formatDate(lead.created_at)}</td>
                         <td><button className="mini-button" onClick={() => loadLeadDetail(lead.id)} type="button">Dettaglio</button></td>
                       </tr>
@@ -191,7 +203,7 @@ export function AdminLeadsPanel() {
               </div>
             ) : (
               <div className="status-card">
-                <h3>{isLoading ? "Caricamento lead" : "Lista vuota"}</h3>
+                <h3>{isLoading ? "Caricamento richieste" : "Lista vuota"}</h3>
                 <p>{isLoading ? "Caricamento richieste..." : "Nessuna richiesta trovata."}</p>
               </div>
             )}
@@ -203,7 +215,7 @@ export function AdminLeadsPanel() {
                 <h3>Dettaglio richiesta</h3>
                 <p>{detailLead ? detailLead.subject || detailLead.email || detailLead.id : "Seleziona una richiesta dalla lista"}</p>
               </div>
-              <span className="status-badge">{isDetailLoading ? "Caricamento" : detailLead?.status || "n/d"}</span>
+              <span className="status-badge">{isDetailLoading ? "Caricamento" : detailLead ? statusLabel(detailLead.status) : "n/d"}</span>
             </div>
 
             {detailLead ? (
@@ -216,10 +228,9 @@ export function AdminLeadsPanel() {
                     <p>{formatDate(detailLead.created_at)}</p>
                   </article>
                   <article className="status-card">
-                    <h3>Meta</h3>
-                    <p>Privacy: {detailLead.privacy_accepted ? "si" : "no"}</p>
-                    <p>Origine: {detailLead.source || "n/d"}</p>
-                    <p>Riferimento: {detailLead.id}</p>
+                    <h3>Stato</h3>
+                    <p>{statusLabel(detailLead.status)}</p>
+                    <p>Consenso privacy: {detailLead.privacy_accepted ? "si" : "no"}</p>
                   </article>
                 </div>
 
@@ -234,7 +245,7 @@ export function AdminLeadsPanel() {
                 <label>
                   <span>Stato richiesta</span>
                   <select className="contact-form__input" onChange={(event) => setStatusDraft(event.target.value as AdminLeadStatus)} value={statusDraft}>
-                    {ADMIN_LEAD_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                    {ADMIN_LEAD_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
                   </select>
                 </label>
 

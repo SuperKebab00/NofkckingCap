@@ -1,11 +1,4 @@
 type AdminReadonlyDashboardProps = {
-  adminApiState: "configured" | "not-configured" | "error";
-  adminApiMessage: string;
-  adminCategoriesCount: number | null;
-  adminMode: string;
-  adminProductsCount: number | null;
-  adminSource: "endpoint" | "fallback";
-  adminWrites: string;
   categoriesCount: number;
   productsCount: number;
   showStock: boolean;
@@ -29,34 +22,13 @@ const flowStatus = [
     status: "Attivi",
   },
   {
-    description: "Prodotti e struttura shop modificabili dall'area gestione.",
-    label: "Gestione",
-    status: "Riservata",
+    description: "Prodotti e contenuti principali pronti per l'aggiornamento.",
+    label: "Catalogo",
+    status: "Gestibile",
   },
 ];
 
-function formatAdminApiState(
-  value: AdminReadonlyDashboardProps["adminApiState"],
-) {
-  if (value === "configured") {
-    return "Configurata";
-  }
-
-  if (value === "error") {
-    return "Errore";
-  }
-
-  return "Non configurata";
-}
-
 export function AdminReadonlyDashboard({
-  adminApiMessage,
-  adminApiState,
-  adminCategoriesCount,
-  adminMode,
-  adminProductsCount,
-  adminSource,
-  adminWrites,
   categoriesCount,
   productsCount,
   showStock,
@@ -95,41 +67,8 @@ export function AdminReadonlyDashboard({
         </div>
       </section>
 
-      <section className="missing-panel" aria-labelledby="admin-api-status">
-        <h2 id="admin-api-status">Stato gestione</h2>
-        <div className="admin-metric-grid">
-          <article className="status-card">
-            <span className="status-badge">
-              {formatAdminApiState(adminApiState)}
-            </span>
-            <p>{adminApiMessage}</p>
-          </article>
-
-          <article className="status-card">
-            <h3>Operativita</h3>
-            <p className="admin-metric-value admin-metric-value--text">
-              {adminMode === "production" ? "Produzione" : adminMode}
-            </p>
-            <p>{adminWrites === "enabled" ? "Modifiche abilitate" : "Modifiche non abilitate"}</p>
-          </article>
-
-          <article className="status-card">
-            <h3>Conteggi gestione</h3>
-            <p>
-              Prodotti: {adminProductsCount ?? "n/d"}
-            </p>
-            <p>
-              Categorie: {adminCategoriesCount ?? "n/d"}
-            </p>
-            <p>
-              {adminSource === "endpoint" ? "Dati gestione disponibili" : "Dati gestione non aggiornati"}
-            </p>
-          </article>
-        </div>
-      </section>
-
       <section className="missing-panel" aria-labelledby="admin-flow-status">
-        <h2 id="admin-flow-status">Flussi principali</h2>
+        <h2 id="admin-flow-status">Oggi in negozio</h2>
         <ul className="admin-note-list">
           {flowStatus.map((item) => (
             <li key={item.label}>

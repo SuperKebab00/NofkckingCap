@@ -40,12 +40,24 @@ function normalizeStatus(value: unknown): AdminOrderStatus {
     : "prenotato";
 }
 
+function statusLabel(status: unknown) {
+  const value = normalizeStatus(status);
+  const labels: Record<AdminOrderStatus, string> = {
+    annullato: "Annullato",
+    "in-lavorazione": "In preparazione",
+    prenotato: "Prenotato",
+    "pronto-al-ritiro": "Pronto per il ritiro",
+    ritirato: "Completato",
+  };
+  return labels[value];
+}
+
 function paymentLabel() {
   return "Pagamento in sede";
 }
 
 function fulfillmentLabel() {
-  return "Ritiro in shop";
+  return "Ritiro in negozio";
 }
 
 function itemName(item: AdminOrderItem) {
@@ -166,7 +178,7 @@ export function AdminOrdersPanel() {
             Ordini creati dal checkout con ritiro in sede e pagamento al banco.
           </p>
         </div>
-        <span className="status-badge">Ordini attivi</span>
+        <span className="status-badge">Ritiro in negozio</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
@@ -205,9 +217,9 @@ export function AdminOrdersPanel() {
                   value={statusFilter}
                 >
                   <option value="">Tutti</option>
-                  {ADMIN_ORDER_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
+                      {ADMIN_ORDER_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                      {statusLabel(status)}
                     </option>
                   ))}
                 </select>
@@ -238,7 +250,7 @@ export function AdminOrdersPanel() {
                           {order.customer_name || "n/d"}
                           <small>{order.customer_email || order.customer_phone || ""}</small>
                         </td>
-                        <td>{order.status || "prenotato"}</td>
+                        <td>{statusLabel(order.status)}</td>
                         <td>{formatCurrency(order.total)}</td>
                         <td>{formatDate(order.created_at)}</td>
                         <td>
@@ -278,7 +290,7 @@ export function AdminOrdersPanel() {
                 </p>
               </div>
               <span className="status-badge">
-                {isDetailLoading ? "Caricamento" : detailOrder?.status || "n/d"}
+                {isDetailLoading ? "Caricamento" : detailOrder ? statusLabel(detailOrder.status) : "n/d"}
               </span>
             </div>
 
@@ -309,7 +321,7 @@ export function AdminOrdersPanel() {
                     >
                       {ADMIN_ORDER_STATUSES.map((status) => (
                         <option key={status} value={status}>
-                          {status}
+                          {statusLabel(status)}
                         </option>
                       ))}
                     </select>
@@ -358,8 +370,8 @@ export function AdminOrdersPanel() {
                     <thead>
                       <tr>
                         <th>Prodotto</th>
-                        <th>SKU</th>
-                        <th>Qty</th>
+                        <th>Codice</th>
+                        <th>Quantita</th>
                         <th>Unitario</th>
                         <th>Totale</th>
                       </tr>

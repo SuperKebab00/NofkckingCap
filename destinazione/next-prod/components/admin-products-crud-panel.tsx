@@ -53,6 +53,14 @@ function fieldValue(value: unknown) {
   return value === null || value === undefined ? "" : String(value);
 }
 
+function formatProductState(product: AdminProduct) {
+  if (product.status === "archived") return "Archiviato";
+  if (product.is_active === false) return "Disattivato";
+  if (product.status === "sold_out") return "Esaurito";
+  if (product.status === "draft") return "Bozza";
+  return "Attivo";
+}
+
 function productToForm(product: AdminProduct): ProductFormState {
   return {
     badge: fieldValue(product.badge),
@@ -192,7 +200,7 @@ export function AdminProductsCrudPanel({ canPermanentDelete = false }: { canPerm
   async function handlePermanentDelete() {
     if (!selectedProduct) return;
     const confirmed = window.confirm(
-      `Eliminare definitivamente ${selectedProduct.name}? Questa azione rimuove il record e le immagini Storage non condivise.`,
+      `Eliminare definitivamente ${selectedProduct.name}? Questa azione rimuove il prodotto e le immagini non usate da altri prodotti.`,
     );
     if (!confirmed) return;
 
@@ -217,11 +225,11 @@ export function AdminProductsCrudPanel({ canPermanentDelete = false }: { canPerm
         <div>
           <h2 id="admin-products-crud-title">Prodotti</h2>
           <p>
-            Crea, aggiorna e disattiva i prodotti pubblicati nello shop.
+            Crea, aggiorna e organizza i prodotti pubblicati nello shop.
           </p>
         </div>
         <span className="status-badge">
-          Gestione attiva
+          Catalogo attivo
         </span>
       </div>
 
@@ -258,7 +266,7 @@ export function AdminProductsCrudPanel({ canPermanentDelete = false }: { canPerm
                         <td>{product.category || "n/d"}</td>
                         <td>{formatPrice(product.price)}</td>
                         <td>{product.stock_quantity ?? product.stock ?? 0}</td>
-                        <td>{product.is_active === false ? "Disattivo" : product.status || "active"}</td>
+                        <td>{formatProductState(product)}</td>
                         <td>
                           <button className="mini-button" onClick={() => startEdit(product)} type="button">
                             Modifica
@@ -380,7 +388,7 @@ export function AdminProductsCrudPanel({ canPermanentDelete = false }: { canPerm
               </label>
 
               <label>
-                <span>Status</span>
+                <span>Stato catalogo</span>
                 <select
                   className="contact-form__input"
                   onChange={(event) => updateField("status", event.target.value)}
@@ -396,7 +404,7 @@ export function AdminProductsCrudPanel({ canPermanentDelete = false }: { canPerm
 
             <div className="admin-form-row">
               <label>
-                <span>Sort order</span>
+                <span>Ordine visualizzazione</span>
                 <input
                   className="contact-form__input"
                   onChange={(event) => updateField("sort_order", event.target.value)}

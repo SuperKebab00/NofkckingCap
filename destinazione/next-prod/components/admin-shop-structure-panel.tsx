@@ -215,9 +215,9 @@ export function AdminShopStructurePanel() {
       <div className="admin-panel-heading">
         <div>
           <h2 id="admin-shop-structure-title">Struttura shop</h2>
-          <p>Gestisci categorie e sezioni pubblicate nello shop.</p>
+          <p>Gestisci categorie e sezioni visibili nello shop.</p>
         </div>
-        <span className="status-badge">Gestione attiva</span>
+        <span className="status-badge">Contenuti attivi</span>
       </div>
 
       <p className="admin-inline-note">{error || message}</p>
@@ -280,7 +280,7 @@ export function AdminShopStructurePanel() {
               <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead>
-                    <tr><th>Titolo</th><th>Key</th><th>Ordine</th><th>Stato</th><th>Azione</th></tr>
+                    <tr><th>Titolo</th><th>Identificatore</th><th>Ordine</th><th>Stato</th><th>Azione</th></tr>
                   </thead>
                   <tbody>
                     {sections.map((section) => (
@@ -300,7 +300,7 @@ export function AdminShopStructurePanel() {
               <form className="admin-product-form" onSubmit={saveSection}>
                 <h3>{selectedSection ? "Modifica sezione" : "Crea sezione"}</h3>
                 <label><span>Titolo</span><input className="contact-form__input" required value={sectionForm.title} onChange={(event) => setSectionForm((current) => ({ ...current, title: event.target.value }))} /></label>
-                <label><span>Key</span><input className="contact-form__input" value={sectionForm.key} onChange={(event) => setSectionForm((current) => ({ ...current, key: event.target.value }))} /></label>
+                <label><span>Identificatore</span><input className="contact-form__input" value={sectionForm.key} onChange={(event) => setSectionForm((current) => ({ ...current, key: event.target.value }))} /></label>
                 <label><span>Sottotitolo</span><input className="contact-form__input" value={sectionForm.subtitle} onChange={(event) => setSectionForm((current) => ({ ...current, subtitle: event.target.value }))} /></label>
                 <label><span>Testo</span><textarea className="contact-form__input" rows={3} value={sectionForm.body} onChange={(event) => setSectionForm((current) => ({ ...current, body: event.target.value }))} /></label>
                 <div className="admin-form-row">
