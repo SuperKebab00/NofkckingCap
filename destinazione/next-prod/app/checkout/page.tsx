@@ -6,6 +6,7 @@ import {
 } from "../../components/checkout-in-shop";
 import { SiteHeader } from "../../components/site-header";
 import { getPublicProducts, type PublicProduct } from "../../lib/supabase-public";
+import { productTeasers, type ProductTeaser } from "../../lib/static-content";
 
 export const metadata: Metadata = {
   title: "Checkout in Shop | No Cap Barbershop",
@@ -25,8 +26,32 @@ function mapCheckoutProduct(product: PublicProduct): CheckoutInShopProduct {
   };
 }
 
+function mapFallbackProduct(product: ProductTeaser): CheckoutInShopProduct {
+  const requestedProduct = new URL(product.checkoutHref, "https://nocap.local").searchParams.get("product");
+
+  return {
+    category: product.category,
+    description: product.description,
+    id: requestedProduct || product.name,
+    image: product.packshotUrl || product.lifestyleUrl,
+    name: product.name,
+    price: product.price ?? null,
+    stock: product.stock,
+  };
+}
+
 export default async function CheckoutPage() {
-  const products = (await getPublicProducts()).products.map(mapCheckoutProduct);
+  const publicProducts = (await getPublicProducts()).products.map(mapCheckoutProduct);
+  const fallbackProducts = process.env.APP_ENV === "production"
+    ? []
+    : productTeasers
+        .map(mapFallbackProduct)
+        .filter(
+          (product) =>
+            !publicProducts.some((publicProduct) => publicProduct.id === product.id),
+        );
+  const products = [...publicProducts, ...fallbackProducts];
+
   return (
     <>
       <SiteHeader />

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { readCart, writeCart, type StoredCartItem } from "../lib/cart-storage";
 import { createOrderIdempotencyKey, createPublicOrder } from "../lib/orders-client";
 
 export type CheckoutInShopProduct = {
@@ -19,10 +20,7 @@ export type CheckoutInShopProps = {
   products: CheckoutInShopProduct[];
 };
 
-type CartItem = {
-  productId: string;
-  quantity: number;
-};
+type CartItem = StoredCartItem;
 
 type CheckoutFormState = {
   email: string;
@@ -46,7 +44,6 @@ type NormalizedCheckoutProduct = {
   price: number;
 };
 
-const CART_STORAGE_KEY = "no-cap-next-cart-v1";
 const ORDER_STORAGE_KEY = "no-cap-next-orders-v1";
 const emptyForm: CheckoutFormState = {
   email: "",
@@ -68,28 +65,6 @@ function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-}
-
-function readCart(): CartItem[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const parsed = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || "[]");
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .map((item) => ({
-        productId: String(item.productId || ""),
-        quantity: Math.max(1, Number(item.quantity || 1)),
-      }))
-      .filter((item) => item.productId);
-  } catch {
-    return [];
-  }
-}
-
-function writeCart(items: CartItem[]) {
-  localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
 }
 
 function writeOrder(order: CheckoutOrder, form: CheckoutFormState, items: CartRow[]) {
@@ -215,6 +190,20 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
     setSuccessOrder(null);
     setMessage(null);
     setCart((items) => items.filter((item) => item.productId !== productId));
+  }
+
+  function updateCartQuantity(productId: string, quantity: number) {
+    setSuccessOrder(null);
+    setMessage(null);
+    setCart((items) =>
+      items
+        .map((item) =>
+          item.productId === productId
+            ? { ...item, quantity: Math.max(0, quantity) }
+            : item,
+        )
+        .filter((item) => item.quantity > 0),
+    );
   }
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
@@ -406,6 +395,7 @@ export function CheckoutInShop({ products }: CheckoutInShopProps) {
 
       <CheckoutSummary
         onRemove={removeFromCart}
+        onUpdateQuantity={updateCartQuantity}
         rows={activeRows}
         total={activeTotal}
       />
@@ -447,10 +437,12 @@ function CheckoutInput({
 
 function CheckoutSummary({
   onRemove,
+  onUpdateQuantity,
   rows,
   total,
 }: {
   onRemove?: (productId: string) => void;
+  onUpdateQuantity?: (productId: string, quantity: number) => void;
   rows: CartRow[];
   total: number;
 }) {
@@ -467,14 +459,31 @@ function CheckoutSummary({
                   {quantity} x {formatCurrency(product.price)}
                 </p>
               </div>
-              <strong>{formatCurrency(lineTotal)}</strong>
+              <div className="checkout-summary-item__total">
+                <strong>{formatCurrency(lineTotal)}</strong>
+                {onUpdateQuantity ? (
+                  <div className="cart-quantity-controls" aria-label={`Quantita ${product.name}`}>
+                    <button
+                      className="mini-button"
+                      type="button"
+                      onClick={() => onUpdateQuantity(product.id, quantity - 1)}
+                    >
+                      -
+                    </button>
+                    <span>{quantity}</span>
+                    <button
+                      className="mini-button"
+                      type="button"
+                      onClick={() => onUpdateQuantity(product.id, quantity + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               {onRemove ? (
-                <button
-                  className="mini-button"
-                  type="button"
-                  onClick={() => onRemove(product.id)}
-                >
-                  -
+                <button className="mini-button" type="button" onClick={() => onRemove(product.id)}>
+                  Rimuovi
                 </button>
               ) : null}
             </article>

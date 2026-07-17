@@ -2,17 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-const CART_STORAGE_KEY = "no-cap-next-cart-v1";
+import { CART_UPDATED_EVENT, readCart } from "../lib/cart-storage";
 
 function readCartCount() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || "[]");
-    if (!Array.isArray(parsed)) return 0;
-
-    return parsed.reduce((total, item) => total + Math.max(1, Number(item.quantity || 1)), 0);
-  } catch {
-    return 0;
-  }
+  return readCart().reduce((total, item) => total + item.quantity, 0);
 }
 
 export function CartCount() {
@@ -23,10 +16,12 @@ export function CartCount() {
     update();
 
     window.addEventListener("storage", update);
+    window.addEventListener(CART_UPDATED_EVENT, update);
     window.addEventListener("focus", update);
 
     return () => {
       window.removeEventListener("storage", update);
+      window.removeEventListener(CART_UPDATED_EVENT, update);
       window.removeEventListener("focus", update);
     };
   }, []);

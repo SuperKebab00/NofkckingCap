@@ -21,6 +21,7 @@ function mapPublicProductToCard(product: PublicProduct): ShopProductCard {
     category: product.category,
     checkoutHref: `/checkout?product=${encodeURIComponent(product.id)}`,
     description: product.description,
+    id: product.id,
     image: product.packshotUrl || product.lifestyleUrl,
     lifestyleUrl: product.lifestyleUrl,
     name: product.name,
