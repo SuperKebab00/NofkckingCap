@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SiteHeader } from "../../components/site-header";
+import { getFeaturedCut, getPublishedCuts } from "../../lib/cuts-public";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Taglio fresco | No Cap Barber Shop",
@@ -9,7 +12,13 @@ export const metadata: Metadata = {
     "Il taglio fresco No Cap del giorno, in stile barber shop prod-ready.",
 };
 
-export default function FreshCutPage() {
+export default async function FreshCutPage() {
+  const [featuredCut, publishedCuts] = await Promise.all([
+    getFeaturedCut(),
+    getPublishedCuts(),
+  ]);
+  const hasShowcase = publishedCuts.length > 0;
+
   return (
     <>
       <SiteHeader />
@@ -24,25 +33,29 @@ export default function FreshCutPage() {
         </section>
 
         <section className="fresh-cut-section fresh-cut-section--route">
-          <div className="fresh-cut__media">
-            <img
-              src="/Img/wallpaper/5-opt.webp"
-              alt="Taglio fresco del giorno"
-              loading="eager"
-            />
-            <div className="fresh-cut__stamp">Fresh cut</div>
-          </div>
+          {featuredCut?.imageUrl ? (
+            <div className="fresh-cut__media">
+              <img
+                src={featuredCut.imageUrl}
+                alt={featuredCut.title}
+                loading="eager"
+              />
+              <div className="fresh-cut__stamp">{featuredCut.dateLabel || "Fresh cut"}</div>
+            </div>
+          ) : null}
           <div className="fresh-cut__content">
             <p className="eyebrow">No Cap Barber Shop</p>
-            <h2>Fade pulito, texture naturale.</h2>
+            <h2>{featuredCut?.title || "Taglio fresco in arrivo"}</h2>
             <p>
-              Una sezione editoriale fedele al prod-ready: immagine protagonista,
-              testo forte, palette nero bianco rosso e CTA verso lo showcase.
+              {featuredCut?.description ||
+                "Stiamo preparando il prossimo taglio da mettere in evidenza. Torna a breve per il nuovo contenuto pubblicato dal team."}
             </p>
             <div className="hero__actions">
-              <Link className="primary-button" href="/showcase">
-                Vedi showcase
-              </Link>
+              {hasShowcase ? (
+                <Link className="primary-button" href="/showcase">
+                  Vai allo Showcase
+                </Link>
+              ) : null}
               <Link className="outline-button" href="/contact">
                 Prenota informazioni
               </Link>

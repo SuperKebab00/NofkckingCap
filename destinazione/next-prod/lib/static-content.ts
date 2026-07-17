@@ -20,7 +20,6 @@ export const navItems: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Shop", href: "/shop" },
   { label: "Taglio fresco", href: "/taglio-fresco" },
-  { label: "Showcase", href: "/showcase" },
   { label: "Contatti", href: "/contact" },
 ];
 
@@ -72,12 +71,6 @@ export const homeSectionBanners = [
     accent: "04 / Fresh cut",
     title: "Taglio del giorno",
     body: "Il look fresco da mettere in evidenza oggi",
-  },
-  {
-    href: "/showcase",
-    accent: "05 / Showcase",
-    title: "Questo mese",
-    body: "Una selezione visiva dei tagli e delle atmosfere in evidenza",
   },
 ];
 

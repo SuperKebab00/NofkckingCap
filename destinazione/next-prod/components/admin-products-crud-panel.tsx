@@ -5,6 +5,7 @@ import {
   createAdminProduct,
   deleteAdminProduct,
   listAdminProducts,
+  permanentlyDeleteAdminProduct,
   updateAdminProduct,
   type AdminProduct,
   type AdminProductPayload,
@@ -84,7 +85,7 @@ function buildPayload(form: ProductFormState): AdminProductPayload {
   };
 }
 
-export function AdminProductsCrudPanel() {
+export function AdminProductsCrudPanel({ canPermanentDelete = false }: { canPermanentDelete?: boolean }) {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductFormState>(emptyForm);
@@ -183,6 +184,28 @@ export function AdminProductsCrudPanel() {
       setMessage("Prodotto disattivato.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Soft delete non riuscito.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handlePermanentDelete() {
+    if (!selectedProduct) return;
+    const confirmed = window.confirm(
+      `Eliminare definitivamente ${selectedProduct.name}? Questa azione rimuove il record e le immagini Storage non condivise.`,
+    );
+    if (!confirmed) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const result = await permanentlyDeleteAdminProduct(undefined, selectedProduct.id);
+      await refreshProducts();
+      startCreate();
+      setMessage(`Prodotto eliminato definitivamente. Foto rimosse: ${result.deleted_files || 0}.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Eliminazione definitiva non riuscita.");
     } finally {
       setIsSaving(false);
     }
@@ -408,6 +431,16 @@ export function AdminProductsCrudPanel() {
               >
                 Disattiva
               </button>
+              {canPermanentDelete ? (
+                <button
+                  className="outline-button"
+                  disabled={!selectedProduct || isSaving}
+                  onClick={handlePermanentDelete}
+                  type="button"
+                >
+                  Elimina definitivamente
+                </button>
+              ) : null}
             </div>
           </form>
       </div>

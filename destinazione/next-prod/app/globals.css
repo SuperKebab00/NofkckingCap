@@ -4836,3 +4836,24 @@ body,
     width: 100%;
   }
 }
+.admin-login-card {
+  margin: 7vh auto 0;
+  max-width: 440px;
+  padding: 28px;
+}
+
+.admin-login-card__logo {
+  display: block;
+  height: 54px;
+  margin: 0 auto 18px;
+  object-fit: contain;
+  width: auto;
+}
+
+.admin-login-card .admin-form-actions {
+  display: block;
+}
+
+.admin-login-card__submit {
+  width: 100%;
+}

@@ -17,6 +17,13 @@ type AuditEntry = {
   id?: string;
 };
 
+type RetentionCandidate = {
+  expires_at?: string;
+  id?: string;
+  image_path?: string;
+  reason?: string;
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = (await response.json().catch(() => null)) as
     | { error?: string }
@@ -36,6 +43,8 @@ export function AdminSuperPanel() {
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [newUserId, setNewUserId] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "super_admin">("admin");
+  const [retentionCandidates, setRetentionCandidates] = useState<RetentionCandidate[]>([]);
+  const [orphanFiles, setOrphanFiles] = useState<Array<{ name?: string; reason?: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("Caricamento strumenti super admin.");
@@ -66,6 +75,40 @@ export function AdminSuperPanel() {
       setIsLoading(false);
     }
   }, []);
+
+  async function loadRetentionReport() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const payload = await fetch("/api/admin/cuts/retention").then((response) =>
+        readJson<{ candidates?: RetentionCandidate[]; orphans?: Array<{ name?: string; reason?: string }> }>(response),
+      );
+      setRetentionCandidates(payload.candidates || []);
+      setOrphanFiles(payload.orphans || []);
+      setMessage("Report retention aggiornato.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Report retention non disponibile.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function runRetention() {
+    if (!window.confirm("Eseguire la retention dei soli tagli scaduti?")) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await fetch("/api/admin/cuts/retention", { method: "POST" }).then((response) =>
+        readJson(response),
+      );
+      setMessage("Retention tagli eseguita.");
+      await loadRetentionReport();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Retention non riuscita.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   useEffect(() => {
     void refresh();
@@ -227,6 +270,41 @@ export function AdminSuperPanel() {
             </table>
           </div>
           {!auditEntries.length ? <p>Nessuna attivita registrata.</p> : null}
+        </section>
+
+        <section className="admin-products-list" aria-labelledby="admin-retention-title">
+          <h3 id="admin-retention-title">Retention tagli</h3>
+          <p>Dry-run dei tagli scaduti e report file orfani nel bucket cuts.</p>
+          <div className="admin-form-actions">
+            <button className="ghost-button" disabled={isLoading} onClick={() => loadRetentionReport()} type="button">
+              Dry-run
+            </button>
+            <button className="outline-button" disabled={isSaving || retentionCandidates.length === 0} onClick={() => runRetention()} type="button">
+              Esegui retention
+            </button>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Record</th>
+                  <th>Path</th>
+                  <th>Scadenza</th>
+                </tr>
+              </thead>
+              <tbody>
+                {retentionCandidates.map((candidate) => (
+                  <tr key={candidate.id || candidate.image_path}>
+                    <td>{candidate.id}</td>
+                    <td>{candidate.image_path}</td>
+                    <td>{candidate.expires_at ? new Date(candidate.expires_at).toLocaleString("it-IT") : "n/d"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!retentionCandidates.length ? <p>Nessun taglio scaduto candidato.</p> : null}
+          {orphanFiles.length ? <p>File orfani rilevati: {orphanFiles.length}.</p> : <p>Nessun file orfano rilevato.</p>}
         </section>
       </div>
     </section>

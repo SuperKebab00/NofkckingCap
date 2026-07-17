@@ -162,3 +162,22 @@ export async function deleteAdminProduct(
 
   return response.product;
 }
+
+export async function permanentlyDeleteAdminProduct(
+  token: string | undefined,
+  id: string,
+  options: FetchOptions = {},
+): Promise<{ deleted_files?: number; id?: string; shared_files?: number }> {
+  const response = await adminProductsRequest<{
+    product: { deleted_files?: number; id?: string; shared_files?: number };
+  }>(
+    token,
+    `/api/admin/products/${encodeURIComponent(id)}?permanent=true`,
+    {
+      method: "DELETE",
+    },
+    options,
+  );
+
+  return response.product;
+}

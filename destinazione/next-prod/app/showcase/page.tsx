@@ -2,36 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SiteHeader } from "../../components/site-header";
+import { getPublishedCuts } from "../../lib/cuts-public";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Showcase | No Cap Barber Shop",
   description: "Showcase mensile No Cap Barber Shop in stile prod-ready.",
 };
 
-const showcaseItems = [
-  {
-    image: "/Img/wallpaper/3-opt.webp",
-    title: "Clean fade",
-    copy: "Linee pulite e volume controllato.",
-  },
-  {
-    image: "/Img/wallpaper/4-opt.webp",
-    title: "Blade detail",
-    copy: "Dettagli tecnici e finish preciso.",
-  },
-  {
-    image: "/Img/wallpaper/5-opt.webp",
-    title: "Daily cut",
-    copy: "Il taglio fresco da mettere in evidenza.",
-  },
-  {
-    image: "/Img/wallpaper/6-opt.webp",
-    title: "No Cap mood",
-    copy: "Atmosfera barber shop, nero rosso bianco.",
-  },
-];
+export default async function ShowcasePage() {
+  const showcaseItems = await getPublishedCuts();
 
-export default function ShowcasePage() {
   return (
     <>
       <SiteHeader />
@@ -40,8 +22,8 @@ export default function ShowcasePage() {
           <p className="eyebrow">Showcase</p>
           <h1>Questo mese</h1>
           <p>
-            Solo i tagli e i visual caricati nel mese corrente, con impostazione
-            editoriale fedele al sito statico.
+            Solo tagli pubblicati dal team e ancora validi, senza contenuti
+            scaduti o immagini rimosse.
           </p>
         </section>
 
@@ -57,25 +39,32 @@ export default function ShowcasePage() {
             </p>
           </div>
 
-          <div className="showcase-grid">
-            {showcaseItems.map((item, index) => (
-              <article className="showcase-card" key={item.title}>
-                <img src={item.image} alt={item.title} loading="lazy" />
+          {showcaseItems.length ? (
+            <div className="showcase-grid">
+              {showcaseItems.map((item, index) => (
+              <article className="showcase-card" key={item.id}>
+                {item.imageUrl ? <img src={item.imageUrl} alt={item.title} loading="lazy" /> : null}
                 <div>
                   <span>{String(index + 1).padStart(2, "0")} / Showcase</span>
                   <h3>{item.title}</h3>
-                  <p>{item.copy}</p>
+                  <p>{item.description}</p>
                 </div>
               </article>
             ))}
-          </div>
+            </div>
+          ) : (
+            <div className="showcase-empty">
+              <h2>Showcase in aggiornamento</h2>
+              <p>I tagli pubblicati compariranno qui appena saranno disponibili.</p>
+            </div>
+          )}
 
           <div className="showcase-cta">
-            <Link className="primary-button" href="/contact">
-              Contattaci
+            <Link className="primary-button" href="/taglio-fresco">
+              Torna a Taglio fresco
             </Link>
-            <Link className="outline-button" href="/shop">
-              Vedi prodotti
+            <Link className="outline-button" href="/contact">
+              Contattaci
             </Link>
           </div>
         </section>

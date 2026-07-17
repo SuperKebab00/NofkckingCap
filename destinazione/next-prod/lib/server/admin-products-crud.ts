@@ -10,6 +10,7 @@ import {
   safeLog,
   statusFromError,
   supabaseRequest,
+  supabaseStorageRequest,
   type ServerEnv,
 } from "./api-core";
 
@@ -92,6 +93,8 @@ const PRODUCT_SELECT = [
 ].join(",");
 
 const PRODUCT_STATUS = ["active", "draft", "archived", "sold_out"] as const;
+const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PRODUCT_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const optionalText = (maxLength: number) =>
   z
@@ -319,6 +322,33 @@ async function writeAuditLog(
   }
 }
 
+function productStoragePath(value: unknown) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const marker = "/storage/v1/object/public/products/";
+  const markerIndex = raw.indexOf(marker);
+  const path = markerIndex >= 0 ? raw.slice(markerIndex + marker.length) : raw.replace(/^\/+/, "");
+  if (!path || path.includes("..") || path.includes("//")) return null;
+  if (!path.startsWith("products/")) return null;
+  return decodeURIComponent(path);
+}
+
+function productPublicUrl(env: ServerEnv, path: string) {
+  const supabaseUrl = String(env.SUPABASE_URL || "").replace(/\/+$/, "");
+  if (!supabaseUrl) return path;
+  return `${supabaseUrl}/storage/v1/object/public/products/${encodeURI(path)}`;
+}
+
+function uniqueProductImagePaths(product: Record<string, unknown>) {
+  return Array.from(
+    new Set(
+      ["image_url", "packshot_url", "lifestyle_url"]
+        .map((key) => productStoragePath(product[key]))
+        .filter((path): path is string => Boolean(path)),
+    ),
+  );
+}
+
 export async function requireAdminFromRequest(
   request: Request,
   env: ServerEnv,
@@ -465,6 +495,133 @@ export async function softDeleteAdminProduct(
   return product;
 }
 
+async function imagePathUseCount(env: ServerEnv, path: string, currentProductId: string) {
+  const publicUrl = productPublicUrl(env, path);
+  const encoded = [path, publicUrl]
+    .flatMap((value) => [
+      `image_url.eq.${encodeURIComponent(value)}`,
+      `packshot_url.eq.${encodeURIComponent(value)}`,
+      `lifestyle_url.eq.${encodeURIComponent(value)}`,
+    ])
+    .join(",");
+  const response = await supabaseRequest(
+    env,
+    `products?select=id&or=(${encoded})`,
+    { method: "GET" },
+  );
+  return rowsFromResponse(response).filter((row) => String(row.id || "") !== currentProductId).length;
+}
+
+function productImageExtension(type: string) {
+  if (type === "image/webp") return "webp";
+  if (type === "image/png") return "png";
+  return "jpg";
+}
+
+export async function uploadProductImage(
+  env: ServerEnv,
+  request: Request,
+  adminContext: AdminContext,
+) {
+  const formData = await request.formData();
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    const error = new Error("CLIENT: File immagine richiesto.");
+    Object.assign(error, { status: 400 });
+    throw error;
+  }
+  if (!ALLOWED_PRODUCT_IMAGE_TYPES.has(file.type)) {
+    const error = new Error("CLIENT: Formato immagine non supportato.");
+    Object.assign(error, { status: 400 });
+    throw error;
+  }
+  if (file.size <= 0 || file.size > MAX_PRODUCT_IMAGE_BYTES) {
+    const error = new Error("CLIENT: Immagine troppo grande.");
+    Object.assign(error, { status: 400 });
+    throw error;
+  }
+
+  const path = `products/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${productImageExtension(file.type)}`;
+  await supabaseStorageRequest(env, `object/products/${path}`, {
+    body: await file.arrayBuffer(),
+    headers: {
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": file.type,
+      "x-upsert": "false",
+    },
+    method: "POST",
+  });
+  await writeAuditLog(env, "product.image_upload", null, adminContext, {
+    image_path: path,
+  });
+
+  return { image_path: path, image_url: productPublicUrl(env, path) };
+}
+
+export async function permanentlyDeleteAdminProduct(
+  env: ServerEnv,
+  id: string,
+  adminContext: AdminContext,
+) {
+  if (!adminContext.superAdmin) {
+    const error = new Error("Funzione riservata al super admin.");
+    Object.assign(error, { status: 403 });
+    throw error;
+  }
+
+  const product = await getAdminProduct(env, id);
+  const imagePaths = uniqueProductImagePaths(product);
+  const deletablePaths: string[] = [];
+  const sharedPaths: string[] = [];
+
+  for (const path of imagePaths) {
+    const useCount = await imagePathUseCount(env, path, id);
+    if (useCount > 0) sharedPaths.push(path);
+    else deletablePaths.push(path);
+  }
+
+  await supabaseRequest(
+    env,
+    `products?id=eq.${encodeURIComponent(id)}`,
+    {
+      body: JSON.stringify({ status: "deleting", is_active: false }),
+      headers: { Prefer: "return=minimal" },
+      method: "PATCH",
+    },
+  );
+
+  const deletedFiles: string[] = [];
+  try {
+    for (const path of deletablePaths) {
+      await supabaseStorageRequest(env, `object/products/${path}`, { method: "DELETE" });
+      deletedFiles.push(path);
+    }
+
+    await supabaseRequest(env, `products?id=eq.${encodeURIComponent(id)}`, {
+      headers: { Prefer: "return=minimal" },
+      method: "DELETE",
+    });
+  } catch (error) {
+    await supabaseRequest(
+      env,
+      `products?id=eq.${encodeURIComponent(id)}`,
+      {
+        body: JSON.stringify({ status: product.status || "archived", is_active: product.is_active !== false }),
+        headers: { Prefer: "return=minimal" },
+        method: "PATCH",
+      },
+    ).catch(() => null);
+    throw error;
+  }
+
+  await writeAuditLog(env, "product.permanent_delete", id, adminContext, {
+    deleted_files: deletedFiles.length,
+    shared_files: sharedPaths.length,
+  });
+
+  return { deleted_files: deletedFiles.length, id, shared_files: sharedPaths.length };
+}
+
 export async function handleAdminProductsCollection(
   request: Request,
   env: ServerEnv,
@@ -525,6 +682,12 @@ export async function handleAdminProductItem(
     }
 
     if (request.method === "DELETE") {
+      const url = new URL(request.url);
+      if (url.searchParams.get("permanent") === "true") {
+        return jsonResponse({
+          product: await permanentlyDeleteAdminProduct(env, id, adminContext),
+        });
+      }
       return jsonResponse({
         product: await softDeleteAdminProduct(env, id, adminContext),
       });
@@ -545,7 +708,36 @@ export async function handleAdminProductItem(
   }
 }
 
+export async function handleAdminProductUpload(
+  request: Request,
+  env: ServerEnv,
+): Promise<Response> {
+  try {
+    const adminContext = await requireAdminFromRequest(request, env);
+
+    if (request.method === "POST") {
+      return jsonResponse({
+        upload: await uploadProductImage(env, request, adminContext),
+      }, 201);
+    }
+
+    return jsonResponse({ error: "Metodo non consentito." }, 405);
+  } catch (error) {
+    return jsonResponse(
+      {
+        error: safeError(
+          error,
+          "Upload prodotto non disponibile.",
+          env.APP_ENV !== "production",
+        ),
+      },
+      statusFromAdminProductError(error),
+    );
+  }
+}
+
 export const __adminProductsCrudTest = {
+  productStoragePath,
   normalizeProductWritePayload,
   statusFromAdminProductError,
 };

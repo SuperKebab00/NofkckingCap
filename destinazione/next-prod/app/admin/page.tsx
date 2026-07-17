@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 import { AdminLeadsPanel } from "../../components/admin-leads-panel";
+import { AdminCutsPanel } from "../../components/admin-cuts-panel";
 import { AdminLoginPanel } from "../../components/admin-login-panel";
 import { AdminOrdersPanel } from "../../components/admin-orders-panel";
 import { AdminProductsCrudPanel } from "../../components/admin-products-crud-panel";
@@ -66,7 +67,8 @@ export default async function AdminPage() {
           <AdminWorkspace
             data={<><AdminReadonlyDashboard adminApiMessage={adminStatus.message} adminApiState={adminStatus.apiState} adminCategoriesCount={adminStatus.categoriesCount} adminMode={adminStatus.mode} adminProductsCount={adminStatus.productsCount} adminSource={adminStatus.source} adminWrites={adminStatus.writes} categoriesCount={categoriesCount} productsCount={productsCount} showStock={productsResult.showStock} usesLiveReadOnlyData={usesLiveReadOnlyData} /><AdminProductsSummaryPanel summary={adminProductsSummary} /></>}
             leads={<AdminLeadsPanel />}
-            manage={<AdminProductsCrudPanel />}
+            cuts={<AdminCutsPanel />}
+            manage={<AdminProductsCrudPanel canPermanentDelete={verification.superAdmin} />}
             orders={<AdminOrdersPanel />}
             structure={<AdminShopStructurePanel />}
             superAdmin={<AdminSuperPanel />}

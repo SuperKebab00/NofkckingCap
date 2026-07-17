@@ -29,13 +29,6 @@ const banners = [
     title: "Taglio del giorno",
     copy: "Il look fresco da mettere in evidenza oggi",
   },
-  {
-    className: "section-banner--showcase",
-    href: "/showcase",
-    kicker: "05 / Showcase",
-    title: "Questo mese",
-    copy: "Solo i tagli caricati nel mese corrente",
-  },
 ];
 
 export function HomeSectionBanners() {

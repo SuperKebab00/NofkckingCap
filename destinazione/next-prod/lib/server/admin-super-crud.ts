@@ -18,6 +18,14 @@ const ADMIN_USER_SELECT = "user_id,is_admin,role,created_at,updated_at";
 const AUDIT_SELECT = "id,action,entity_type,entity_id,payload,created_at";
 const ADMIN_ROLES = ["admin", "super_admin"] as const;
 
+type AdminUserRow = {
+  created_at?: unknown;
+  is_admin: boolean;
+  role: AdminRole;
+  updated_at?: unknown;
+  user_id: string;
+};
+
 const adminUserPayloadSchema = z.object({
   is_admin: z.boolean().optional().default(true),
   role: z.enum(ADMIN_ROLES).optional().default("admin"),
@@ -76,7 +84,7 @@ function parseRole(value: unknown): AdminRole {
   return value === "super_admin" ? "super_admin" : "admin";
 }
 
-export async function listAdminUsers(env: ServerEnv) {
+export async function listAdminUsers(env: ServerEnv): Promise<AdminUserRow[]> {
   return rows(
     await supabaseRequest(
       env,
@@ -84,8 +92,11 @@ export async function listAdminUsers(env: ServerEnv) {
       { method: "GET" },
     ),
   ).map((row) => ({
-    ...row,
+    created_at: row.created_at,
+    is_admin: row.is_admin === true,
     role: parseRole(row.role),
+    updated_at: row.updated_at,
+    user_id: String(row.user_id || ""),
   }));
 }
 
@@ -118,6 +129,33 @@ export async function updateAdminUserRole(
   admin: AdminContext,
 ) {
   const parsed = adminUserUpdateSchema.parse(payload);
+  const currentUsers = await listAdminUsers(env);
+  const target = currentUsers.find((user) => String(user.user_id) === userId);
+  if (!target) {
+    const error = new Error("CLIENT: Utente admin non trovato.");
+    Object.assign(error, { status: 404 });
+    throw error;
+  }
+  const activeSuperAdmins = currentUsers.filter(
+    (user) => user.is_admin === true && user.role === "super_admin",
+  );
+  const wouldRemoveSuperAdmin =
+    target.is_admin === true &&
+    target.role === "super_admin" &&
+    (parsed.role === "admin" || parsed.is_admin === false);
+
+  if (wouldRemoveSuperAdmin && activeSuperAdmins.length <= 1) {
+    const error = new Error("CLIENT: Non puoi rimuovere l'ultimo super admin.");
+    Object.assign(error, { status: 409 });
+    throw error;
+  }
+
+  if (admin.userId === userId && wouldRemoveSuperAdmin) {
+    const error = new Error("CLIENT: Auto-demozione super admin non consentita.");
+    Object.assign(error, { status: 409 });
+    throw error;
+  }
+
   const rowsResult = rows(
     await supabaseRequest(
       env,

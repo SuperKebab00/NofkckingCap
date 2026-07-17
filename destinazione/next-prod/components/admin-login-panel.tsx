@@ -39,10 +39,11 @@ export function AdminLoginPanel() {
   }
 
   return (
-    <section className="missing-panel" aria-labelledby="admin-login-panel">
+    <section className="missing-panel admin-login-card" aria-labelledby="admin-login-panel">
+      <img className="admin-login-card__logo" src="/Img/Design/no-cap-logo.webp" alt="No Cap Barber Shop" />
       <h2 id="admin-login-panel">Accesso gestore</h2>
       <p>
-        Accedi per gestire catalogo, ordini e richieste del negozio.
+        Entra nell&apos;area riservata del negozio.
       </p>
 
       <form className="admin-login-form" onSubmit={handleSubmit}>
@@ -69,16 +70,9 @@ export function AdminLoginPanel() {
         </label>
 
         <div className="admin-form-actions">
-          <button className="ghost-button" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Verifica in corso..." : "Accedi all'area admin"}
+          <button className="primary-button admin-login-card__submit" disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Accesso..." : "Accedi"}
           </button>
-          <span className="status-badge">
-            {result.state === "submitting"
-              ? "In corso"
-              : result.state === "error"
-                ? "Errore"
-                : "Riservato"}
-          </span>
         </div>
       </form>
 

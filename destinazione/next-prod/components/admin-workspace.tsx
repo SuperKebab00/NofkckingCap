@@ -2,13 +2,14 @@
 
 import { useId, useState, type ReactNode } from "react";
 
-type AdminView = "data" | "manage" | "orders" | "leads" | "structure" | "super";
+type AdminView = "data" | "manage" | "orders" | "leads" | "cuts" | "structure" | "super";
 
 type AdminWorkspaceProps = {
   data: ReactNode;
   leads: ReactNode;
   manage: ReactNode;
   orders: ReactNode;
+  cuts: ReactNode;
   structure?: ReactNode;
   superAdmin?: ReactNode;
   superAdminEnabled?: boolean;
@@ -19,6 +20,7 @@ const tabs: Array<{ id: AdminView; label: string }> = [
   { id: "manage", label: "Gestione" },
   { id: "orders", label: "Ordini" },
   { id: "leads", label: "Richieste" },
+  { id: "cuts", label: "Tagli" },
   { id: "structure", label: "Struttura" },
   { id: "super", label: "Super admin" },
 ];
@@ -28,6 +30,7 @@ export function AdminWorkspace({
   leads,
   manage,
   orders,
+  cuts,
   structure,
   superAdmin,
   superAdminEnabled = false,
@@ -43,6 +46,7 @@ export function AdminWorkspace({
     manage,
     orders,
     leads,
+    cuts,
     structure,
     super: superAdmin,
   };

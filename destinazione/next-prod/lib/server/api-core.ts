@@ -265,6 +265,27 @@ export async function supabaseRequest(
   return parseResponse(response, "Errore chiamata Supabase.");
 }
 
+export async function supabaseStorageRequest(
+  env: ServerEnv,
+  path: string,
+  init: RequestInit = {},
+) {
+  const supabaseUrl = getRequiredEnv(env, "SUPABASE_URL");
+  const serviceRoleKey = getRequiredEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+  const headers = new Headers(init.headers || {});
+
+  headers.set("apikey", serviceRoleKey);
+  headers.set("Authorization", `Bearer ${serviceRoleKey}`);
+
+  const normalizedPath = path.replace(/^\/+/, "");
+  const response = await fetch(`${supabaseUrl}/storage/v1/${normalizedPath}`, {
+    ...init,
+    headers,
+  });
+
+  return parseResponse(response, "Errore chiamata Supabase Storage.");
+}
+
 export function clampText(value: unknown, maxLength: number): string {
   return String(value || "")
     .replace(/\s+/g, " ")
