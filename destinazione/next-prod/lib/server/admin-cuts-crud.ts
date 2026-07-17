@@ -105,7 +105,10 @@ function normalizeCutPayload(payload: unknown, mode: "create" | "update", admin:
   };
 
   if ("image_path" in row) row.image_path = normalizeImagePath(row.image_path);
-  if (mode === "create") row.created_by = admin.userId;
+  if (mode === "create") {
+    row.created_by = admin.userId;
+    row.date = new Date().toISOString().slice(0, 10);
+  }
   if (parsed.is_published === true) {
     row.published_at = new Date().toISOString();
     row.expires_at = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
@@ -204,10 +207,41 @@ export async function listCutRetentionCandidates(env: ServerEnv) {
 }
 
 export async function runCutRetention(env: ServerEnv, admin: AdminContext) {
-  const result = await supabaseRequest(env, "rpc/run_cuts_retention", {
-    body: JSON.stringify({}),
-    method: "POST",
-  });
+  const candidates = await listCutRetentionCandidates(env);
+  const deletedFiles: string[] = [];
+  const failedFiles: string[] = [];
+  const ids = candidates
+    .map((candidate) => String(candidate.id || "").trim())
+    .filter(Boolean);
+
+  for (const candidate of candidates) {
+    const imagePath = normalizeImagePath(candidate.image_path);
+    if (!imagePath) continue;
+    try {
+      await supabaseStorageRequest(env, `object/cuts/${imagePath}`, { method: "DELETE" });
+      deletedFiles.push(imagePath);
+    } catch (error) {
+      failedFiles.push(imagePath);
+      safeLog(env, "cut retention image delete failed", {
+        imagePath,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  if (ids.length > 0) {
+    await supabaseRequest(
+      env,
+      `cuts?id=in.(${ids.map((id) => encodeURIComponent(id)).join(",")})`,
+      { headers: { Prefer: "return=minimal" }, method: "DELETE" },
+    );
+  }
+
+  const result = {
+    deleted_files: deletedFiles.length,
+    deleted_records: ids.length,
+    failed_files: failedFiles.length,
+  };
   await audit(env, "cut.retention_manual", null, admin, { result });
   return result;
 }

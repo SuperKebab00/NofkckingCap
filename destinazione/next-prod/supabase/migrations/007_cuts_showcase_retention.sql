@@ -12,6 +12,9 @@ alter table public.cuts
 alter table public.cuts
   alter column id set default ('cut-'::text || replace((gen_random_uuid())::text, '-'::text, ''));
 
+alter table public.cuts
+  alter column date set default current_date;
+
 update public.cuts
 set published_at = coalesce(published_at, date::timestamp with time zone, created_at)
 where is_published = true and published_at is null;
@@ -154,19 +157,7 @@ set search_path = public, storage
 as $$
 declare
   removed_records integer := 0;
-  removed_files integer := 0;
 begin
-  delete from storage.objects o
-  using public.cuts c
-  where o.bucket_id = 'cuts'
-    and o.name = c.image_path
-    and c.expires_at <= now()
-    and c.image_path is not null
-    and c.image_path !~ '(^/|\\.\\.|//)'
-    and c.image_path like 'cuts/%';
-
-  get diagnostics removed_files = row_count;
-
   delete from public.cuts c
   where c.expires_at <= now()
     and (c.image_path is null or c.image_path like 'cuts/%');
@@ -178,10 +169,18 @@ begin
     'cuts.retention',
     'cut',
     null,
-    jsonb_build_object('removed_records', removed_records, 'removed_files', removed_files)
+    jsonb_build_object(
+      'removed_records', removed_records,
+      'removed_files', 0,
+      'storage_cleanup', 'worker_storage_api_required'
+    )
   );
 
-  return jsonb_build_object('removed_records', removed_records, 'removed_files', removed_files);
+  return jsonb_build_object(
+    'removed_records', removed_records,
+    'removed_files', 0,
+    'storage_cleanup', 'worker_storage_api_required'
+  );
 end;
 $$;
 
