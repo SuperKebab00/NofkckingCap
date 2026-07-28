@@ -2450,7 +2450,9 @@ body {
   }
 
   .hero__panel {
+    align-self: stretch;
     display: grid;
+    min-height: 0;
     z-index: 1;
     pointer-events: none;
   }
@@ -2458,6 +2460,10 @@ body {
   .hero__content {
     position: relative;
     z-index: 2;
+  }
+
+  .page-shell--landing .story > p {
+    color: var(--ink);
   }
 }
 
