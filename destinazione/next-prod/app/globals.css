@@ -1902,6 +1902,7 @@ body {
 
 .hero {
   position: relative;
+  isolation: isolate;
   width: 100%;
   min-height: min(70dvh, 680px);
   margin: 0;
@@ -1918,6 +1919,7 @@ body {
 
 .hero::after {
   position: absolute;
+  z-index: 0;
   inset: 0;
   content: "";
   background: radial-gradient(circle at 62% 28%, transparent 0 20%, rgb(0 0 0 / 50%) 62%);
@@ -1929,6 +1931,7 @@ body {
 }
 
 .hero__content {
+  position: relative;
   z-index: 2;
   align-self: center;
   max-width: 800px;
@@ -1957,7 +1960,8 @@ body {
 
 .hero__panel {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  pointer-events: none;
   display: grid;
   place-items: center;
   width: auto;
@@ -2667,15 +2671,17 @@ body,
     min-height: 560px;
   }
 
+  .page-shell--landing .hero__actions > a {
+    min-height: 44px;
+  }
+
   .hero h1 {
     max-width: 9ch;
     font-size: clamp(4.1rem, 18vw, 6.8rem);
   }
 
   .hero__panel {
-    width: min(230px, 58vw);
-    min-height: 108px;
-    clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%);
+    display: none;
   }
 
   .product-media {
@@ -2699,12 +2705,7 @@ body,
   }
 
   .hero__content {
-    padding-bottom: 98px;
-  }
-
-  .hero__panel {
-    width: min(210px, 60vw);
-    min-height: 96px;
+    padding-bottom: 44px;
   }
 
   .product-card {
