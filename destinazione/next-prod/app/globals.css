@@ -2444,6 +2444,23 @@ body {
   }
 }
 
+@media (min-width: 781px) {
+  .hero::after {
+    z-index: 0;
+  }
+
+  .hero__panel {
+    display: grid;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .hero__content {
+    position: relative;
+    z-index: 2;
+  }
+}
+
 @media (max-width: 780px) {
   .hero {
     grid-template-columns: 1fr;
