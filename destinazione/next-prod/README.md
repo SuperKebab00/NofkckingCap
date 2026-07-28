@@ -17,7 +17,10 @@ npm run deploy
 
 Cloudflare configuration: root directory `/destinazione/next-prod`, build command
 `npm run build:cloudflare`, deploy command `npm run deploy`, production
-branch `definitivo`.
+branch `definitivo`. The project targets **Cloudflare Workers through OpenNext**,
+not Cloudflare Pages: `npm run deploy` always generates `.open-next/worker.js`
+before it invokes Wrangler, while preserving dashboard-managed variables with
+`--keep-vars`.
 
 ## Environment
 

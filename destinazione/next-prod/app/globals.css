@@ -3543,6 +3543,17 @@ body,
   filter: drop-shadow(0 22px 28px rgba(212, 15, 25, 0.26));
 }
 
+.route-shell--shop .product-media[data-show-lifestyle="true"] img:first-child {
+  opacity: 0;
+  transform: translateX(-22px) scale(1.04) rotate(-2deg);
+}
+
+.route-shell--shop .product-media[data-show-lifestyle="true"] img:last-child {
+  opacity: 1;
+  transform: translateX(0) scale(1.02) rotate(0);
+  filter: drop-shadow(0 22px 28px rgba(212, 15, 25, 0.26));
+}
+
 .route-shell--shop .product-card__meta {
   display: flex;
   align-items: center;
@@ -4961,4 +4972,99 @@ body,
 
 .admin-login-card__submit {
   width: 100%;
+}
+
+/* Mobile interaction safeguards. These rules are intentionally last so they
+   normalize the earlier visual-parity layers without duplicating components. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body {
+  min-width: 0;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
+}
+
+@media (max-width: 780px) {
+  body,
+  .page-shell,
+  .route-shell--shop,
+  .route-shell--checkout,
+  .route-shell--contact,
+  .route-shell--admin {
+    background-attachment: scroll;
+  }
+
+  .site-header {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    min-height: 0;
+    padding: max(8px, env(safe-area-inset-top)) 14px 8px;
+  }
+
+  .main-nav {
+    flex: 0 0 100%;
+    flex-wrap: nowrap;
+    order: 3;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main-nav a,
+  .cart-trigger,
+  .route-shell--shop .product-card .primary-button,
+  .route-shell--checkout .checkout-summary-item .mini-button {
+    min-height: 44px;
+  }
+
+  .route-shell--checkout .checkout-summary-item .mini-button {
+    min-width: 44px;
+  }
+
+  .route-shell--checkout .checkout-summary-item__total {
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 430px) {
+  .hero__actions,
+  .showcase-cta,
+  .contact-form__actions,
+  .admin-hero__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .hero__actions > *,
+  .showcase-cta > *,
+  .contact-form__actions > *,
+  .admin-hero__actions > * {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

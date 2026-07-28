@@ -67,6 +67,7 @@ export function ShopProductGrid({
   showStock = false,
 }: ShopProductGridProps) {
   const [pendingProductId, setPendingProductId] = useState<string | null>(null);
+  const [activeMediaProductId, setActiveMediaProductId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{
     name: string;
     quantity: number;
@@ -107,7 +108,7 @@ export function ShopProductGrid({
             </strong>
             <span>
               {notice.name}
-              {notice.state === "success" ? ` · Quantita ${notice.quantity}` : ""}
+              {notice.state === "success" ? ` · Quantità ${notice.quantity}` : ""}
             </span>
           </div>
           {notice.state === "success" ? (
@@ -161,7 +162,11 @@ export function ShopProductGrid({
 
         return (
           <article className="product-card" key={product.name}>
-            <div className="product-media" data-has-lifestyle={hasLifestyle}>
+            <div
+              className="product-media"
+              data-has-lifestyle={hasLifestyle}
+              data-show-lifestyle={activeMediaProductId === product.id}
+            >
               <img
                 src={packshotImage}
                 alt={`${product.name} packshot prodotto`}
@@ -194,8 +199,22 @@ export function ShopProductGrid({
                 {isPending ? "Aggiunta..." : "Aggiungi al carrello"}
               </button>
             </div>
-            <button className="product-media-toggle" disabled={!hasLifestyle} type="button">
-              {hasLifestyle ? "Vedi risultato" : "Solo prodotto"}
+            <button
+              aria-pressed={activeMediaProductId === product.id}
+              className="product-media-toggle"
+              disabled={!hasLifestyle}
+              onClick={() =>
+                setActiveMediaProductId((current) =>
+                  current === product.id ? null : product.id,
+                )
+              }
+              type="button"
+            >
+              {hasLifestyle
+                ? activeMediaProductId === product.id
+                  ? "Vedi prodotto"
+                  : "Vedi risultato"
+                : "Solo prodotto"}
             </button>
           </article>
         );
