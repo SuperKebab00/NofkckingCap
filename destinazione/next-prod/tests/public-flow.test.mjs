@@ -25,14 +25,14 @@ try {
   const mod = await import(`${pathToFileURL(compiledFile).href}?t=${Date.now()}`);
 
   assert.equal(mod.SHOP_FLOW_COPY.checkoutCta, "Prepara ritiro in shop");
-  assert.equal(mod.SHOP_FLOW_COPY.contactCta, "Chiedi disponibilita");
+  assert.equal(mod.SHOP_FLOW_COPY.contactCta, "Chiedi disponibilità");
   assert.equal(
     mod.buildShopCheckoutHref("Black wax"),
     "/checkout?product=Black%20wax",
   );
   assert.equal(
     mod.buildShopContactHref("Black wax"),
-    "/contact?product=Black+wax&subject=Disponibilita+Black+wax",
+    "/contact?product=Black+wax&subject=Disponibilit%C3%A0+Black+wax",
   );
 
   const products = [
@@ -57,7 +57,7 @@ try {
   );
   assert.equal(mod.CONTACT_FLOW_COPY.contextualBoxLabel, "Richiesta per");
   assert.ok(
-    /disponibilita|ritiro|richiesta generica/i.test(
+    /disponibilità|ritiro|richiesta generica/i.test(
       mod.CONTACT_FLOW_COPY.contextualBoxBody,
     ),
   );
@@ -73,15 +73,13 @@ try {
   assert.equal(mod.isContactFormSubmissionEnabled("live"), true);
   assert.equal(mod.isContactFormSubmissionEnabled("preview"), false);
   assert.equal(mod.isContactFormSubmissionEnabled("disabled"), false);
-  assert.ok(
-    /Preview attiva|same-origin|\/api\/contact\/create/i.test(
-      mod.getContactFormModeMessage("preview"),
-    ),
+  assert.equal(
+    mod.getContactFormModeMessage("preview"),
+    "Il modulo di contatto non è disponibile in questo momento.",
   );
-  assert.ok(
-    /Invio disabilitato|backend contact/i.test(
-      mod.getContactFormModeMessage("disabled"),
-    ),
+  assert.equal(
+    mod.getContactFormModeMessage("disabled"),
+    "Non è possibile inviare il messaggio in questo momento. Contattaci telefonicamente o tramite WhatsApp.",
   );
   assert.equal(mod.getContactFormModeMessage("live"), "");
 
@@ -95,7 +93,7 @@ try {
     }),
     {
       message:
-        "Ciao, vorrei ricevere disponibilita per Black wax e capire come procedere con l'acquisto o il ritiro in negozio.",
+        "Ciao, vorrei ricevere disponibilità per Black wax e capire come procedere con l'acquisto o il ritiro in negozio.",
       subject: "Richiesta Black wax in shop",
     },
   );

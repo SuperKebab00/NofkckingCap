@@ -15,9 +15,9 @@ export const CONTACT_FORM_ENDPOINT = "/api/contact/create";
 
 export const SHOP_FLOW_COPY = {
   checkoutCta: "Prepara ritiro in shop",
-  contactCta: "Chiedi disponibilita",
+  contactCta: "Chiedi disponibilità",
   helperText:
-    "Vuoi ritirarlo o comprarlo in negozio? Avvia il riepilogo in-shop oppure chiedi disponibilita prima di passare.",
+    "Vuoi ritirarlo o comprarlo in negozio? Avvia il riepilogo in-shop oppure chiedi disponibilità prima di passare.",
 } as const;
 
 export const CHECKOUT_FLOW_COPY = {
@@ -31,9 +31,9 @@ export const CHECKOUT_FLOW_COPY = {
 export const CONTACT_FLOW_COPY = {
   contextualBoxLabel: "Richiesta per",
   contextualBoxBody:
-    "Questo form puo essere usato per verificare disponibilita, preparare il ritiro in negozio oppure inviare una richiesta generica.",
+    "Questo form puo essere usato per verificare disponibilità, preparare il ritiro in negozio oppure inviare una richiesta generica.",
   genericHelper:
-    "Puoi usare questo form per disponibilita prodotto, ritiro in shop o domande generiche. Nessun ordine viene confermato automaticamente da qui.",
+    "Puoi usare questo form per disponibilità prodotto, ritiro in shop o domande generiche. Nessun ordine viene confermato automaticamente da qui.",
   noAutomaticOrderNote:
     "Il form non crea ordini automatici e non conferma pagamenti online.",
 } as const;
@@ -54,11 +54,11 @@ export function isContactFormSubmissionEnabled(mode: ContactFormMode) {
 
 export function getContactFormModeMessage(mode: ContactFormMode) {
   if (mode === "preview") {
-    return "Preview attiva: il form resta visibile per verifica UI, ma l'invio e disabilitato per evitare errori same-origin su /api/contact/create.";
+    return "Il modulo di contatto non è disponibile in questo momento.";
   }
 
   if (mode === "disabled") {
-    return "Invio disabilitato da configurazione pubblica. Usa telefono o WhatsApp finche il backend contact non viene collegato allo stesso dominio.";
+    return "Non è possibile inviare il messaggio in questo momento. Contattaci telefonicamente o tramite WhatsApp.";
   }
 
   return "";
@@ -71,7 +71,7 @@ export function buildShopCheckoutHref(productName: string) {
 export function buildShopContactHref(productName: string) {
   const params = new URLSearchParams({
     product: productName,
-    subject: `Disponibilita ${productName}`,
+    subject: `Disponibilità ${productName}`,
   });
 
   return `/contact?${params.toString()}`;
@@ -129,7 +129,7 @@ export function buildContactInitialValues(initialContext?: ContactInitialContext
     message:
       message ||
       (product
-        ? `Ciao, vorrei ricevere disponibilita per ${product} e capire come procedere con l'acquisto o il ritiro in negozio.`
+        ? `Ciao, vorrei ricevere disponibilità per ${product} e capire come procedere con l'acquisto o il ritiro in negozio.`
         : ""),
     subject: subject || (product ? `Richiesta ${product} in shop` : ""),
   };

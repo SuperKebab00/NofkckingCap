@@ -825,6 +825,10 @@ body {
   margin-bottom: 34px;
 }
 
+.section-heading.section-heading--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .section-heading h2 {
   color: #050505;
   font-family: var(--font-display);

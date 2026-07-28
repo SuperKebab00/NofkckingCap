@@ -28,15 +28,11 @@ export default async function ShowcasePage() {
         </section>
 
         <section className="showcase-section">
-          <div className="section-heading">
+          <div className="section-heading section-heading--single">
             <div>
               <p className="eyebrow">No Cap cuts</p>
               <h2>Showcase mensile</h2>
             </div>
-            <p>
-              Visual grandi, card scure e accenti rossi: la stessa direzione del
-              prod-ready, adattata a route Next.js dedicata.
-            </p>
           </div>
 
           {showcaseItems.length ? (

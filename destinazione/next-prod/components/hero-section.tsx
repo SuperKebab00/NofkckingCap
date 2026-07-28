@@ -11,8 +11,7 @@ export function HeroSection() {
           <span>Zero cap.</span>
         </h1>
         <p className="hero__copy">
-          Prodotti professionali, strumenti da banco e disponibilita aggiornata
-          per uno shop barber pronto a vendere.
+          Prodotti professionali, strumenti da banco e disponibilità aggiornata.
         </p>
         <div className="hero__actions">
           <Link className="primary-button" href="/shop">

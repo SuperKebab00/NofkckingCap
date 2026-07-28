@@ -117,7 +117,6 @@ export function ShopCatalog({
 
   const hasProducts = products.length > 0;
   const hasVisibleProducts = filteredProducts.length > 0;
-  const hasActiveFilters = query.trim().length > 0 || activeCategory.trim().length > 0;
 
   return (
     <>
@@ -151,10 +150,7 @@ export function ShopCatalog({
             <p className="eyebrow">Prodotti</p>
             <h2 id="shop-catalog-title">Catalogo professionale</h2>
           </div>
-          <p>
-            Scopri prodotti, disponibilita e ultimi pezzi con un&apos;esperienza
-            e-commerce pensata per barber shop.
-          </p>
+          <p>Scopri prodotti disponibili e ultimi pezzi.</p>
         </div>
 
         <div className="shop-tools">
@@ -191,15 +187,14 @@ export function ShopCatalog({
         <div className="showcase-empty">
           <p className="eyebrow">Catalogo</p>
           <strong>Prodotti non disponibili al momento</strong>
-          <span>Il catalogo pubblico non ha ancora restituito elementi.</span>
+          <span>Al momento non ci sono prodotti disponibili.</span>
         </div>
       ) : hasVisibleProducts ? (
         <ShopProductGrid products={filteredProducts} showStock={showStock} />
       ) : (
         <div className="showcase-empty">
           <p className="eyebrow">Nessun risultato</p>
-          <strong>Nessun prodotto corrisponde ai filtri attivi</strong>
-          <span>Modifica ricerca, filtri o ordinamento.</span>
+          <strong>Nessun prodotto corrisponde ai filtri selezionati.</strong>
           <div className="shop-reset-actions">
             <button className="ghost-button" onClick={() => setQuery("")} type="button">
               Azzera ricerca
@@ -216,9 +211,6 @@ export function ShopCatalog({
               Reset completo
             </button>
           </div>
-          {hasActiveFilters ? (
-            <span>Nessun errore tecnico: i filtri correnti non restituiscono match.</span>
-          ) : null}
         </div>
       )}
       </section>

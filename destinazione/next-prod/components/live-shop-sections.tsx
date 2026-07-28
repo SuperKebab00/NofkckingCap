@@ -57,12 +57,7 @@ export async function LiveShopSections() {
         <div className="panel panel--route">
           <div className="panel-heading">
             <h2 id="live-shop-sections-title">Sezioni shop</h2>
-            <span className="status-badge">Fallback statico</span>
           </div>
-          <p>
-            La home continua a usare i contenuti statici correnti. Le sezioni
-            dinamiche Supabase non sono disponibili in questo ambiente.
-          </p>
         </div>
       </section>
     );
@@ -72,13 +67,8 @@ export async function LiveShopSections() {
     <section className="section route-crosslinks" aria-labelledby="live-shop-sections-title">
       <div className="panel panel--route">
         <div className="panel-heading">
-          <h2 id="live-shop-sections-title">Sezioni live shop</h2>
-          <span className="status-badge">Supabase live</span>
+          <h2 id="live-shop-sections-title">Sezioni shop</h2>
         </div>
-        <p>
-          Preview server-side delle sezioni pubbliche attive. Nessuna modifica,
-          carrello o checkout da questa area.
-        </p>
         <div
           className="route-pillars"
         >

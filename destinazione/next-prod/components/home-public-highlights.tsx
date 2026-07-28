@@ -1,7 +1,7 @@
 const highlights = [
   {
     eyebrow: "Shop",
-    title: "Prodotti, disponibilita e ultimo stock",
+    title: "Prodotti, disponibilità e ultimo stock",
     body: "Consulta il catalogo, filtra per categoria e prepara il prossimo passaggio in negozio con piu chiarezza.",
   },
   {
@@ -19,15 +19,11 @@ const highlights = [
 export function HomePublicHighlights() {
   return (
     <section className="section route-highlights">
-      <div className="section-heading">
+      <div className="section-heading section-heading--single">
         <div>
           <p className="eyebrow">No Cap Barbershop</p>
           <h2>Fresh gear, tagli e contatto diretto</h2>
         </div>
-        <p>
-          La versione Next resta autonoma e riallinea contenuti pubblici, asset,
-          CTA e ritmo visuale all&apos;identita del barber shop.
-        </p>
       </div>
 
       <div
